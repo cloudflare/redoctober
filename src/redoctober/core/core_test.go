@@ -3,9 +3,9 @@ package core
 import (
 	"os"
 	"encoding/json"
+	"testing"
 	"redoctober/passvault"
 	"redoctober/keycache"
-	"redoctober/testing"
 )
 
 func TestCreate(t *testing.T) {
@@ -312,7 +312,7 @@ func TestEncryptDecrypt(t *testing.T) {
 
 
 	// decrypt file
-	decryptJson, err := json.Marshal(decrypt{Name:"Alice", Password:"Hello", In:s.Response})
+	decryptJson, err := json.Marshal(decrypt{Name:"Alice", Password:"Hello", Data:s.Response})
 	if err != nil {
 		t.Fatalf("Error in marshalling decryption,", err)
 	}
