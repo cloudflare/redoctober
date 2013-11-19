@@ -1,58 +1,59 @@
-// Pacakge core handles the main operations of the Red October server.
+// Package core handles the main operations of the Red October server.
+//
+// Copyright (c) 2013 CloudFlare, Inc.
+
 package core
 
 import (
-	"log"
-	"errors"
 	"encoding/json"
-	"redoctober/passvault"
+	"errors"
+	"log"
 	"redoctober/cryptor"
 	"redoctober/keycache"
+	"redoctober/passvault"
 )
+
+type credential struct {
+	Name     string
+	Password string
+}
 
 // format of incoming sign-in request
 type create struct {
-	Name string
-	Password string
+	credential
 }
 
 type summary struct {
-	Name string
-	Password string
+	credential
 }
 
 type delegate struct {
-	Name string
-	Password string
-	Uses int
-	Time string
+	credential
+	Uses     int
+	Time     string
 }
 
 type password struct {
-	Name string
-	Password string
+	credential
 	NewPassword string
 }
 
 type encrypt struct {
-	Name string
-	Password string
-	Minimum int
-	Owners []string
-	Data []byte
+	credential
+	Minimum  int
+	Owners   []string
+	Data     []byte
 }
 
 type decrypt struct {
-	Name string
-	Password string
-	Data []byte
+	credential
+	Data     []byte
 }
 
 type modify struct {
-	Name string
-	Password string
+	credential
 	ToModify string
-	Command string
+	Command  string
 }
 
 // response JSON format
@@ -61,39 +62,39 @@ type status struct {
 }
 
 type responseData struct {
-	Status string
+	Status   string
 	Response []byte
 }
 
 type summaryData struct {
 	Status string
-	Live map[string]keycache.ActiveUser
-	All map[string]passvault.Summary
+	Live   map[string]keycache.ActiveUser
+	All    map[string]passvault.Summary
 }
 
 func errToJson(err error) (ret []byte) {
 	if err == nil {
-		ret, _ = json.Marshal(status{Status:"ok"})
+		ret, _ = json.Marshal(status{Status: "ok"})
 	} else {
-		ret, _ = json.Marshal(status{Status:err.Error()})
+		ret, _ = json.Marshal(status{Status: err.Error()})
 	}
 	return
 }
 
 func summaryToJson(err error) (ret []byte) {
 	if err == nil {
-		ret, _ = json.Marshal(summaryData{Status:"ok", Live:keycache.GetSummary(), All:passvault.GetSummary()})
+		ret, _ = json.Marshal(summaryData{Status: "ok", Live: keycache.GetSummary(), All: passvault.GetSummary()})
 	} else {
-		ret, _ = json.Marshal(status{Status:err.Error()})
+		ret, _ = json.Marshal(status{Status: err.Error()})
 	}
 	return
 }
 
 func responseToJson(resp []byte, err error) (ret []byte) {
 	if err == nil {
-		ret, _ = json.Marshal(responseData{Status:"ok", Response:resp})
+		ret, _ = json.Marshal(responseData{Status: "ok", Response: resp})
 	} else {
-		ret, _ = json.Marshal(status{Status:err.Error()})
+		ret, _ = json.Marshal(status{Status: err.Error()})
 	}
 	return
 }
@@ -299,19 +300,22 @@ func Modify(jsonIn []byte) []byte {
 		return errToJson(errors.New("Cannot modify own record"))
 	}
 	switch s.Command {
-		case "delete": {
+	case "delete":
+		{
 			err = passvault.DeleteRecord(s.ToModify)
 		}
-		case "revoke": {
+	case "revoke":
+		{
 			err = passvault.RevokeRecord(s.ToModify)
 		}
-		case "admin": {
+	case "admin":
+		{
 			err = passvault.MakeAdmin(s.ToModify)
 		}
-		default: {
+	default:
+		{
 			return errToJson(errors.New("Unknown command"))
 		}
 	}
 	return errToJson(err)
 }
-

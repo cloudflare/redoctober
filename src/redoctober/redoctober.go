@@ -1,65 +1,70 @@
 // Package redoctober contains the server code for Red October.
+//
+// Copyright (c) 2013 CloudFlare, Inc.
+
 package main
 
 import (
-	"fmt"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/pem"
 	"flag"
-	"os"
+	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"crypto/tls"
-	"crypto/rand"
-	"crypto/x509"
-	"encoding/pem"
+	"os"
 	"redoctober/core"
 )
 
-// list of URLs to register
+// List of URLs to register
+
 const (
-	Create string = "/create"
-	Summary = "/summary"
-	Delegate = "/delegate"
-	Password = "/password"
-	Encrypt = "/encrypt"
-	Decrypt = "/decrypt"
-	Modify = "/modify"
+	Create   string = "/create"
+	Summary         = "/summary"
+	Delegate        = "/delegate"
+	Password        = "/password"
+	Encrypt         = "/encrypt"
+	Decrypt         = "/decrypt"
+	Modify          = "/modify"
 )
 
-// the channel handling user request
+// The channel handling user requests
+
 var process = make(chan userRequest)
 
 type userRequest struct {
-	rt string
-	in []byte
+	rt   string
+	in   []byte
 	resp chan []byte
 }
 
 func init() {
-	go func () {
+	go func() {
 		for {
-			foo := <-process
+			req := <-process
 			switch {
-				case foo.rt == Create:
-					foo.resp <- core.Create(foo.in)
-				case foo.rt == Summary:
-					foo.resp <- core.Summary(foo.in)
-				case foo.rt == Delegate:
-					foo.resp <- core.Delegate(foo.in)
-				case foo.rt == Password:
-					foo.resp <- core.Password(foo.in)
-				case foo.rt == Encrypt:
-					foo.resp <- core.Encrypt(foo.in)
-				case foo.rt == Decrypt:
-					foo.resp <- core.Decrypt(foo.in)
-				case foo.rt == Modify:
-					foo.resp <- core.Modify(foo.in)
-				default:
-					fmt.Printf("Unknown! %s\n", foo.rt)
-					foo.resp <- []byte("Unknown command")
+			case req.rt == Create:
+				req.resp <- core.Create(req.in)
+			case req.rt == Summary:
+				req.resp <- core.Summary(req.in)
+			case req.rt == Delegate:
+				req.resp <- core.Delegate(req.in)
+			case req.rt == Password:
+				req.resp <- core.Password(req.in)
+			case req.rt == Encrypt:
+				req.resp <- core.Encrypt(req.in)
+			case req.rt == Decrypt:
+				req.resp <- core.Decrypt(req.in)
+			case req.rt == Modify:
+				req.resp <- core.Modify(req.in)
+			default:
+				fmt.Printf("Unknown! %s\n", req.rt)
+				req.resp <- []byte("Unknown command")
 			}
 		}
-	} ()
+	}()
 }
 
 func queueRequest(requestType string, w http.ResponseWriter, r *http.Request, c *tls.ConnectionState) {
@@ -70,15 +75,14 @@ func queueRequest(requestType string, w http.ResponseWriter, r *http.Request, c 
 
 	response := make(chan []byte, 1)
 	req := userRequest{rt: requestType, in: body, resp: response}
-	process <-req
+	process <- req
 
 	code := <-response
-	
+
 	w.Write(code)
 }
 
 func NewServer(addr string, certPath string, keyPath string, caPath string) (*http.Server, *net.Listener, error) {
-	// set up server
 	mux := http.NewServeMux()
 	srv := http.Server{
 		Addr:    addr,
@@ -91,11 +95,11 @@ func NewServer(addr string, certPath string, keyPath string, caPath string) (*ht
 	}
 
 	config := tls.Config{
-		Certificates: []tls.Certificate{cert},
-		Rand: rand.Reader,
-		ClientAuth: tls.RequestClientCert,
+		Certificates:             []tls.Certificate{cert},
+		Rand:                     rand.Reader,
+		ClientAuth:               tls.RequestClientCert,
 		PreferServerCipherSuites: true,
-		SessionTicketsDisabled: true,
+		SessionTicketsDisabled:   true,
 	}
 	config.Rand = rand.Reader
 
@@ -129,7 +133,7 @@ func NewServer(addr string, certPath string, keyPath string, caPath string) (*ht
 
 	lstnr := tls.NewListener(conn, &config)
 
-	for _, action := range []string {Create, Summary, Delegate, Password, Encrypt, Decrypt, Modify} {
+	for _, action := range []string{Create, Summary, Delegate, Password, Encrypt, Decrypt, Modify} {
 		var requestType = action
 		mux.HandleFunc(requestType, func(w http.ResponseWriter, r *http.Request) {
 			queueRequest(requestType, w, r, r.TLS)
@@ -148,7 +152,7 @@ redoctober /tmp/diskrecord.json localhost:8080 cert.pem cert.key
 
 `
 
-func main () {
+func main() {
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
@@ -172,4 +176,3 @@ func main () {
 	s, l, _ := NewServer(*addr, *certPath, *keyPath, *caPath)
 	s.Serve(*l)
 }
-

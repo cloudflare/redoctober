@@ -1,9 +1,12 @@
+// keycache_test.go: tests for keycache.go
+//
+// Copyright (c) 2013 CloudFlare, Inc.
 package keycache
 
 import (
 	"passvault"
-	"time"
 	"testing"
+	"time"
 )
 
 var now = time.Now()
@@ -13,10 +16,10 @@ var dummy = make([]byte, 16)
 
 func TestUsesFlush(t *testing.T) {
 	singleUse := ActiveUser{
-		Admin: true,
-		Type: passvault.AESRecord,
+		Admin:  true,
+		Type:   passvault.AESRecord,
 		Expiry: nextYear,
-		Uses: 2,
+		Uses:   2,
 		aesKey: emptyKey,
 	}
 
@@ -47,10 +50,10 @@ func TestTimeFlush(t *testing.T) {
 	one := now.Add(oneSec)
 
 	singleUse := ActiveUser{
-		Admin: true,
-		Type: passvault.AESRecord,
+		Admin:  true,
+		Type:   passvault.AESRecord,
 		Expiry: one,
-		Uses: 10,
+		Uses:   10,
 		aesKey: emptyKey,
 	}
 
@@ -76,5 +79,3 @@ func TestTimeFlush(t *testing.T) {
 		t.Fatalf("Error in pruning expired key")
 	}
 }
-
-

@@ -1,16 +1,19 @@
+// core_test.go: tests for core.go
+//
+// Copyright (c) 2013 CloudFlare, Inc.
 package core
 
 import (
-	"os"
 	"encoding/json"
-	"redoctober/passvault"
+	"os"
 	"redoctober/keycache"
+	"redoctober/passvault"
 	"redoctober/testing"
 )
 
 func TestCreate(t *testing.T) {
 	createJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
-	
+
 	os.Remove("/tmp/db1.json")
 	Init("/tmp/db1.json")
 
@@ -138,7 +141,7 @@ func TestSummary(t *testing.T) {
 		t.Fatalf("Error in summary of account, record missing ")
 	}
 
-	// 
+	//
 	keycache.FlushCache()
 
 	os.Remove("/tmp/db1.json")
@@ -310,9 +313,8 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Fatalf("Error in encrypt, ", s.Status)
 	}
 
-
 	// decrypt file
-	decryptJson, err := json.Marshal(decrypt{Name:"Alice", Password:"Hello", In:s.Response})
+	decryptJson, err := json.Marshal(decrypt{Name: "Alice", Password: "Hello", In: s.Response})
 	if err != nil {
 		t.Fatalf("Error in marshalling decryption,", err)
 	}
@@ -527,4 +529,3 @@ func TestModify(t *testing.T) {
 
 	os.Remove("/tmp/db1.json")
 }
-

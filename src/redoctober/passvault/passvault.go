@@ -1,20 +1,24 @@
-// Package passvault manages the vault containing user records on disk.
+// Package passvault manages the vault containing user records on
+// disk.
+//
+// Copyright (c) 2013 CloudFlare, Inc.
+
 package passvault
 
 import (
-	"code.google.com/p/go.crypto/scrypt"
-	"crypto/sha1"
-	"crypto/aes"
-	"crypto/rsa"
-	"crypto/rand"
-	"crypto/cipher"
-	mrand "math/rand"
-	"math/big"
-	"io/ioutil"
-	"encoding/json"
 	"bytes"
+	"code.google.com/p/go.crypto/scrypt"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/sha1"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
+	"io/ioutil"
+	"math/big"
+	mrand "math/rand"
 	"redoctober/padding"
 )
 
@@ -35,41 +39,41 @@ const (
 	DEFAULT_VERSION = 1
 )
 
-
 // Set of encrypted records from disk
 var records diskRecords
+
 // Path of current vault
 var localPath string
 
 // DiskPasswordRecord is the set of password records on disk.
 type DiskPasswordRecord struct {
-	Type string
-	Salt []byte
+	Type           string
+	Salt           []byte
 	HashedPassword []byte
-	KeySalt []byte
-	AESKey []byte
-	RSAKey struct {
-		RSAExp []byte
-		RSAExpIV []byte
-		RSAPrimeP []byte
+	KeySalt        []byte
+	AESKey         []byte
+	RSAKey         struct {
+		RSAExp      []byte
+		RSAExpIV    []byte
+		RSAPrimeP   []byte
 		RSAPrimePIV []byte
-		RSAPrimeQ []byte
+		RSAPrimeQ   []byte
 		RSAPrimeQIV []byte
-		RSAPublic rsa.PublicKey
+		RSAPublic   rsa.PublicKey
 	}
 	Admin bool
 }
 type diskRecords struct {
-	Version int
-	VaultId int
-	HmacKey []byte
+	Version   int
+	VaultId   int
+	HmacKey   []byte
 	Passwords map[string]DiskPasswordRecord
 }
 
 // Summary is a minmal account summary.
 type Summary struct {
 	Admin bool
-	Type string
+	Type  string
 }
 
 // Intialization.
@@ -272,22 +276,22 @@ func InitFromDisk(path string) {
 			}
 		}
 		if rec.Type == RSARecord {
-			if len(rec.RSAKey.RSAExp) == 0 || len(rec.RSAKey.RSAExp) % 16 != 0 {
+			if len(rec.RSAKey.RSAExp) == 0 || len(rec.RSAKey.RSAExp)%16 != 0 {
 				formatErr = true
 			}
-			if len(rec.RSAKey.RSAPrimeP) == 0 || len(rec.RSAKey.RSAPrimeP) % 16 != 0 {
+			if len(rec.RSAKey.RSAPrimeP) == 0 || len(rec.RSAKey.RSAPrimeP)%16 != 0 {
 				formatErr = true
 			}
-			if len(rec.RSAKey.RSAPrimeQ) == 0 || len(rec.RSAKey.RSAPrimeQ) % 16 != 0 {
+			if len(rec.RSAKey.RSAPrimeQ) == 0 || len(rec.RSAKey.RSAPrimeQ)%16 != 0 {
 				formatErr = true
 			}
-			if len(rec.RSAKey.RSAExpIV) != 16  {
+			if len(rec.RSAKey.RSAExpIV) != 16 {
 				formatErr = true
 			}
-			if len(rec.RSAKey.RSAPrimePIV) != 16  {
+			if len(rec.RSAKey.RSAPrimePIV) != 16 {
 				formatErr = true
 			}
-			if len(rec.RSAKey.RSAPrimeQIV) != 16  {
+			if len(rec.RSAKey.RSAPrimeQIV) != 16 {
 				formatErr = true
 			}
 		}
@@ -404,7 +408,7 @@ func ChangePassword(name string, password string, newPassword string) (err error
 			return
 		}
 	} else if passwordRec.Type == RSARecord {
-	// encrypt RSA key with password key
+		// encrypt RSA key with password key
 		err = encryptRSARecord(&passwordRec, &rsaKey, newPassKey)
 		if err != nil {
 			return
@@ -619,4 +623,3 @@ func (passwordRec DiskPasswordRecord) ValidatePassword(password string) (err err
 	}
 	return
 }
-
