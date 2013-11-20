@@ -105,6 +105,8 @@ func makeRandom(length int) ([]byte, error) {
 	return bytes, err
 }
 
+// encryptRSARecord takes an RSA private key and encrypts it with
+// a password key
 func encryptRSARecord(newRec *PasswordRecord, rsaPriv *rsa.PrivateKey, passKey []byte) (err error) {
 	if newRec.RSAKey.RSAExpIV, err = makeRandom(16); err != nil {
 		return
@@ -133,7 +135,7 @@ func encryptRSARecord(newRec *PasswordRecord, rsaPriv *rsa.PrivateKey, passKey [
 	return
 }
 
-// Create new record from username and password
+// createPasswordRec creates a new record from a username and password
 func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err error) {
 	newRec.Type = RSARecord
 
@@ -374,6 +376,7 @@ func ChangePassword(name, password, newPassword string) (err error) {
 		return
 	}
 
+	// add the password salt and hash
 	if pr.PasswordSalt, err = makeRandom(16); err != nil {
 		return
 	}

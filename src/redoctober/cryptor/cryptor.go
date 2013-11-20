@@ -12,6 +12,8 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/json"
+	"strconv"
+	"sort"
 	"errors"
 	"redoctober/keycache"
 	"redoctober/padding"
@@ -37,9 +39,9 @@ type SingleWrappedKey struct {
 	aesKey []byte
 }
 
-// EncryptedFile is the format for encrypted data containing all the
+// EncryptedData is the format for encrypted data containing all the
 // keys necessary to decrypt it when delegated.
-type EncryptedFile struct {
+type EncryptedData struct {
 	Version   int
 	VaultId   int
 	KeySet    []MultiWrappedKey
@@ -151,6 +153,105 @@ func unwrapKey(keys []MultiWrappedKey, rsaKeys map[string]SingleWrappedKey) (unw
 	return
 }
 
+// mwkSorter describes a slice of MultiWrappedKeys to be sorted.
+type mwkSorter struct {
+	keySet []MultiWrappedKey
+}
+
+// Len is part of sort.Interface.
+func (s *mwkSorter) Len() int {
+	return len(s.keySet)
+}
+
+// Swap is part of sort.Interface.
+func (s *mwkSorter) Swap(i, j int) {
+	s.keySet[i], s.keySet[j] = s.keySet[j], s.keySet[i]
+}
+
+// Less is part of sort.Interface, it sorts lexicographically
+// based on the list of names
+func (s *mwkSorter) Less(i, j int) bool {
+	var shorter = i
+	if len(s.keySet[i].Name) > len(s.keySet[j].Name) {
+		shorter = j
+	}
+	for index := range s.keySet[shorter].Name {
+		if s.keySet[i].Name[index] != s.keySet[j].Name[index] {
+			return s.keySet[i].Name[index] < s.keySet[j].Name[index]
+		}
+	}
+
+	return false
+}
+
+// swkSorter joins a slice of names with SingleWrappedKeys to be sorted.
+type pair struct {
+	name string
+	key []byte
+}
+
+type swkSorter []pair
+
+// Len is part of sort.Interface.
+func (s swkSorter) Len() int {
+	return len(s)
+}
+
+// Swap is part of sort.Interface.
+func (s swkSorter) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+// Less is part of sort.Interface.
+func (s swkSorter) Less(i, j int) bool {
+	return s[i].name < s[j].name
+}
+
+
+// computeHmac computes the signature of the encrypted data structure
+// the signature takes into account every element of the EncryptedData
+// structure, with all keys sorted alphabetically by name
+func computeHmac(key []byte, encrypted EncryptedData) []byte {
+	mac := hmac.New(sha1.New, key)
+
+	// sort the multi-wrapped keys
+	mwks := &mwkSorter{
+		keySet: encrypted.KeySet,
+	}
+	sort.Sort(mwks)
+
+	// sort the singly-wrapped keys
+	var swks swkSorter
+	for name, val := range encrypted.KeySetRSA {
+		swks = append(swks, pair{name, val.Key})
+	}
+	sort.Sort(&swks)
+
+	// start hashing
+	mac.Write([]byte(strconv.Itoa(encrypted.Version)))
+	mac.Write([]byte(strconv.Itoa(encrypted.VaultId)))
+
+	// hash the multi-wrapped keys
+	for _, mwk := range encrypted.KeySet {
+		for _, name := range mwk.Name {
+			mac.Write([]byte(name))
+		}
+		mac.Write(mwk.Key)
+	}
+
+	// hash the single-wrapped keys
+	for index, _ := range swks {
+		mac.Write([]byte(swks[index].name))
+		mac.Write(swks[index].key)
+	}
+
+	// hash the IV and data
+	mac.Write(encrypted.IV)
+	mac.Write(encrypted.Data)
+
+	return mac.Sum(nil)
+}
+
 // Encrypt encrypts data with the keys associated with names. This
 // requires a minimum of min keys to decrypt.  NOTE: as currently
 // implemented, the maximum value for min is 2.
@@ -159,7 +260,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 		return nil, errors.New("Minimum restricted to 2")
 	}
 
-	var encrypted EncryptedFile
+	var encrypted EncryptedData
 	encrypted.Version = DEFAULT_VERSION
 	if encrypted.VaultId, err = passvault.GetVaultId(); err != nil {
 		return
@@ -241,9 +342,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 	if err != nil {
 		return
 	}
-	mac := hmac.New(sha1.New, hmacKey)
-	mac.Write(encrypted.Data)
-	encrypted.Signature = mac.Sum(nil)
+	encrypted.Signature = computeHmac(hmacKey, encrypted)
 
 	return json.Marshal(encrypted)
 }
@@ -251,7 +350,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 // Decrypt decrypts a file using the keys in the key cache.
 func Decrypt(in []byte) (resp []byte, err error) {
 	// unwrap encrypted file
-	var encrypted EncryptedFile
+	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
 		return
 	}
@@ -281,9 +380,7 @@ func Decrypt(in []byte) (resp []byte, err error) {
 	if err != nil {
 		return
 	}
-	mac := hmac.New(sha1.New, hmacKey)
-	mac.Write(encrypted.Data)
-	expectedMAC := mac.Sum(nil)
+	expectedMAC := computeHmac(hmacKey, encrypted)
 	if !hmac.Equal(encrypted.Signature, expectedMAC) {
 		err = errors.New("Signature mismatch")
 		return
@@ -307,3 +404,4 @@ func Decrypt(in []byte) (resp []byte, err error) {
 
 	return padding.RemovePadding(clearData)
 }
+

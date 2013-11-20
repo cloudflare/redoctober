@@ -11,7 +11,7 @@ usage:
 The Red October server is a TLS server.  It requires a local file to hold the key vault, an internet address and a certificate keypair.
 
 i.e.
-redoctober -addr=localhost:8080 -vaultpath=/tmp/diskrecord.json -cert=certs/servercertsigned.pem -key=certs/serverkey.pem
+redoctober -addr=localhost:8080 -vaultpath=/tmp/diskrecord.json -cert=certs/servercertsigned.pem -key=certs/serverkey.pem -static=index.html
 
 ## Using
 
@@ -24,6 +24,8 @@ The server exposes several JSON API endpoints.  JSON of the prescribed format is
 - Modify = "/modify"
 - Encrypt = "/encrypt"
 - Decrypt = "/decrypt"
+
+Optionally, the server can host a static HTML file to serve from "/index".
 
 ### Create
 

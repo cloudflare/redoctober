@@ -70,7 +70,7 @@ func queueRequest(process chan userRequest, requestType string, w http.ResponseW
 //
 // Returns a valid http.Server handling redoctober JSON requests (and
 // its associated listener) or an error
-func NewServer(process chan userRequest, addr string, certPath, keyPath, caPath string) (*http.Server, *net.Listener, error) {
+func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, caPath string) (*http.Server, *net.Listener, error) {
 	mux := http.NewServeMux()
 	srv := http.Server{
 		Addr:    addr,
@@ -82,9 +82,8 @@ func NewServer(process chan userRequest, addr string, certPath, keyPath, caPath 
 	}
 
 	config := tls.Config{
-		Certificates:             []tls.Certificate{cert},
-		Rand:                     rand.Reader,
-		ClientAuth:               tls.RequestClientCert,
+		Certificates: []tls.Certificate{cert},
+		Rand:         rand.Reader,
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
 	}
@@ -108,6 +107,7 @@ func NewServer(process chan userRequest, addr string, certPath, keyPath, caPath 
 		}
 
 		rootPool.AddCert(cert)
+		config.ClientAuth = tls.RequireAndVerifyClientCert
 		config.ClientCAs = rootPool
 	}
 
@@ -118,9 +118,19 @@ func NewServer(process chan userRequest, addr string, certPath, keyPath, caPath 
 
 	lstnr := tls.NewListener(conn, &config)
 
-	for requestType := range functions {
+	// queue up post URIs
+	for current := range functions {
+		// copy this so reference does not get overwritten
+		var requestType = current
 		mux.HandleFunc(requestType, func(w http.ResponseWriter, r *http.Request) {
 			queueRequest(process, requestType, w, r)
+		})
+	}
+
+	// queue up web frontend
+	if staticPath != "" {
+		mux.HandleFunc("/index", func(w http.ResponseWriter, r *http.Request) {
+			http.ServeFile(w, r, staticPath)
 		})
 	}
 
@@ -129,7 +139,7 @@ func NewServer(process chan userRequest, addr string, certPath, keyPath, caPath 
 
 const usage = `Usage:
 
-	redoctober -vaultpath <path> -addr <addr> -cert <path> -key <path> [-ca <path>]
+	redoctober -static <path> -vaultpath <path> -addr <addr> -cert <path> -key <path> [-ca <path>]
 
 example:
 redoctober -vaultpath /tmp/diskrecord.json -addr localhost:8080 -cert cert.pem -key cert.key
@@ -142,6 +152,7 @@ func main() {
 		os.Exit(2)
 	}
 
+	var staticPath = flag.String("staticpath", "/tmp/index.html", "Path to the the static entry")
 	var vaultPath = flag.String("vaultpath", "/tmp/tmpvault", "Path to the the disk vault")
 	var addr = flag.String("addr", "localhost:8000", "Server and port separated by :")
 	var certPath = flag.String("cert", "", "Path of TLS certificate in PEM format")
@@ -189,7 +200,7 @@ func main() {
 		}
 	}()
 
-	s, l, err := NewServer(process, *addr, *certPath, *keyPath, *caPath)
+	s, l, err := NewServer(process, *staticPath, *addr, *certPath, *keyPath, *caPath)
 	if err == nil {
 		s.Serve(*l)
 	} else {

@@ -19,7 +19,7 @@ import (
 // UserKeys is the set of decrypted keys in memory, indexed by name.
 var UserKeys map[string]ActiveUser = make(map[string]ActiveUser)
 
-// ActiveUser holds the information about an actively delegated key
+// ActiveUser holds the information about an actively delegated key.
 type ActiveUser struct {
 	Admin  bool
 	Type   string
@@ -30,16 +30,20 @@ type ActiveUser struct {
 	rsaKey rsa.PrivateKey
 }
 
+// matchUser returns the matching active user if present
+// and a boolean to indicate its presence.
 func matchUser(name string) (out ActiveUser, present bool) {
 	out, present = UserKeys[name]
 	return
 }
 
+// setUser takes an ActiveUser and adds it to the cache.
 func setUser(in ActiveUser, name string) {
 	UserKeys[name] = in
 }
 
-// mark a use of the key, only for decryption or symmetric encryption
+// useKey decrements the counter on an active key
+// for decryption or symmetric encryption
 func useKey(name string) {
 	if val, present := matchUser(name); present {
 		val.Uses -= 1
@@ -63,7 +67,7 @@ func FlushCache() {
 func Refresh() {
 	for name, active := range UserKeys {
 		if active.Expiry.Before(time.Now()) || active.Uses <= 0 {
-			log.Println("Record expired", name)
+			log.Println("Record expired", name, active.Expiry)
 			delete(UserKeys, name)
 		}
 	}
