@@ -3,17 +3,16 @@ VERSION   := 0.1
 ITERATION := $(shell date +%s)
 REVISION  := $(shell git log -n1 --pretty=format:%h)
 
-GOPATH := '$(CURDIR)'
+export GOPATH := $(PWD)
 
 BUILD_DEPS := go
 
 .PHONY: all
 all: $(NAME)
 
-
 .PHONY: test
 test:
-	GOPATH=$(GOPATH) go test $(NAME)/...
+	@go test $(NAME)/...
 
 .PHONY: print-builddeps
 print-builddeps:
@@ -24,9 +23,8 @@ $(NAME): bin/$(NAME)
 
 SRC := $(shell find src/$(NAME) -type f)
 bin/$(NAME): $(SRC)
-	GOPATH=$(GOPATH) go install -tags "$(TAGS)" -ldflags "$(LDFLAGS)" $(NAME)
-
-
+	@go fmt $(NAME)
+	@go install -tags "$(TAGS)" -ldflags "$(LDFLAGS)" $(NAME)
 
 BUILD_PATH           := build
 INSTALL_PREFIX       := usr/local
@@ -59,5 +57,7 @@ clean-package:
 
 .PHONY: clean
 clean: clean-package
-	GOPATH=$(GOPATH) go clean -i $(NAME)/...
-	$(RM) -r pkg
+	@go clean -i $(NAME)/...
+	@$(RM) -r pkg
+
+print-%: ; @echo $*=$($*)

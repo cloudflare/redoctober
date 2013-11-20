@@ -6,25 +6,41 @@ package padding
 
 import "errors"
 
-// RemovePadding removes padding from clear data.
-func RemovePadding(bytesPadded []byte) ([]byte, error) {
-	// last byte is padding byte
-	paddingLen := int(bytesPadded[len(bytesPadded)-1])
-	if paddingLen > 16 {
+// The final byte of a padded []byte indicates the number of padding
+// bytes that were added. The padding bytes are always NUL bytes and
+// up to 16 bytes may be added.
+//
+// Examples:
+//
+// 1. Data to be padded has a length divisible by 16. 16 bytes will be
+// added where the first 15 are 0x00 and the final byte is 0x10.
+//
+// 2. Data to be padded has a length with remainder 15 when divided by
+// 16. One byte will be added and that byte will be 0x01 (indicating
+// one byte of padding).
+//
+// 3. Data to be padded has a length with remainder 2 when divided by
+// 16. 14 bytes will be added. The first 13 will be 0x00 and then final
+// byte will be 0x0e.
+// 
+// Removing padding is trivial: the number of bytes specified by the
+// final byte are removed.
+
+// RemovePadding removes padding from data that was added with
+// AddPadding
+func RemovePadding(b []byte) ([]byte, error) {
+	l := int(b[len(b)-1])
+	if l > 16 {
 		return nil, errors.New("Padding incorrect")
 	}
-	fileLen := len(bytesPadded) - paddingLen
 
-	return bytesPadded[:fileLen], nil
+	return b[:len(b)-l], nil
 }
 
-// PadClearFile adds padding to clear file.
-func PadClearFile(fileBytes []byte) (paddedFile []byte) {
-	// pad with zeros, last byte is the size of padding
-	paddingLen := 16 - len(fileBytes)%16
-	padding := make([]byte, paddingLen)
-	padding[paddingLen-1] = byte(paddingLen)
-	paddedFile = append(fileBytes, padding...)
-
-	return
+// AddPadding adds padding to a block of data
+func AddPadding(b []byte) []byte {
+	l := 16 - len(b)%16
+	padding := make([]byte, l)
+	padding[l-1] = byte(l)
+	return append(b, padding...)
 }
