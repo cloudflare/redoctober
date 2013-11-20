@@ -11,7 +11,7 @@ usage:
 The Red October server is a TLS server.  It requires a local file to hold the key vault, an internet address and a certificate keypair.
 
 i.e.
-redoctober /tmp/diskrecord.json localhost:8080 cert.pem cert.key
+redoctober -addr=localhost:8080 -vaultpath=/tmp/diskrecord.json -cert=certs/servercertsigned.pem -key=certs/serverkey.pem
 
 ## Using
 
