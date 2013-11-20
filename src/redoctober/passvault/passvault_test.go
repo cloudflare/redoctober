@@ -1,3 +1,7 @@
+// passvault_test: tests for passvault.go
+//
+// Copyright (c) 2013 CloudFlare, Inc.
+
 package passvault
 
 import (

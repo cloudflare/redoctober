@@ -1,47 +1,51 @@
-// Package cryptor encrypts and decrypts files using the Red October vault and key cache.
+// Package cryptor encrypts and decrypts files using the Red October
+// vault and key cache.
+//
+// Copyright (c) 2013 CloudFlare, Inc.
+
 package cryptor
 
 import (
 	"crypto/aes"
-	"crypto/hmac"
-	"crypto/sha1"
-	"crypto/rand"
 	"crypto/cipher"
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha1"
 	"encoding/json"
 	"errors"
-	"redoctober/passvault"
 	"redoctober/keycache"
 	"redoctober/padding"
+	"redoctober/passvault"
 )
 
 const (
 	DEFAULT_VERSION = 1
 )
 
-// MultiWrappedKey is a structure containing
-// a 16-byte key encrypted once for each of the keys corresponding to
-// the names of the users in Name in order.
+// MultiWrappedKey is a structure containing a 16-byte key encrypted
+// once for each of the keys corresponding to the names of the users
+// in Name in order.
 type MultiWrappedKey struct {
 	Name []string
-	Key []byte
+	Key  []byte
 }
 
-// SingleWrappedKey is a structure containing
-// a 16-byte key encrypted by an RSA key.
+// SingleWrappedKey is a structure containing a 16-byte key encrypted
+// by an RSA key.
 type SingleWrappedKey struct {
-	Key []byte
+	Key    []byte
 	aesKey []byte
 }
 
-// EncryptedFile is the format for encrypted data containing all the keys necessary to
-// decrypt it when delegated.
+// EncryptedFile is the format for encrypted data containing all the
+// keys necessary to decrypt it when delegated.
 type EncryptedFile struct {
-	Version int
-	VaultId int
-	KeySet []MultiWrappedKey
+	Version   int
+	VaultId   int
+	KeySet    []MultiWrappedKey
 	KeySetRSA map[string]SingleWrappedKey
-	IV []byte
-	Data []byte
+	IV        []byte
+	Data      []byte
 	Signature []byte
 }
 
@@ -56,7 +60,8 @@ func makeRandom(length int) (bytes []byte, err error) {
 	return
 }
 
-// encrypt clearKey with the key associated with name inner, then name outer
+// encrypt clearKey with the key associated with name inner, then name
+// outer
 func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string]SingleWrappedKey) (out MultiWrappedKey, err error) {
 	out.Name = []string{nameOuter, nameInner}
 
@@ -90,7 +95,7 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string
 			err = errors.New("Missing user in file")
 			return
 		}
-		
+
 		overrideOuter, ok = rsaKeys[nameOuter]
 		if !ok {
 			err = errors.New("Missing user in file")
@@ -105,12 +110,10 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string
 	}
 
 	// double-wrap the keys
-	keyBytes, err = keycache.EncryptKey(clearKey, nameInner, overrideInner.aesKey)
-	if err != nil {
+	if keyBytes, err = keycache.EncryptKey(clearKey, nameInner, overrideInner.aesKey); err != nil {
 		return out, err
 	}
-	keyBytes, err = keycache.EncryptKey(keyBytes, nameOuter, overrideOuter.aesKey)
-	if err != nil {
+	if keyBytes, err = keycache.EncryptKey(keyBytes, nameOuter, overrideOuter.aesKey); err != nil {
 		return out, err
 	}
 
@@ -122,7 +125,7 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string
 // decrypt first key in keys whose encryption keys are in keycache
 func unwrapKey(keys []MultiWrappedKey, rsaKeys map[string]SingleWrappedKey) (unwrappedKey []byte, err error) {
 	var (
-		keyFound error
+		keyFound  error
 		fullMatch bool = false
 	)
 	for _, mwKey := range keys {
@@ -153,22 +156,21 @@ func unwrapKey(keys []MultiWrappedKey, rsaKeys map[string]SingleWrappedKey) (unw
 	return
 }
 
-
 // Encrypt encrypts data with the keys associated with names
 // This requires a minimum of min keys to decrypt.
 // NOTE: as currently implemented, the maximum value for min is 2.
 func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
-	// decode data to encrypt
-	clearFile := padding.PadClearFile(in)
 	if min > 2 {
 		return nil, errors.New("Minimum restricted to 2")
 	}
 
+	// decode data to encrypt
+	clearFile := padding.AddPadding(in)
+
 	// set up encrypted data structure
 	var encrypted EncryptedFile
 	encrypted.Version = DEFAULT_VERSION
-	encrypted.VaultId, err = passvault.GetVaultId()
-	if err != nil {
+	if encrypted.VaultId, err = passvault.GetVaultId(); err != nil {
 		return
 	}
 
@@ -182,14 +184,14 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 	if err != nil {
 		return
 	}
-	
+
 	// allocate set of keys to be able to cover all ordered subsets
 	// of length 2 of names
 	encrypted.KeySet = make([]MultiWrappedKey, len(names)*(len(names)-1))
 
 	// create map to hold RSA encrypted keys
 	encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
-	
+
 	var singleWrappedKey SingleWrappedKey
 	for _, name := range names {
 		rec, ok := passvault.GetRecord(name)
@@ -257,8 +259,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 func Decrypt(in []byte) (resp []byte, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedFile
-	err = json.Unmarshal(in, &encrypted)
-	if err != nil {
+	if err = json.Unmarshal(in, &encrypted); err != nil {
 		return
 	}
 	if encrypted.Version != DEFAULT_VERSION {
@@ -296,11 +297,10 @@ func Decrypt(in []byte) (resp []byte, err error) {
 
 	// decrypt file key with delegate keys
 	var unwrappedKey = make([]byte, 16)
-	unwrappedKey, err = unwrapKey(encrypted.KeySet, encrypted.KeySetRSA)
-	if err != nil {
+	if unwrappedKey, err = unwrapKey(encrypted.KeySet, encrypted.KeySetRSA); err != nil {
 		return
 	}
-	
+
 	// set up the decryption context
 	aesCrypt, err := aes.NewCipher(unwrappedKey)
 	if err != nil {
@@ -314,4 +314,3 @@ func Decrypt(in []byte) (resp []byte, err error) {
 
 	return padding.RemovePadding(clearData)
 }
-

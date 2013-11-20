@@ -1,16 +1,19 @@
 // Package keycache provides the ability to hold active keys in memory
 // for the Red October server.
+//
+// Copyright (c) 2013 CloudFlare, Inc.
+
 package keycache
 
 import (
-	"log"
-	"time"
-	"errors"
 	"crypto/aes"
+	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
-	"crypto/rand"
+	"errors"
+	"log"
 	"redoctober/passvault"
+	"time"
 )
 
 // UserKeys is the set of decrypted keys in memory, indexed by name.
@@ -18,11 +21,11 @@ var UserKeys map[string]ActiveUser = make(map[string]ActiveUser)
 
 // ActiveUser holds the information about an actively delegated key
 type ActiveUser struct {
-	Admin bool
-	Type string
+	Admin  bool
+	Type   string
 	Expiry time.Time
-	Uses int
-	// non-public members
+	Uses   int
+
 	aesKey []byte
 	rsaKey rsa.PrivateKey
 }
@@ -38,8 +41,7 @@ func setUser(in ActiveUser, name string) {
 
 // mark a use of the key, only for decryption or symmetric encryption
 func useKey(name string) {
-	val, present := matchUser(name)
-	if present {
+	if val, present := matchUser(name); present {
 		val.Uses -= 1
 		setUser(val, name)
 	}
@@ -68,7 +70,7 @@ func Refresh() {
 }
 
 // AddKeyFromRecord decrypts a key for a given record and adds it to the cache.
-func AddKeyFromRecord(record passvault.DiskPasswordRecord, name string, password string, uses int, durationString string) (err error) {
+func AddKeyFromRecord(record passvault.PasswordRecord, name string, password string, uses int, durationString string) (err error) {
 	var current ActiveUser
 
 	Refresh()
@@ -184,4 +186,3 @@ func DecryptKey(in []byte, name string, rsaEncryptedKey []byte) (out []byte, err
 
 	return
 }
-

@@ -1,317 +1,310 @@
-// Pacakge core handles the main operations of the Red October server.
+// Package core handles the main operations of the Red October server.
+//
+// Copyright (c) 2013 CloudFlare, Inc.
+
 package core
 
 import (
-	"log"
-	"errors"
 	"encoding/json"
-	"redoctober/passvault"
+	"errors"
+	"fmt"
+	"log"
 	"redoctober/cryptor"
 	"redoctober/keycache"
+	"redoctober/passvault"
 )
 
-// format of incoming sign-in request
+// Each of these structures corresponds to the JSON expected on the
+// correspondingly named URI (e.g. the delegate structure maps to the
+// JSON that should be sent on the /delegate URI and it is handled by
+// the Delegate function below).
+
 type create struct {
-	Name string
+	Name     string
 	Password string
 }
 
 type summary struct {
-	Name string
+	Name     string
 	Password string
 }
 
 type delegate struct {
-	Name string
+	Name     string
 	Password string
-	Uses int
-	Time string
+
+	Uses     int
+	Time     string
 }
 
 type password struct {
-	Name string
+	Name     string
 	Password string
+
 	NewPassword string
 }
 
 type encrypt struct {
-	Name string
+	Name     string
 	Password string
-	Minimum int
-	Owners []string
-	Data []byte
+
+	Minimum  int
+	Owners   []string
+	Data     []byte
 }
 
 type decrypt struct {
-	Name string
+	Name     string
 	Password string
-	Data []byte
+
+	Data     []byte
 }
 
 type modify struct {
-	Name string
+	Name     string
 	Password string
+
 	ToModify string
-	Command string
+	Command  string
 }
 
-// response JSON format
+// These structures map the JSON responses that will be sent from the API
+
 type status struct {
 	Status string
 }
 
 type responseData struct {
-	Status string
+	Status   string
 	Response []byte
 }
 
 type summaryData struct {
 	Status string
-	Live map[string]keycache.ActiveUser
-	All map[string]passvault.Summary
+	Live   map[string]keycache.ActiveUser
+	All    map[string]passvault.Summary
 }
 
-func errToJson(err error) (ret []byte) {
-	if err == nil {
-		ret, _ = json.Marshal(status{Status:"ok"})
-	} else {
-		ret, _ = json.Marshal(status{Status:err.Error()})
-	}
-	return
+// Helper functions that create JSON responses sent by core
+
+func jsonStatusOk() ([]byte, error) {
+	return json.Marshal(status{Status: "ok"})
+}
+func jsonStatusError(err error) ([]byte, error) {
+	return json.Marshal(status{Status: err.Error()})
+}
+func jsonSummary() ([]byte, error) {
+	return json.Marshal(summaryData{Status: "ok",Live: keycache.GetSummary(), All: passvault.GetSummary()})
+}
+func jsonResponse(resp []byte) ([]byte, error) {
+	return json.Marshal(responseData{Status: "ok", Response: resp})
 }
 
-func summaryToJson(err error) (ret []byte) {
-	if err == nil {
-		ret, _ = json.Marshal(summaryData{Status:"ok", Live:keycache.GetSummary(), All:passvault.GetSummary()})
-	} else {
-		ret, _ = json.Marshal(status{Status:err.Error()})
-	}
-	return
-}
-
-func responseToJson(resp []byte, err error) (ret []byte) {
-	if err == nil {
-		ret, _ = json.Marshal(responseData{Status:"ok", Response:resp})
-	} else {
-		ret, _ = json.Marshal(status{Status:err.Error()})
-	}
-	return
-}
-
-func validateAdmin(name string, password string) (err error) {
+// validateAdmin checks that the username and password passed in are
+// correct and that the user is an admin
+func validateAdmin(name, password string) error {
 	if passvault.NumRecords() == 0 {
 		return errors.New("Vault is not created yet")
 	}
 
-	// find record
-	passwordRec, ok := passvault.GetRecord(name)
+	pr, ok := passvault.GetRecord(name)
 	if !ok {
 		return errors.New("User not present")
 	}
-	err = passwordRec.ValidatePassword(password)
-	if err != nil {
-		return
+	if err := pr.ValidatePassword(password); err != nil {
+		return err
 	}
-	if !passwordRec.IsAdmin() {
+	if !pr.IsAdmin() {
 		return errors.New("Admin required")
 	}
 
+	return nil
+}
+
+// Init reads the records from disk from a given path
+func Init(path string) (err error) {
+	if err = passvault.InitFromDisk(path); err != nil {
+		err = fmt.Errorf("Failed to load password vault %s: %s", path, err)
+	}
 	return
 }
 
-// Init reads the records from disk from a given path.
-func Init(path string) {
-	passvault.InitFromDisk(path)
-}
-
 // Create processes a create request.
-func Create(jsonIn []byte) []byte {
+func Create(jsonIn []byte) ([]byte, error) {
 	var s create
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return errToJson(err)
+	if err := json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
 	}
 
 	if passvault.NumRecords() != 0 {
-		return errToJson(errors.New("Vault is already created"))
+		return jsonStatusError(errors.New("Vault is already created"))
+	}
+	
+	if _, err := passvault.AddNewRecord(s.Name, s.Password, true); err != nil {
+		log.Printf("Error adding record for %s: %s\n", s.Name, err)
+		return jsonStatusError(err)
 	}
 
-	_, err = passvault.AddNewRecord(s.Name, s.Password, true)
-	if err != nil {
-		log.Println("Error adding record:", err)
-		return errToJson(err)
-	}
-
-	return errToJson(err)
+	return jsonStatusOk()
 }
 
 // Summary processes a summary request.
-func Summary(jsonIn []byte) []byte {
+func Summary(jsonIn []byte) ([]byte, error) {
 	var s summary
 	keycache.Refresh()
 
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return errToJson(err)
+	if err := json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
 	}
 
 	if passvault.NumRecords() == 0 {
-		return errToJson(errors.New("Vault is not created yet"))
+		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
-	// validate admin
-	err = validateAdmin(s.Name, s.Password)
-	if err != nil {
-		log.Println("Error validating admin status", err)
-		return errToJson(err)
+	if err := validateAdmin(s.Name, s.Password); err != nil {
+		log.Printf("Error validating admin status of %s: %s", s.Name, err)
+		return jsonStatusError(err)
 	}
 
-	// populate
-	return summaryToJson(err)
+	return jsonSummary()
 }
 
 // Delegate processes a delegation request.
-func Delegate(jsonIn []byte) []byte {
+func Delegate(jsonIn []byte) ([]byte, error) {
 	var s delegate
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return errToJson(err)
+	if err := json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
 	}
 
 	if passvault.NumRecords() == 0 {
-		return errToJson(errors.New("Vault is not created yet"))
+		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
-	// find record
-	passwordRec, ok := passvault.GetRecord(s.Name)
-	if ok {
-		err = passwordRec.ValidatePassword(s.Password)
-		if err != nil {
-			return errToJson(err)
+	// Find password record for user and verify that their password
+	// matches. If not found then add a new entry for this user.
+
+	pr, found := passvault.GetRecord(s.Name)
+	if found {
+		if err := pr.ValidatePassword(s.Password); err != nil {
+			return jsonStatusError(err)
 		}
 	} else {
-		passwordRec, err = passvault.AddNewRecord(s.Name, s.Password, false)
-		if err != nil {
-			log.Println("Error adding record:", err)
-			return errToJson(err)
+		var err error
+		if pr, err = passvault.AddNewRecord(s.Name, s.Password, false); err != nil {
+			log.Printf("Error adding record for %s: %s\n", s.Name, err)
+			return jsonStatusError(err)
 		}
 	}
 
 	// add signed-in record to active set
-	err = keycache.AddKeyFromRecord(passwordRec, s.Name, s.Password, s.Uses, s.Time)
-	if err != nil {
-		log.Println("Error adding key to cache:", err)
-		return errToJson(err)
+	if err := keycache.AddKeyFromRecord(pr, s.Name, s.Password, s.Uses, s.Time); err != nil {
+		log.Printf("Error adding key to cache for %s: %s\n", s.Name, err)
+		return jsonStatusError(err)
 	}
 
-	return errToJson(err)
+	return jsonStatusOk()
 }
 
 // Password processes a password change request.
-func Password(jsonIn []byte) []byte {
+func Password(jsonIn []byte) ([]byte, error) {
 	var s password
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return errToJson(err)
+	if err := json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
 	}
 
 	if passvault.NumRecords() == 0 {
-		return errToJson(errors.New("Vault is not created yet"))
+		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
 	// add signed-in record to active set
-	err = passvault.ChangePassword(s.Name, s.Password, s.NewPassword)
-	if err != nil {
+	if err := passvault.ChangePassword(s.Name, s.Password, s.NewPassword); err != nil {
 		log.Println("Error changing password:", err)
-		return errToJson(err)
+		return jsonStatusError(err)
 	}
 
-	return errToJson(err)
+	return jsonStatusOk()
 }
 
 // Encrypt processes an encrypt request.
-func Encrypt(jsonIn []byte) (ret []byte) {
+func Encrypt(jsonIn []byte) ([]byte, error) {
 	var s encrypt
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return errToJson(err)
+	if err := json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
 	}
 
-	err = validateAdmin(s.Name, s.Password)
-	if err != nil {
+	if err := validateAdmin(s.Name, s.Password); err != nil {
 		log.Println("Error validating admin status", err)
-		return errToJson(err)
+		return jsonStatusError(err)
 	}
 
 	// Encrypt file with list of owners
-	resp, err := cryptor.Encrypt(s.Data, s.Owners, s.Minimum)
-	if err != nil {
+	if resp, err := cryptor.Encrypt(s.Data, s.Owners, s.Minimum); err != nil {
 		log.Println("Error encrypting:", err)
-		return errToJson(err)
+		return jsonStatusError(err)
+	} else {
+		return jsonResponse(resp)
 	}
-
-	return responseToJson(resp, err)
 }
 
 // Decrypt processes a decrypt request.
-func Decrypt(jsonIn []byte) (ret []byte) {
+func Decrypt(jsonIn []byte) ([]byte, error) {
 	var s decrypt
 	err := json.Unmarshal(jsonIn, &s)
 	if err != nil {
-		return errToJson(err)
+		return jsonStatusError(err)
 	}
 
 	err = validateAdmin(s.Name, s.Password)
 	if err != nil {
 		log.Println("Error validating admin status", err)
-		return errToJson(err)
+		return jsonStatusError(err)
 	}
 
 	resp, err := cryptor.Decrypt(s.Data)
 	if err != nil {
 		log.Println("Error decrypting:", err)
-		return errToJson(err)
+		return jsonStatusError(err)
 	}
 
-	return responseToJson(resp, err)
+	return jsonResponse(resp)
 }
 
 // Modify processes a modify request.
-func Modify(jsonIn []byte) []byte {
+func Modify(jsonIn []byte) ([]byte, error) {
 	var s modify
 
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return errToJson(err)
+	if err := json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
 	}
 
-	err = validateAdmin(s.Name, s.Password)
-	if err != nil {
-		log.Println("Error validating admin status", err)
-		return errToJson(err)
+	if err := validateAdmin(s.Name, s.Password); err != nil {
+		log.Printf("Error validating admin status of %s: %s", s.Name, err)
+		return jsonStatusError(err)
 	}
 
 	if _, ok := passvault.GetRecord(s.ToModify); !ok {
-		return errToJson(errors.New("Record to modify missing"))
+		return jsonStatusError(errors.New("Record to modify missing"))
 	}
 
 	if s.Name == s.ToModify {
-		return errToJson(errors.New("Cannot modify own record"))
+		return jsonStatusError(errors.New("Cannot modify own record"))
 	}
-	switch s.Command {
-		case "delete": {
-			err = passvault.DeleteRecord(s.ToModify)
-		}
-		case "revoke": {
-			err = passvault.RevokeRecord(s.ToModify)
-		}
-		case "admin": {
-			err = passvault.MakeAdmin(s.ToModify)
-		}
-		default: {
-			return errToJson(errors.New("Unknown command"))
-		}
-	}
-	return errToJson(err)
-}
 
+	var err error
+	switch s.Command {
+	case "delete":
+		err = passvault.DeleteRecord(s.ToModify)
+	case "revoke":
+		err = passvault.RevokeRecord(s.ToModify)
+	case "admin":
+		err = passvault.MakeAdmin(s.ToModify)
+	default:
+		return jsonStatusError(errors.New("Unknown command"))
+	}
+
+	if err != nil {
+		return jsonStatusError(err)
+	} else {
+		return jsonStatusOk()
+	}
+}
