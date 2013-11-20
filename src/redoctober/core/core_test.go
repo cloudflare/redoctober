@@ -10,8 +10,6 @@ import (
 	"os"
 	"redoctober/passvault"
 	"redoctober/keycache"
-	"redoctober/keycache"
-	"redoctober/passvault"
 )
 
 func TestCreate(t *testing.T) {
