@@ -49,19 +49,15 @@ type EncryptedFile struct {
 	Signature []byte
 }
 
-// Private Functions
-// Helper to make new buffer full of random data
+// makeRandom is a helper to make new buffer full of random data
 func makeRandom(length int) (bytes []byte, err error) {
-	bytes = make([]byte, 16)
-	n, err := rand.Read(bytes)
-	if n != len(bytes) || err != nil {
-		return
-	}
+	bytes = make([]byte, length)
+	_, err = rand.Read(bytes)
 	return
 }
 
-// encrypt clearKey with the key associated with name inner, then name
-// outer
+// encryptKey encrypts data with the key associated with name inner,
+// then name outer
 func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string]SingleWrappedKey) (out MultiWrappedKey, err error) {
 	out.Name = []string{nameOuter, nameInner}
 
@@ -90,14 +86,12 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string
 	// For RSA records, use the public key from the passvault
 	switch recInner.Type {
 	case passvault.RSARecord:
-		overrideInner, ok = rsaKeys[nameInner]
-		if !ok {
+		if overrideInner, ok = rsaKeys[nameInner]; !ok {
 			err = errors.New("Missing user in file")
 			return
 		}
 
-		overrideOuter, ok = rsaKeys[nameOuter]
-		if !ok {
+		if overrideOuter, ok = rsaKeys[nameOuter]; !ok {
 			err = errors.New("Missing user in file")
 			return
 		}
@@ -122,23 +116,24 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string
 	return
 }
 
-// decrypt first key in keys whose encryption keys are in keycache
+// unwrapKey decrypts first key in keys whose encryption keys are in keycache
 func unwrapKey(keys []MultiWrappedKey, rsaKeys map[string]SingleWrappedKey) (unwrappedKey []byte, err error) {
 	var (
 		keyFound  error
 		fullMatch bool = false
 	)
+
 	for _, mwKey := range keys {
-		tmpKeyValue := mwKey.Key
 		if err != nil {
 			return nil, err
 		}
 
+		tmpKeyValue := mwKey.Key
+
 		for _, mwName := range mwKey.Name {
 			rsaEncrypted := rsaKeys[mwName]
 			// if this is null, it's an AES encrypted key
-			tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, rsaEncrypted.Key)
-			if keyFound != nil {
+			if tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, rsaEncrypted.Key); keyFound != nil {
 				break
 			}
 		}
@@ -150,46 +145,45 @@ func unwrapKey(keys []MultiWrappedKey, rsaKeys map[string]SingleWrappedKey) (unw
 		}
 	}
 
-	if fullMatch == false {
+	if !fullMatch {
 		err = errors.New("Need more delegated keys")
 	}
 	return
 }
 
-// Encrypt encrypts data with the keys associated with names
-// This requires a minimum of min keys to decrypt.
-// NOTE: as currently implemented, the maximum value for min is 2.
+// Encrypt encrypts data with the keys associated with names. This
+// requires a minimum of min keys to decrypt.  NOTE: as currently
+// implemented, the maximum value for min is 2.
 func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 	if min > 2 {
 		return nil, errors.New("Minimum restricted to 2")
 	}
 
-	// decode data to encrypt
-	clearFile := padding.AddPadding(in)
-
-	// set up encrypted data structure
 	var encrypted EncryptedFile
 	encrypted.Version = DEFAULT_VERSION
 	if encrypted.VaultId, err = passvault.GetVaultId(); err != nil {
 		return
 	}
 
-	// generate random IV and encryption key
+	// Generate random IV and encryption key
 	ivBytes, err := makeRandom(16)
 	if err != nil {
 		return
 	}
+
+	// append used here to make a new slice from ivBytes and assign to
+	// encrypted.IV
+
 	encrypted.IV = append([]byte{}, ivBytes...)
 	clearKey, err := makeRandom(16)
 	if err != nil {
 		return
 	}
 
-	// allocate set of keys to be able to cover all ordered subsets
-	// of length 2 of names
-	encrypted.KeySet = make([]MultiWrappedKey, len(names)*(len(names)-1))
+	// Allocate set of keys to be able to cover all ordered subsets of
+	// length 2 of names
 
-	// create map to hold RSA encrypted keys
+	encrypted.KeySet = make([]MultiWrappedKey, len(names)*(len(names)-1))
 	encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
 
 	var singleWrappedKey SingleWrappedKey
@@ -202,13 +196,11 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 
 		if rec.GetType() == passvault.RSARecord {
 			// only wrap key with RSA key if found
-			singleWrappedKey.aesKey, err = makeRandom(16)
-			if err != nil {
+			if singleWrappedKey.aesKey, err = makeRandom(16); err != nil {
 				return nil, err
 			}
 
-			singleWrappedKey.Key, err = rec.EncryptKey(singleWrappedKey.aesKey)
-			if err != nil {
+			if singleWrappedKey.Key, err = rec.EncryptKey(singleWrappedKey.aesKey); err != nil {
 				return nil, err
 			}
 			encrypted.KeySetRSA[name] = singleWrappedKey
@@ -236,14 +228,15 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 	if err != nil {
 		return
 	}
+
+	clearFile := padding.AddPadding(in)
+
 	encryptedFile := make([]byte, len(clearFile))
 	aesCBC := cipher.NewCBCEncrypter(aesCrypt, ivBytes)
 	aesCBC.CryptBlocks(encryptedFile, clearFile)
 
-	// encode result
 	encrypted.Data = encryptedFile
 
-	// compute HMAC
 	hmacKey, err := passvault.GetHmacKey()
 	if err != nil {
 		return
@@ -279,6 +272,7 @@ func Decrypt(in []byte) (resp []byte, err error) {
 	for _, multiKey := range encrypted.KeySet {
 		if len(multiKey.Key) != 16 {
 			err = errors.New("Invalid Input")
+			return
 		}
 	}
 
@@ -301,7 +295,6 @@ func Decrypt(in []byte) (resp []byte, err error) {
 		return
 	}
 
-	// set up the decryption context
 	aesCrypt, err := aes.NewCipher(unwrappedKey)
 	if err != nil {
 		return
