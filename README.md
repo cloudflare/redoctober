@@ -10,12 +10,14 @@ Go server for two-man rule style file encryption and decryption.
 This project requires Go 1.1 or later to compile.
 
 Steps to compile:
-make
+
+go get github.com/cloudflare/redoctober
 
 ## Testing
 
 Steps to test:
-make test
+
+go test github.com/cloudflare/redoctober...
 
 ## Running
 
