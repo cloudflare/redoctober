@@ -5,7 +5,7 @@ REVISION  := $(shell git log -n1 --pretty=format:%h)
 
 export GOPATH := $(PWD)
 
-BUILD_DEPS := go
+BUILD_DEPS := go mercurial
 
 .PHONY: external
 external:
@@ -30,9 +30,9 @@ bin/$(NAME): $(SRC)
 	@go fmt $(NAME)
 	@go install -tags "$(TAGS)" -ldflags "$(LDFLAGS)" $(NAME)
 
-BUILD_PATH           := build
-INSTALL_PREFIX       := usr/local
-BUILD_PATH           := $(BUILD_PATH)/$(INSTALL_PREFIX)/$(NAME)
+BUILD_PATH               := build
+INSTALL_PREFIX           := usr/local
+REDOCTOBER_BUILD_PATH    := $(BUILD_PATH)/$(INSTALL_PREFIX)/$(NAME)
 
 FPM := fakeroot fpm -C $(BUILD_PATH) \
 	-s dir \
@@ -45,17 +45,14 @@ DEB_PACKAGE := $(NAME)_$(VERSION)-$(ITERATION)_amd64.deb
 $(DEB_PACKAGE): TAGS := release
 $(DEB_PACKAGE): LDFLAGS := -X main.version $(VERSION) -X main.revision $(REVISION)
 $(DEB_PACKAGE): clean all
-	mkdir -p $(BUILD_PATH)
-	cp bin/$(NAME) $(BUILD_PATH)
-	$(FPM) -n $(NAME) $(INSTALL_PREFIX)/$(NAME)
+	mkdir -p $(REDOCTOBER_BUILD_PATH)
+	cp bin/$(NAME) $(REDOCTOBER_BUILD_PATH)
+	$(FPM) -n $(NAME) .
 
 register-%.deb: ; $(PACKAGE_REGISTER_BIN) $*.deb
 
 .PHONY: cf-package
-cf-package: package
-
-.PHONY: package
-package: $(DEB_PACKAGE)
+cf-package: $(DEB_PACKAGE)
 
 .PHONY: clean-package
 clean-package:
