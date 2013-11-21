@@ -51,6 +51,9 @@ $(DEB_PACKAGE): clean all
 
 register-%.deb: ; $(PACKAGE_REGISTER_BIN) $*.deb
 
+.PHONY: cf-package
+cf-package: package
+
 .PHONY: package
 package: $(DEB_PACKAGE)
 
