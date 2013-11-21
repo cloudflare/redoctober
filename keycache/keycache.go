@@ -11,8 +11,8 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"errors"
+	"github.com/cloudflare/redoctober/passvault"
 	"log"
-	"redoctober/passvault"
 	"time"
 )
 
@@ -58,7 +58,7 @@ func GetSummary() map[string]ActiveUser {
 
 // FlushCache removes all delegated keys.
 func FlushCache() {
-	for name, _ := range UserKeys {
+	for name := range UserKeys {
 		delete(UserKeys, name)
 	}
 }

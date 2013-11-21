@@ -11,12 +11,12 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"github.com/cloudflare/redoctober/core"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
 	"os"
-	"redoctober/core"
 	"runtime"
 )
 

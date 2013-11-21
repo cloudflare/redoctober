@@ -34,4 +34,3 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 		t.Fatalf("Error validating RSA key")
 	}
 }
-
