@@ -70,4 +70,3 @@ func TestDetectBadPadding(t *testing.T) {
 	assert(t, err != nil)
 	assert(t, d == nil)
 }
-

@@ -17,11 +17,11 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/cloudflare/redoctober/padding"
 	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
 	"os"
-	"redoctober/padding"
 )
 
 // Constants for record type
@@ -341,7 +341,7 @@ func WriteRecordsToDisk() error {
 func AddNewRecord(name, password string, admin bool) (PasswordRecord, error) {
 	if pr, err := createPasswordRec(password, admin); err == nil {
 		SetRecord(pr, name)
-		return pr,  WriteRecordsToDisk()
+		return pr, WriteRecordsToDisk()
 	} else {
 		return pr, err
 	}

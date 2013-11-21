@@ -4,7 +4,7 @@
 package keycache
 
 import (
-	"redoctober/passvault"
+	"github.com/cloudflare/redoctober/passvault"
 	"testing"
 	"time"
 )

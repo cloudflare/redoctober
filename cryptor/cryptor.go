@@ -12,12 +12,12 @@ import (
 	"crypto/rand"
 	"crypto/sha1"
 	"encoding/json"
-	"strconv"
-	"sort"
 	"errors"
-	"redoctober/keycache"
-	"redoctober/padding"
-	"redoctober/passvault"
+	"github.com/cloudflare/redoctober/keycache"
+	"github.com/cloudflare/redoctober/padding"
+	"github.com/cloudflare/redoctober/passvault"
+	"sort"
+	"strconv"
 )
 
 const (
@@ -187,7 +187,7 @@ func (s *mwkSorter) Less(i, j int) bool {
 // swkSorter joins a slice of names with SingleWrappedKeys to be sorted.
 type pair struct {
 	name string
-	key []byte
+	key  []byte
 }
 
 type swkSorter []pair
@@ -206,7 +206,6 @@ func (s swkSorter) Swap(i, j int) {
 func (s swkSorter) Less(i, j int) bool {
 	return s[i].name < s[j].name
 }
-
 
 // computeHmac computes the signature of the encrypted data structure
 // the signature takes into account every element of the EncryptedData
@@ -240,7 +239,7 @@ func computeHmac(key []byte, encrypted EncryptedData) []byte {
 	}
 
 	// hash the single-wrapped keys
-	for index, _ := range swks {
+	for index := range swks {
 		mac.Write([]byte(swks[index].name))
 		mac.Write(swks[index].key)
 	}
@@ -404,4 +403,3 @@ func Decrypt(in []byte) (resp []byte, err error) {
 
 	return padding.RemovePadding(clearData)
 }
-

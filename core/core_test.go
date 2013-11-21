@@ -5,12 +5,12 @@
 package core
 
 import (
-	"encoding/json"
-	"testing"
 	"bytes"
+	"encoding/json"
 	"os"
-	"redoctober/passvault"
-	"redoctober/keycache"
+	"github.com/cloudflare/redoctober/keycache"
+	"github.com/cloudflare/redoctober/passvault"
+	"testing"
 )
 
 func TestCreate(t *testing.T) {
@@ -378,7 +378,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// decrypt file
-	decryptJson, err := json.Marshal(decrypt{Name:"Alice", Password:"Hello", Data:s.Response})
+	decryptJson, err := json.Marshal(decrypt{Name: "Alice", Password: "Hello", Data: s.Response})
 	if err != nil {
 		t.Fatalf("Error in marshalling decryption,", err)
 	}
@@ -668,7 +668,6 @@ func TestStatic(t *testing.T) {
 
 	Init("/tmp/db1.json")
 
-
 	// check for summary of initialized vault with new member
 	var s responseData
 	respJson, err := Delegate(delegateJson2)
@@ -709,7 +708,7 @@ func TestStatic(t *testing.T) {
 	}
 
 	if bytes.Compare(expected, r.Response) != 0 {
-		t.Fatalf("Error in summary, ", expected, r.Response )
+		t.Fatalf("Error in summary, ", expected, r.Response)
 	}
 
 	keycache.FlushCache()

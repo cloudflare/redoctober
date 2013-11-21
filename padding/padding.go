@@ -22,7 +22,7 @@ import "errors"
 // 3. Data to be padded has a length with remainder 2 when divided by
 // 16. 14 bytes will be added. The first 13 will be 0x00 and then final
 // byte will be 0x0e.
-// 
+//
 // Removing padding is trivial: the number of bytes specified by the
 // final byte are removed.
 

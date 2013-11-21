@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/cloudflare/redoctober/cryptor"
+	"github.com/cloudflare/redoctober/keycache"
+	"github.com/cloudflare/redoctober/passvault"
 	"log"
-	"redoctober/cryptor"
-	"redoctober/keycache"
-	"redoctober/passvault"
 )
 
 // Each of these structures corresponds to the JSON expected on the
@@ -33,8 +33,8 @@ type delegate struct {
 	Name     string
 	Password string
 
-	Uses     int
-	Time     string
+	Uses int
+	Time string
 }
 
 type password struct {
@@ -48,16 +48,16 @@ type encrypt struct {
 	Name     string
 	Password string
 
-	Minimum  int
-	Owners   []string
-	Data     []byte
+	Minimum int
+	Owners  []string
+	Data    []byte
 }
 
 type decrypt struct {
 	Name     string
 	Password string
 
-	Data     []byte
+	Data []byte
 }
 
 type modify struct {
@@ -94,7 +94,7 @@ func jsonStatusError(err error) ([]byte, error) {
 	return json.Marshal(status{Status: err.Error()})
 }
 func jsonSummary() ([]byte, error) {
-	return json.Marshal(summaryData{Status: "ok",Live: keycache.GetSummary(), All: passvault.GetSummary()})
+	return json.Marshal(summaryData{Status: "ok", Live: keycache.GetSummary(), All: passvault.GetSummary()})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(responseData{Status: "ok", Response: resp})
@@ -139,7 +139,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 	if passvault.NumRecords() != 0 {
 		return jsonStatusError(errors.New("Vault is already created"))
 	}
-	
+
 	if _, err := passvault.AddNewRecord(s.Name, s.Password, true); err != nil {
 		log.Printf("Error adding record for %s: %s\n", s.Name, err)
 		return jsonStatusError(err)
