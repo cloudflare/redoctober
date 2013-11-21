@@ -7,8 +7,12 @@ export GOPATH := $(PWD)
 
 BUILD_DEPS := go
 
+.PHONY: external
+external:
+	@go get code.google.com/p/go.crypto/scrypt
+
 .PHONY: all
-all: $(NAME)
+all: external $(NAME)
 
 .PHONY: test
 test:
@@ -28,7 +32,7 @@ bin/$(NAME): $(SRC)
 
 BUILD_PATH           := build
 INSTALL_PREFIX       := usr/local
-CFSSL_BUILD_PATH     := $(BUILD_PATH)/$(INSTALL_PREFIX)/$(NAME)
+BUILD_PATH           := $(BUILD_PATH)/$(INSTALL_PREFIX)/$(NAME)
 
 FPM := fakeroot fpm -C $(BUILD_PATH) \
 	-s dir \
@@ -41,8 +45,8 @@ DEB_PACKAGE := $(NAME)_$(VERSION)-$(ITERATION)_amd64.deb
 $(DEB_PACKAGE): TAGS := release
 $(DEB_PACKAGE): LDFLAGS := -X main.version $(VERSION) -X main.revision $(REVISION)
 $(DEB_PACKAGE): clean all
-	mkdir -p $(CFSSL_BUILD_PATH)
-	cp bin/$(NAME) $(CFSSL_BUILD_PATH)
+	mkdir -p $(BUILD_PATH)
+	cp bin/$(NAME) $(BUILD_PATH)
 	$(FPM) -n $(NAME) $(INSTALL_PREFIX)/$(NAME)
 
 register-%.deb: ; $(PACKAGE_REGISTER_BIN) $*.deb

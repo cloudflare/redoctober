@@ -5,6 +5,18 @@ redoctober
 
 Go server for two-man rule style file encryption and decryption.
 
+## Building
+
+This project requires Go 1.1 or later to compile.
+
+Steps to compile:
+make
+
+## Testing
+
+Steps to test:
+make test
+
 ## Running
 
 usage:
