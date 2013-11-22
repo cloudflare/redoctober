@@ -107,7 +107,7 @@ Example Output JSON format:
 
 ### Encrypt
 
-Encrypt allows an admin to encrypt a piece of data. A list of valid users is provided and a minimum number of delegated users required to decrypt.  The returned data can be decryped as long as "Minimum" number users from the set of "Owners" have delegated their keys to the server.
+Encrypt allows an admin to encrypt a piece of data. A list of valid users is provided and a minimum number of delegated users required to decrypt.  The returned data can be decrypted as long as "Minimum" number users from the set of "Owners" have delegated their keys to the server.
 
 Example Input JSON format:
 	{"Name":"Alice","Password":"Hello","Minimum":2,"Owners":["Bob","Alice","Carol"],"Data":"dGhpcyBpcyBhIHNlY3JldCBzdHJpbmcsIHNoaGhoaGhoaC4gZG9uJ3QgdGVsbCBhbnlvbmUsIG9rPyB3aGF0ZXZlciB5b3UgZG8sIGRvbid0IHRlbGwgdGhlIGNvcHMK"}
