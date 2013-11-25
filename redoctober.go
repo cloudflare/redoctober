@@ -152,7 +152,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	var staticPath = flag.String("staticpath", "/tmp/index.html", "Path to the the static entry")
+	var staticPath = flag.String("static", "/tmp/index.html", "Path to the the static entry")
 	var vaultPath = flag.String("vaultpath", "/tmp/tmpvault", "Path to the the disk vault")
 	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
 	var certPath = flag.String("cert", "", "Path of TLS certificate in PEM format")
