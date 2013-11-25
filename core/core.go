@@ -121,6 +121,19 @@ func validateAdmin(name, password string) error {
 	return nil
 }
 
+// validateName checks that the username and password pass the minimal
+// validation check
+func validateUser(name, password string) error {
+	if name == "" {
+		return errors.New("User name must not be blank")
+	}
+	if password == "" {
+		return errors.New("Password must be at least one character")
+	}
+
+	return nil
+}
+
 // Init reads the records from disk from a given path
 func Init(path string) (err error) {
 	if err = passvault.InitFromDisk(path); err != nil {
@@ -138,6 +151,11 @@ func Create(jsonIn []byte) ([]byte, error) {
 
 	if passvault.NumRecords() != 0 {
 		return jsonStatusError(errors.New("Vault is already created"))
+	}
+
+	// Validate the Name and Password as valid
+	if err := validateUser(s.Name, s.Password); err != nil {
+		return jsonStatusError(err)
 	}
 
 	if _, err := passvault.AddNewRecord(s.Name, s.Password, true); err != nil {
@@ -178,6 +196,11 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 	if passvault.NumRecords() == 0 {
 		return jsonStatusError(errors.New("Vault is not created yet"))
+	}
+
+	// Validate the Name and Password as valid
+	if err := validateUser(s.Name, s.Password); err != nil {
+		return jsonStatusError(err)
 	}
 
 	// Find password record for user and verify that their password
