@@ -142,7 +142,7 @@ const usage = `Usage:
 	redoctober -static <path> -vaultpath <path> -addr <addr> -cert <path> -key <path> [-ca <path>]
 
 example:
-redoctober -vaultpath /tmp/diskrecord.json -addr localhost:8080 -cert cert.pem -key cert.key
+redoctober -vaultpath diskrecord.json -addr localhost:8080 -cert cert.pem -key cert.key
 `
 
 func main() {
@@ -153,7 +153,7 @@ func main() {
 	}
 
 	var staticPath = flag.String("static", "/tmp/index.html", "Path to the the static entry")
-	var vaultPath = flag.String("vaultpath", "/tmp/tmpvault", "Path to the the disk vault")
+	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
 	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
 	var certPath = flag.String("cert", "", "Path of TLS certificate in PEM format")
 	var keyPath = flag.String("key", "", "Path of TLS private key in PEM format")
