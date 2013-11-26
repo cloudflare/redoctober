@@ -21,29 +21,29 @@ func TestCreate(t *testing.T) {
 
 	respJson, err := Create(createJson)
 	if err != nil {
-		t.Fatalf("Error in creating account, ", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 
 	var s responseData
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in creating account, ", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in creating account, ", s.Status)
+		t.Fatalf("Error in creating account, %v", s.Status)
 	}
 
 	// check to see if creation can happen twice
 	respJson, err = Create(createJson)
 	if err != nil {
-		t.Fatalf("Error in creating account when one exists, ", err)
+		t.Fatalf("Error in creating account when one exists, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in creating account when one exists, ", err)
+		t.Fatalf("Error in creating account when one exists, %v", err)
 	}
 	if s.Status == "ok" {
-		t.Fatalf("Error in creating account when one exists, ", s.Status)
+		t.Fatalf("Error in creating account when one exists, %v", s.Status)
 	}
 
 	os.Remove("/tmp/db1.json")
@@ -57,15 +57,15 @@ func TestSummary(t *testing.T) {
 	// check for summary of uninitialized vault
 	respJson, err := Summary(createJson)
 	if err != nil {
-		t.Fatalf("Error in summary of account with no vault,", err)
+		t.Fatalf("Error in summary of account with no vault, %v", err)
 	}
 	var s summaryData
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in summary of account with no vault,", err)
+		t.Fatalf("Error in summary of account with no vault, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in summary of account with no vault, ", s.Status)
+		t.Fatalf("Error in summary of account with no vault, %v", s.Status)
 	}
 
 	Init("/tmp/db1.json")
@@ -73,95 +73,95 @@ func TestSummary(t *testing.T) {
 	// check for summary of initialized vault
 	respJson, err = Create(createJson)
 	if err != nil {
-		t.Fatalf("Error in creating account, ", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in creating account, ", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in creating account, ", s.Status)
+		t.Fatalf("Error in creating account, %v", s.Status)
 	}
 
 	respJson, err = Summary(createJson)
 	if err != nil {
-		t.Fatalf("Error in summary of account,", err)
+		t.Fatalf("Error in summary of account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in summary of account,", err)
+		t.Fatalf("Error in summary of account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in summary of account, ", s.Status)
+		t.Fatalf("Error in summary of account, %v", s.Status)
 	}
 
 	data, ok := s.All["Alice"]
 	if !ok {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 	if data.Admin != true {
-		t.Fatalf("Error in summary of account, record incorrect ")
+		t.Fatalf("Error in summary of account, record incorrect")
 	}
 	if data.Type != passvault.RSARecord {
-		t.Fatalf("Error in summary of account, record incorrect ")
+		t.Fatalf("Error in summary of account, record incorrect")
 	}
 
 	// check for summary of initialized vault with new member
 	respJson, err = Delegate(delegateJson)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Summary(createJson)
 	if err != nil {
-		t.Fatalf("Error in summary of account with no vault,", err)
+		t.Fatalf("Error in summary of account with no vault, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in summary of account with no vault,", err)
+		t.Fatalf("Error in summary of account with no vault, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in summary of account with no vault, ", s.Status)
+		t.Fatalf("Error in summary of account with no vault, %v", s.Status)
 	}
 
 	data, ok = s.All["Alice"]
 	if !ok {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 	if data.Admin != true {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 	if data.Type != passvault.RSARecord {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 
 	data, ok = s.All["Bob"]
 	if !ok {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 	if data.Admin != false {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 	if data.Type != passvault.RSARecord {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 
 	dataLive, ok := s.Live["Bob"]
 	if !ok {
-		t.Fatalf("Error in summary of account, record missing", keycache.UserKeys)
+		t.Fatalf("Error in summary of account, record missing, %v", keycache.UserKeys)
 	}
 	if dataLive.Admin != false {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 	if dataLive.Type != passvault.RSARecord {
-		t.Fatalf("Error in summary of account, record missing ")
+		t.Fatalf("Error in summary of account, record missing")
 	}
 
 	keycache.FlushCache()
@@ -183,98 +183,98 @@ func TestPassword(t *testing.T) {
 	var s responseData
 	respJson, err := Create(createJson)
 	if err != nil {
-		t.Fatalf("Error in creating account, ", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in creating account, ", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in creating account, ", s.Status)
+		t.Fatalf("Error in creating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Password(passwordJson2)
 	if err != nil {
-		t.Fatalf("Error in password", err)
+		t.Fatalf("Error in password, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in password", err)
+		t.Fatalf("Error in password, %v", err)
 	}
 	if s.Status == "ok" {
-		t.Fatalf("Error in password, ", s.Status)
+		t.Fatalf("Error in password, %v", s.Status)
 	}
 
 	respJson, err = Password(passwordJson)
 	if err != nil {
-		t.Fatalf("Error in password", err)
+		t.Fatalf("Error in password, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in password", err)
+		t.Fatalf("Error in password, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in password, ", s.Status)
+		t.Fatalf("Error in password, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status == "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson2)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Password(passwordJson2)
 	if err != nil {
-		t.Fatalf("Error in password", err)
+		t.Fatalf("Error in password, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in password", err)
+		t.Fatalf("Error in password %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in password, ", s.Status)
+		t.Fatalf("Error in password, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	keycache.FlushCache()
@@ -299,125 +299,125 @@ func TestEncryptDecrypt(t *testing.T) {
 	var s responseData
 	respJson, err := Create(delegateJson)
 	if err != nil {
-		t.Fatalf("Error in creating account,", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in creating account,", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in creating account, ", s.Status)
+		t.Fatalf("Error in creating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson2)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson3)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	// check summary to see if none are delegated
 	keycache.Refresh()
 	respJson, err = Summary(summaryJson)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	var sum summaryData
 	err = json.Unmarshal(respJson, &sum)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	if sum.Status != "ok" {
-		t.Fatalf("Error in summary, ", sum.Status)
+		t.Fatalf("Error in summary, %v", sum.Status)
 	}
 	if len(sum.Live) != 0 {
-		t.Fatalf("Error in summary, ", sum.Status)
+		t.Fatalf("Error in summary, %v", sum.Status)
 	}
 
 	// Encrypt with non-admin (fail)
 	respJson, err = Encrypt(encryptJson)
 	if err != nil {
-		t.Fatalf("Error in encrypt,", err)
+		t.Fatalf("Error in encrypt, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in encrypt,", err)
+		t.Fatalf("Error in encrypt, %v", err)
 	}
 	if s.Status == "ok" {
-		t.Fatalf("Error in encrypt, ", s.Status)
+		t.Fatalf("Error in encrypt, %v", s.Status)
 	}
 
 	// Encrypt
 	respJson, err = Encrypt(encryptJson2)
 	if err != nil {
-		t.Fatalf("Error in encrypt,", err)
+		t.Fatalf("Error in encrypt, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in encrypt,", err)
+		t.Fatalf("Error in encrypt, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in encrypt, ", s.Status)
+		t.Fatalf("Error in encrypt, %v", s.Status)
 	}
 
 	// decrypt file
 	decryptJson, err := json.Marshal(decrypt{Name: "Alice", Password: "Hello", Data: s.Response})
 	if err != nil {
-		t.Fatalf("Error in marshalling decryption,", err)
+		t.Fatalf("Error in marshalling decryption, %v", err)
 	}
 
 	respJson2, err := Decrypt(decryptJson)
 	if err != nil {
-		t.Fatalf("Error in decrypt,", err)
+		t.Fatalf("Error in decrypt, %v", err)
 	}
 	err = json.Unmarshal(respJson2, &s)
 	if err != nil {
-		t.Fatalf("Error in decrypt,", err)
+		t.Fatalf("Error in decrypt, %v", err)
 	}
 	if s.Status == "ok" {
-		t.Fatalf("Error in decrypt, ", s.Status)
+		t.Fatalf("Error in decrypt, %v", s.Status)
 	}
 
 	// delegate two valid decryptors
 	respJson, err = Delegate(delegateJson4)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson5)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	// verify the presence of the two delgations
@@ -425,32 +425,32 @@ func TestEncryptDecrypt(t *testing.T) {
 	var sum2 summaryData
 	respJson, err = Summary(summaryJson)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	err = json.Unmarshal(respJson, &sum2)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	if sum2.Status != "ok" {
-		t.Fatalf("Error in summary, ", sum2.Status)
+		t.Fatalf("Error in summary, %v", sum2.Status)
 	}
 	if len(sum2.Live) != 2 {
-		t.Fatalf("Error in summary, ", sum2.Live)
+		t.Fatalf("Error in summary, %v", sum2.Live)
 	}
 
 	respJson2, err = Decrypt(decryptJson)
 	if err != nil {
-		t.Fatalf("Error in decrypt,", err)
+		t.Fatalf("Error in decrypt, %v", err)
 	}
 	err = json.Unmarshal(respJson2, &s)
 	if err != nil {
-		t.Fatalf("Error in decrypt,", err)
+		t.Fatalf("Error in decrypt, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in decrypt, ", s.Status)
+		t.Fatalf("Error in decrypt, %v", s.Status)
 	}
 	if string(s.Response) != "Hello Jello" {
-		t.Fatalf("Error in decrypt, ", string(s.Response))
+		t.Fatalf("Error in decrypt, %v", string(s.Response))
 	}
 
 	keycache.FlushCache()
@@ -477,167 +477,167 @@ func TestModify(t *testing.T) {
 	var s responseData
 	respJson, err := Create(delegateJson)
 	if err != nil {
-		t.Fatalf("Error in creating account,", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in creating account,", err)
+		t.Fatalf("Error in creating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in creating account, ", s.Status)
+		t.Fatalf("Error in creating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson2)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson3)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	// check summary to see if none are delegated
 	keycache.Refresh()
 	respJson, err = Summary(summaryJson)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	var sum summaryData
 	err = json.Unmarshal(respJson, &sum)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	if sum.Status != "ok" {
-		t.Fatalf("Error in summary, ", sum.Status)
+		t.Fatalf("Error in summary, %v", sum.Status)
 	}
 	if len(sum.Live) != 0 {
-		t.Fatalf("Error in summary, ", sum.Status)
+		t.Fatalf("Error in summary, %v", sum.Status)
 	}
 
 	// Modify from non-admin (fail)
 	respJson, err = Modify(modifyJson)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	if s.Status == "ok" {
-		t.Fatalf("Error in modify, ", s.Status)
+		t.Fatalf("Error in modify, %v", s.Status)
 	}
 
 	// Modify self from admin (fail)
 	respJson, err = Modify(modifyJson2)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	if s.Status == "ok" {
-		t.Fatalf("Error in modify, ", s.Status)
+		t.Fatalf("Error in modify, %v", s.Status)
 	}
 
 	// Modify admin from admin
 	respJson, err = Modify(modifyJson3)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in modify, ", s.Status)
+		t.Fatalf("Error in modify, %v", s.Status)
 	}
 
 	respJson, err = Summary(summaryJson)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	err = json.Unmarshal(respJson, &sum)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	if sum.Status != "ok" {
-		t.Fatalf("Error in summary, ", sum.Status)
+		t.Fatalf("Error in summary, %v", sum.Status)
 	}
 	if sum.All["Carol"].Admin != true {
-		t.Fatalf("Error in summary, ", sum.All)
+		t.Fatalf("Error in summary, %v", sum.All)
 	}
 
 	// Revoke admin from admin
 	respJson, err = Modify(modifyJson4)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in modify, ", s.Status)
+		t.Fatalf("Error in modify, %v", s.Status)
 	}
 
 	respJson, err = Summary(summaryJson2)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	err = json.Unmarshal(respJson, &sum)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	if sum.Status != "ok" {
-		t.Fatalf("Error in summary, ", sum.Status)
+		t.Fatalf("Error in summary, %v", sum.Status)
 	}
 	if sum.All["Alice"].Admin == true {
-		t.Fatalf("Error in summary, ", sum.All)
+		t.Fatalf("Error in summary, %v", sum.All)
 	}
 
 	// Delete from admin
 	respJson, err = Modify(modifyJson5)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in modify,", err)
+		t.Fatalf("Error in modify, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in modify, ", s.Status)
+		t.Fatalf("Error in modify, %v", s.Status)
 	}
 
 	var sum3 summaryData
 	respJson, err = Summary(summaryJson2)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	err = json.Unmarshal(respJson, &sum3)
 	if err != nil {
-		t.Fatalf("Error in summary,", err)
+		t.Fatalf("Error in summary, %v", err)
 	}
 	if sum3.Status != "ok" {
-		t.Fatalf("Error in summary, ", sum3.Status)
+		t.Fatalf("Error in summary, %v", sum3.Status)
 	}
 	if len(sum3.All) != 2 {
-		t.Fatalf("Error in summary, ", sum3.All)
+		t.Fatalf("Error in summary, %v", sum3.All)
 	}
 
 	keycache.FlushCache()
@@ -654,16 +654,16 @@ func TestStatic(t *testing.T) {
 
 	file, err := os.Create("/tmp/db1.json")
 	if err != nil {
-		t.Fatalf("Error opening file,", err)
+		t.Fatalf("Error opening file, %v", err)
 	}
 
 	_, err = file.Write(diskVault)
 	if err != nil {
-		t.Fatalf("Error writing file,", err)
+		t.Fatalf("Error writing file, %v", err)
 	}
 	err = file.Close()
 	if err != nil {
-		t.Fatalf("Error closing file,", err)
+		t.Fatalf("Error closing file, %v", err)
 	}
 
 	Init("/tmp/db1.json")
@@ -672,43 +672,43 @@ func TestStatic(t *testing.T) {
 	var s responseData
 	respJson, err := Delegate(delegateJson2)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	respJson, err = Delegate(delegateJson3)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
-		t.Fatalf("Error in delegating account,", err)
+		t.Fatalf("Error in delegating account, %v", err)
 	}
 	if s.Status != "ok" {
-		t.Fatalf("Error in delegating account, ", s.Status)
+		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
 	var r responseData
 	respJson, err = Decrypt(decryptJson)
 	if err != nil {
-		t.Fatalf("Error in decrypt,", err)
+		t.Fatalf("Error in decrypt, %v", err)
 	}
 	err = json.Unmarshal(respJson, &r)
 	if err != nil {
-		t.Fatalf("Error in decrypt,", err)
+		t.Fatalf("Error in decrypt, %v", err)
 	}
 	if r.Status != "ok" {
-		t.Fatalf("Error in summary, ", r.Status)
+		t.Fatalf("Error in summary, %v", r.Status)
 	}
 
 	if bytes.Compare(expected, r.Response) != 0 {
-		t.Fatalf("Error in summary, ", expected, r.Response)
+		t.Fatalf("Error in summary, %v, %v", expected, r.Response)
 	}
 
 	keycache.FlushCache()
