@@ -1,150 +1,218 @@
-redoctober
-==========
+Red October
+===========
 
-## Summary
-
-Go server for two-man rule style file encryption and decryption.
+Red October is a software-based
+[two-man rule](https://en.wikipedia.org/wiki/Two-man_rule) style
+encryption and decryption server.
 
 ## Building
 
-This project requires Go 1.1 or later to compile.
+This project requires [Go 1.1](http://golang.org/doc/install#download)
+or later to compile. Verify your go version by running `go version`:
 
-Steps to compile:
+    $ go version
+    go version go1.1
 
-go get github.com/cloudflare/redoctober
+As with any Go program you do need to set the
+[GOPATH enviroment variable](http://golang.org/doc/code.html#GOPATH)
+accordingly. With Go set up you can download and compile sources:
 
-## Testing
+    $ go get github.com/cloudflare/redoctober
 
-Steps to test:
+And run the tests:
 
-go test github.com/cloudflare/redoctober...
+    $ go test github.com/cloudflare/redoctober...
 
 ## Running
 
-usage:
-The Red October server is a TLS server.  It requires a local file to hold the key vault, an internet address and a certificate keypair.
+Red October is a TLS server. It requires a local file to hold the key
+vault an internet address and a certificate keypair.
 
-i.e.
-redoctober -addr=localhost:8080 -vaultpath=/tmp/diskrecord.json -cert=certs/servercertsigned.pem -key=certs/serverkey.pem -static=index.html
+First you need to acquire a TLS certificate. The simplest (and least
+secure) way is to skip the
+[Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority#Issuing_a_certificate)
+verification and generate a self-signed TLS certificate. Read this
+[detailed guide](http://www.akadia.com/services/ssh_test_certificate.html)
+or, alternatively, follow this unsecure commands:
 
-## Using
+    $ mkdir cert
+    $ chmod 700 cert
+    ## Generate private key with password "password"
+    $ openssl genrsa -aes128 -passout pass:password -out cert/server.pem 2048
+    ## Remove password from private key
+    $ openssl rsa -passin pass:password -in cert/server.pem -out cert/server.pem
+    ## Generate CSR (make sure the common name CN field matches your server
+    ## address. It's set to "localhost" here.)
+    $ openssl req -new -key cert/server.pem -out cert/server.csr -subj '/C=US/ST=California/L=Everywhere/CN=localhost'
+    ## Sign the CSR and create certificate
+    $ openssl x509 -req -days 365 -in cert/server.csr -signkey cert/server.pem -out cert/server.crt
+    ## Clean up
+    $ rm cert/server.csr
+    $ chmod 600 cert/*
 
-The server exposes several JSON API endpoints.  JSON of the prescribed format is POSTed and JSON is returned.
+You're ready to run the server:
 
-- Create = "/create"
-- Summary = "/summary"
-- Delegate = "/delegate"
-- Password = "/password
-- Modify = "/modify"
-- Encrypt = "/encrypt"
-- Decrypt = "/decrypt"
+    $ ./bin/redoctober -addr=localhost:8080 \
+                       -vaultpath=diskrecord.json \
+                       -cert=certs/server.crt \
+                       -key=certs/server.pem \
+                       -static=$GOPATH/src/github.com/cloudflare/redoctober/index.html
 
-Optionally, the server can host a static HTML file to serve from "/index".
+## Quick start: example webapp
+
+At this point Red October should be serving an example webapp. Access it using your browser:
+
+  - [`https://localhost:8080/index`](https://localhost:8080/index)
+
+## Using the API
+
+The server exposes several JSON API endpoints. JSON of the prescribed
+format is POSTed and JSON is returned.
+
+ - `/create`: Create the first admin account.
+ - `/delegate`: Delegate a password to Red October
+ - `/modify`: Modify permissions
+ - `/encrypt`: Encrypt
+ - `/decrypt`: Decrypt
+ - `/summary`: Display summary of the delegates
+ - `/password`: Change password
+ - `/index`: Optionally, the server can host a static HTML file.
 
 ### Create
 
-Create is the necessary first call to a new red october vault.  It creates an admin account.
+Create is the necessary first call to a new vault. It creates an
+admin account.
 
-Example Input JSON format:
+Example query:
 
-    {"Name":"Bob","Password":"Rob"}
+    $ curl --cacert cert/server.crt https://localhost:8080/create \
+            -d '{"Name":"Alice","Password":"Lewis"}'
+    {"Status":"ok"}
 
-Example Output JSON format:
+### Delegate
 
+Delegate allows a user to delegate their decryption password to the
+server for a fixed period of time and for a fixed number of
+decryptions.  If the user's account is not created, it creates it.
+Any new delegation overrides the previous delegation.
+
+Example query:
+
+    $ curl --cacert cert/server.crt https://localhost:8080/delegate \
+           -d '{"Name":"Bill","Password":"Lizard","Time":"2h34m","Uses":3}'
+    {"Status":"ok"}
+    $ curl --cacert cert/server.crt https://localhost:8080/delegate \
+           -d '{"Name":"Cat","Password":"Cheshire","Time":"2h34m","Uses":3}'
+    {"Status":"ok"}
+    $ curl --cacert cert/server.crt https://localhost:8080/delegate \
+           -d '{"Name":"Dodo","Password":"Dodgson","Time":"2h34m","Uses":3}'
     {"Status":"ok"}
 
 ### Summary
 
-Summary provides a list of the users with keys on the system, and a list of users who have currently delegated their key to the server. Only Admins are allowed to call summary.
+Summary provides a list of the users with keys on the system, and a
+list of users who have currently delegated their key to the
+server. Only Admins are allowed to call summary.
 
-Example Input JSON format:
+Example query:
 
-    {"Name":"Bob","Password":"Rob"}
-
-Example Output JSON format:
-
+    $ curl --cacert cert/server.crt https://localhost:8080/summary  \
+            -d '{"Name":"Alice","Password":"Lewis"}'
     {"Status":"ok",
      "Live":{
-      "Bob":{"Admin":true,"Type":"RSA","Expiry":"2013-11-15T12:13:52.238352947-08:00","Uses":5},
-      "Carol":{"Admin":false,"Type":"RSA","Expiry":"2013-11-15T14:11:15.5374364-08:00","Uses":30}
+      "Bill":{"Admin":false,
+              "Type":"RSA",
+              "Expiry":"2013-11-26T08:42:29.65501032-08:00",
+              "Uses":3},
+      "Cat":{"Admin":false,
+             "Type":"RSA",
+             "Expiry":"2013-11-26T08:42:42.016311595-08:00",
+             "Uses":3},
+      "Dodo":{"Admin":false,
+              "Type":"RSA",
+              "Expiry":"2013-11-26T08:43:06.651429104-08:00",
+              "Uses":3}
      },
      "All":{
-      "Alice":{"Admin":true,"Type":"RSA"},
-      "Bob":{"Admin":true,"Type":"RSA"},
-      "Carol":{"Admin":false,"Type":"RSA"}
+      "Alice":{"Admin":true, "Type":"RSA"},
+      "Bill":{"Admin":false, "Type":"RSA"},
+      "Cat":{"Admin":false, "Type":"RSA"},
+      "Dodo":{"Admin":false, "Type":"RSA"}
      }
     }
 
-### Delegate
+### Encrypt
 
-Delegate allows a user to delegate their decryption password to the server for a fixed period of time and for a fixed number of decryptions.  If the user's account is not created, it creates it.  Any new delegation overrides the previous delegation.
+Encrypt allows an admin to encrypt a piece of data. A list of valid
+users is provided and a minimum number of delegated users required to
+decrypt. The returned data can be decrypted as long as "Minimum"
+number users from the set of "Owners" have delegated their keys to the
+server.
 
-Example Input JSON format:
+Example query:
 
-    {"Name":"Bob","Password":"Rob","Time":"2h34m","Uses":3}
+    $ echo "Why is a raven like a writing desk?"|python -c "print raw_input().encode('base64')"
+    V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8=
 
-Example Output JSON format:
+    $ curl --cacert cert/server.crt https://localhost:8080/encrypt  \
+            -d '{"Name":"Alice","Password":"Lewis","Minimum":2, "Owners":["Alice","Bill","Cat","Dodo"],"Data":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}'
+    {"Status":"ok","Response":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
 
-    {"Status":"ok"}
+The data expansion is not tied to the size of the input.
+
+### Decrypt
+
+Decrypt allows an admin to decrypt a piece of data. As long as
+"Minimum" number users from the set of "Owners" have delegated their
+keys to the server, the clear data will be returned.
+
+Example query:
+
+    $ curl --cacert cert/server.crt https://localhost:8080/decrypt  \
+            -d {"Name":"Alice","Password":"Lewis","Data":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
+    {"Status":"ok","Response":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}
+
+If there aren't enough keys delegated you'll see:
+
+    {"Status":"Need more delegated keys"}
 
 ### Password
 
-Password allows a user to change their password.  This password change does not require the previously encrypted files to be re-encrypted.
+Password allows a user to change their password.  This password change
+does not require the previously encrypted files to be re-encrypted.
 
 Example Input JSON format:
 
-    {"Name":"Bob","Password":"Rob","NewPassword":"Robby"}
-
-Example Output JSON format:
-
+    $ curl --cacert cert/server.crt https://localhost:8080/password \
+           -d '{"Name":"Bill","Password":"Lizard", "NewPassword": "theLizard"}'
     {"Status":"ok"}
 
 ### Modify
 
 Modify allows an admin user to change information about a given user.
 There are 3 commands:
-- "revoke" : revokes the admin status of a user
-- "admin" : grants admin status to a user
-- "delete" : removes the account of a user
 
-Example Input JSON format:
+ - `revoke`: revokes the admin status of a user
+ - `admin`: grants admin status to a user
+ - `delete`: removes the account of a user
 
-    {"Name":"Bob","Password":"Rob","ToModify":"Alice","Command":"admin"}
+Example input JSON format:
 
-Example Output JSON format:
-
+    $ curl --cacert cert/server.crt https://localhost:8080/password \
+           -d '{"Name":"Alice","Password":"Lewis","ToModify":"Bob","Command":"admin}'
     {"Status":"ok"}
-
-### Encrypt
-
-Encrypt allows an admin to encrypt a piece of data. A list of valid users is provided and a minimum number of delegated users required to decrypt.  The returned data can be decrypted as long as "Minimum" number users from the set of "Owners" have delegated their keys to the server.
-
-Example Input JSON format:
-
-    {"Name":"Alice","Password":"Hello","Minimum":2,"Owners":["Bob","Alice","Carol"],"Data":"dGhpcyBpcyBhIHNlY3JldCBzdHJpbmcsIHNoaGhoaGhoaC4gZG9uJ3QgdGVsbCBhbnlvbmUsIG9rPyB3aGF0ZXZlciB5b3UgZG8sIGRvbid0IHRlbGwgdGhlIGNvcHMK"}
-
-Example Output JSON format:
-
-    {"Status":"ok","Response":"eyJWZXJzaW9uIjoxLCJWYXVsdElkIjo2NzA0ODUyOTMyNTYwNDk3NjM0LCJLZXlTZXQiOlt7Ik5hbWUiOlsiQm9iIiwiQWxpY2UiXSwiS2V5IjoicmZoSkFrSFk5eWRlQ0ppQzU1UU1JUT09In0seyJOYW1lIjpbIkJvYiIsIkNhcm9sIl0sIktleSI6Ik8xUFRFSE8rN1MvVWtLNnVYcVk5VFE9PSJ9LHsiTmFtZSI6WyJBbGljZSIsIkJvYiJdLCJLZXkiOiJBWVdWa3JwQVJwMk9iaTQ0S3VZbnNBPT0ifSx7Ik5hbWUiOlsiQWxpY2UiLCJDYXJvbCJdLCJLZXkiOiJ4aElTZUh2dDMzNkFTNVhmeXgwd1p3PT0ifSx7Ik5hbWUiOlsiQ2Fyb2wiLCJCb2IiXSwiS2V5Ijoia21VOGZiaDVkYjI1N0VMbXNzK0FQdz09In0seyJOYW1lIjpbIkNhcm9sIiwiQWxpY2UiXSwiS2V5IjoiVFpjaXd5QXphSWFSUW5USThpQTN4dz09In1dLCJLZXlTZXRSU0EiOnsiQWxpY2UiOnsiS2V5IjoiTUVEZFphSGtsMGVWRktHa2d6c0ttRXFyQkQ4SlB4Ykdla2VDRkUxWHRnUjVxdGYvTi8xUFE1SklaeVlEdXRFYWR1SVdybHc1K2phQWo2MVBVME01VDFsd0V1VktvMVpwV3RsWHAxU05Ed0R5MHNqaEZXb2lSQ0ZTUm9ZcW5ES3V0RHluUThVejFLOXBuRVlTRllnSVJDRnJYM2VhMUh0OEVEV1NUb0dsVGhBV1MrOTB1M2F4V3ZtZ1Nyc09FRm44dXZQRjdQNlRlNjdPY0FXNEV2MmFSMk92VlJHeUNJTXc1RVIvTTVPL1JRWW5ERGowT2lwMmhRRnJhK3c0MnJaYWpJejhSR3BCdzl1RWNnNDF5ZUZHRE5QNlRYQ25QZ2hFbUdCNTBJTVhMMzRUQkNNTG9UZTZMYlRGZTJpRnFGQ1c3dGNnZkdKY2h6aSs4SmVTUFRWWEFRPT0ifSwiQm9iIjp7IktleSI6IkRzSEZBTEs3cHFQQnBMSVN6b3BXbDhjb25SS0NPRlZFaW44T1l5aGZiMFQ1MVRKSVZPd1FUL2tIS0ZwSjFzcnlMSHh5UVM3TUk3T0FpZzJ3Z2NmVmZob0drdENmOExuK2tKNUpVT3JlSDY4YmJ3cnBEK3pHNnp3aFpKc0NkbEJEQ2pKU09rajc2QmtiL0JSMUhLN3FZcUdxRTMvN25jeWNuT0tPcHp5bS9DcFVrRFphSkRMak4welR2K3RxNityN0ZHUUpUdlpqRzZLbjBzamlGREtlbnlmSVhzd0hSQ3NjbTVENU8xZXZBSXNxeE9kOGJoUmw5bXovQWNCd1BpT3A1YVlpdGJxNnZidW1VbVg0UDYzeVJBaWxaaTZnOGZvN255Nnl1REtYeE9DYzFPeUFGamZGMVloSTJrT2pEUExkTCtrQjI5dlFsblkxODltRVVvL3pRUT09In0sIkNhcm9sIjp7IktleSI6ImNQZEhGYXZ5aUF4VmpPR2x6eVF2d0lTZGhtMCtZNzFVcUpXUFNKZ1h5a3Zoekl6TzNoQmV6OHhUTkxrRldkdnQ0T0NWc2hPMTd3VDY4cnhxZUE1bzJocmVjUVBUZ2IzbHVaWFZ5MDFxaUlDZXZveUw0cTljR2hNQUVsVWZoMGZEb3MrZVo1VEpTbElESWZSZGRXbEZ1NmUxT3ZmQWxOZ3A5Z3VSRVhNR05QcGxNa2YwUlpWZ1RHNGpka0VpUVVTRDQxemJBOWwxand4UkxvYXNrRXBLeFEycVp3YnBjbGRhUUk3WUlqbzlEMk5zM2V5N29YbmQ2RXJOQXpOMzRKc1h1QXE0a3NkNlRJdTdpQktYYzlvNUV1WWNnaEpNTnRaWkljc05ueVBHVlNQY2IwdzFrYVJPWTNndTFidFZhU2FqVDN6TmtyZXpzQy9td1hBaDRmajVvdz09In19LCJJViI6InRqZWF3VWVKU0hocEwzRnFZZy9hNkE9PSIsIkRhdGEiOiJnRGxORHFiQWU5eVd0M1ZNMW1SSldDMjJVRkFvcFdSbVVyWTI5RjJQdUlLUmJaYWpJRlE1RmZsTmtzR2tRTjREVWZZc0wrelJTeHp6bUtTaXNCZVdHNUVCZDlTdXJmdktSQlQ1TEhmUHN0UzNxbEJtY2lWb21Qc1lOaUthN0ZVUGxVcUE2NHVyaTVXQUxpdWQvVExZQXc9PSIsIlNpZ25hdHVyZSI6IlB0dkxNUkpxR1FvNHlIRXVuN083d2NzV1A1az0ifQ=="}
-
-The data expansion is not tied to the size of the input.
-
-
-### Decrypt
-
-Decrypt allows an admin to decrypt a piece of data. As long as "Minimum" number users from the set of "Owners" have delegated their keys to the server, the clear data will be returned.
-
-Example Input JSON format:
-
-    {"Name":"Alice","Password":"Hello","Data":"eyJWZXJzaW9uIjoxLCJWYXVsdElkIjo2NzA0ODUyOTMyNTYwNDk3NjM0LCJLZXlTZXQiOlt7Ik5hbWUiOlsiQm9iIiwiQWxpY2UiXSwiS2V5IjoicmZoSkFrSFk5eWRlQ0ppQzU1UU1JUT09In0seyJOYW1lIjpbIkJvYiIsIkNhcm9sIl0sIktleSI6Ik8xUFRFSE8rN1MvVWtLNnVYcVk5VFE9PSJ9LHsiTmFtZSI6WyJBbGljZSIsIkJvYiJdLCJLZXkiOiJBWVdWa3JwQVJwMk9iaTQ0S3VZbnNBPT0ifSx7Ik5hbWUiOlsiQWxpY2UiLCJDYXJvbCJdLCJLZXkiOiJ4aElTZUh2dDMzNkFTNVhmeXgwd1p3PT0ifSx7Ik5hbWUiOlsiQ2Fyb2wiLCJCb2IiXSwiS2V5Ijoia21VOGZiaDVkYjI1N0VMbXNzK0FQdz09In0seyJOYW1lIjpbIkNhcm9sIiwiQWxpY2UiXSwiS2V5IjoiVFpjaXd5QXphSWFSUW5USThpQTN4dz09In1dLCJLZXlTZXRSU0EiOnsiQWxpY2UiOnsiS2V5IjoiTUVEZFphSGtsMGVWRktHa2d6c0ttRXFyQkQ4SlB4Ykdla2VDRkUxWHRnUjVxdGYvTi8xUFE1SklaeVlEdXRFYWR1SVdybHc1K2phQWo2MVBVME01VDFsd0V1VktvMVpwV3RsWHAxU05Ed0R5MHNqaEZXb2lSQ0ZTUm9ZcW5ES3V0RHluUThVejFLOXBuRVlTRllnSVJDRnJYM2VhMUh0OEVEV1NUb0dsVGhBV1MrOTB1M2F4V3ZtZ1Nyc09FRm44dXZQRjdQNlRlNjdPY0FXNEV2MmFSMk92VlJHeUNJTXc1RVIvTTVPL1JRWW5ERGowT2lwMmhRRnJhK3c0MnJaYWpJejhSR3BCdzl1RWNnNDF5ZUZHRE5QNlRYQ25QZ2hFbUdCNTBJTVhMMzRUQkNNTG9UZTZMYlRGZTJpRnFGQ1c3dGNnZkdKY2h6aSs4SmVTUFRWWEFRPT0ifSwiQm9iIjp7IktleSI6IkRzSEZBTEs3cHFQQnBMSVN6b3BXbDhjb25SS0NPRlZFaW44T1l5aGZiMFQ1MVRKSVZPd1FUL2tIS0ZwSjFzcnlMSHh5UVM3TUk3T0FpZzJ3Z2NmVmZob0drdENmOExuK2tKNUpVT3JlSDY4YmJ3cnBEK3pHNnp3aFpKc0NkbEJEQ2pKU09rajc2QmtiL0JSMUhLN3FZcUdxRTMvN25jeWNuT0tPcHp5bS9DcFVrRFphSkRMak4welR2K3RxNityN0ZHUUpUdlpqRzZLbjBzamlGREtlbnlmSVhzd0hSQ3NjbTVENU8xZXZBSXNxeE9kOGJoUmw5bXovQWNCd1BpT3A1YVlpdGJxNnZidW1VbVg0UDYzeVJBaWxaaTZnOGZvN255Nnl1REtYeE9DYzFPeUFGamZGMVloSTJrT2pEUExkTCtrQjI5dlFsblkxODltRVVvL3pRUT09In0sIkNhcm9sIjp7IktleSI6ImNQZEhGYXZ5aUF4VmpPR2x6eVF2d0lTZGhtMCtZNzFVcUpXUFNKZ1h5a3Zoekl6TzNoQmV6OHhUTkxrRldkdnQ0T0NWc2hPMTd3VDY4cnhxZUE1bzJocmVjUVBUZ2IzbHVaWFZ5MDFxaUlDZXZveUw0cTljR2hNQUVsVWZoMGZEb3MrZVo1VEpTbElESWZSZGRXbEZ1NmUxT3ZmQWxOZ3A5Z3VSRVhNR05QcGxNa2YwUlpWZ1RHNGpka0VpUVVTRDQxemJBOWwxand4UkxvYXNrRXBLeFEycVp3YnBjbGRhUUk3WUlqbzlEMk5zM2V5N29YbmQ2RXJOQXpOMzRKc1h1QXE0a3NkNlRJdTdpQktYYzlvNUV1WWNnaEpNTnRaWkljc05ueVBHVlNQY2IwdzFrYVJPWTNndTFidFZhU2FqVDN6TmtyZXpzQy9td1hBaDRmajVvdz09In19LCJJViI6InRqZWF3VWVKU0hocEwzRnFZZy9hNkE9PSIsIkRhdGEiOiJnRGxORHFiQWU5eVd0M1ZNMW1SSldDMjJVRkFvcFdSbVVyWTI5RjJQdUlLUmJaYWpJRlE1RmZsTmtzR2tRTjREVWZZc0wrelJTeHp6bUtTaXNCZVdHNUVCZDlTdXJmdktSQlQ1TEhmUHN0UzNxbEJtY2lWb21Qc1lOaUthN0ZVUGxVcUE2NHVyaTVXQUxpdWQvVExZQXc9PSIsIlNpZ25hdHVyZSI6IlB0dkxNUkpxR1FvNHlIRXVuN083d2NzV1A1az0ifQ=="}
-
-Example Output JSON format:
-
-    {"Status":"ok","Result":"dGhpcyBpcyBhIHNlY3JldCBzdHJpbmcsIHNoaGhoaGhoaC4gZG9uJ3QgdGVsbCBhbnlvbmUsIG9rPyB3aGF0ZXZlciB5b3UgZG8sIGRvbid0IHRlbGwgdGhlIGNvcHMK"}
 
 
 ### Web interface
 
-You can build a web interface to manage the Red October service using the `-static` flag and providing a path to the HTML file you want to serve.
+You can build a web interface to manage the Red October service using
+the `-static` flag and providing a path to the HTML file you want to
+serve.
 
-The index.html file in this repo provides a basic example for using all of the service's features, including encrypting and decrypting data. Data sent to the server *needs to be base64 encoded*. The example uses JavaScript's `btoa` and `atob` functions for string conversion. For dealing with files directly, using the [HTML5 File API](https://developer.mozilla.org/en-US/docs/Web/API/FileReader.readAsDataURL) would be a good option.
+The index.html file in this repo provides a basic example for using
+all of the service's features, including encrypting and decrypting
+data. Data sent to the server *needs to be base64 encoded*. The
+example uses JavaScript's `btoa` and `atob` functions for string
+conversion. For dealing with files directly, using the
+[HTML5 File API](https://developer.mozilla.org/en-US/docs/Web/API/FileReader.readAsDataURL)
+would be a good option.
