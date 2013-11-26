@@ -330,21 +330,21 @@ func WriteRecordsToDisk() error {
 		return errors.New("Path not initialized")
 	}
 
-	if jsonDiskRecord, err := json.Marshal(records); err == nil {
-		return ioutil.WriteFile(localPath, jsonDiskRecord, 0644)
-	} else {
+	jsonDiskRecord, err := json.Marshal(records)
+	if err != nil {
 		return err
 	}
+	return ioutil.WriteFile(localPath, jsonDiskRecord, 0644)
 }
 
 // AddNewRecord adds a new record for a given username and password.
 func AddNewRecord(name, password string, admin bool) (PasswordRecord, error) {
-	if pr, err := createPasswordRec(password, admin); err == nil {
-		SetRecord(pr, name)
-		return pr, WriteRecordsToDisk()
-	} else {
+	pr, err := createPasswordRec(password, admin)
+	if err != nil {
 		return pr, err
 	}
+	SetRecord(pr, name)
+	return pr, WriteRecordsToDisk()
 }
 
 // ChangePassword changes the password for a given user.
