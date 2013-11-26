@@ -34,14 +34,14 @@ func TestUsesFlush(t *testing.T) {
 
 	Refresh()
 	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys", UserKeys)
+		t.Fatalf("Error in number of live keys %v", UserKeys)
 	}
 
 	DecryptKey(dummy, "first", nil)
 
 	Refresh()
 	if len(UserKeys) != 0 {
-		t.Fatalf("Error in number of live keys", UserKeys)
+		t.Fatalf("Error in number of live keys %v", UserKeys)
 	}
 }
 

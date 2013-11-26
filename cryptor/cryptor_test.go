@@ -16,7 +16,7 @@ func TestHash(t *testing.T) {
 
 	var encrypted EncryptedData
 	if err := json.Unmarshal(decryptJson, &encrypted); err != nil {
-		t.Fatalf("Error unmarshalling json,", err)
+		t.Fatalf("Error unmarshalling json, %v", err)
 	}
 
 	var hmacKey, _ = base64.StdEncoding.DecodeString("Qugc5ZQ0vC7KQSgmDHTVgQ==")
@@ -25,7 +25,7 @@ func TestHash(t *testing.T) {
 	expectedSig := computeHmac(hmacKey, encrypted)
 
 	if diff := bytes.Compare(signature, expectedSig); diff != 0 {
-		t.Fatalf("Error comparing signature", base64.StdEncoding.EncodeToString(expectedSig))
+		t.Fatalf("Error comparing signature %v", base64.StdEncoding.EncodeToString(expectedSig))
 	}
 
 	// change version and check hmac
@@ -42,7 +42,7 @@ func TestHash(t *testing.T) {
 	unexpectedSig = computeHmac(hmacKey, encrypted)
 
 	if diff := bytes.Compare(signature, unexpectedSig); diff != 0 {
-		t.Fatalf("Error comparing signature", base64.StdEncoding.EncodeToString(expectedSig))
+		t.Fatalf("Error comparing signature %v", base64.StdEncoding.EncodeToString(expectedSig))
 	}
 
 	// delete RSA key and check hmac
