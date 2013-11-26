@@ -7,6 +7,8 @@ encryption and decryption server.
 
 ## Building
 
+[![Build Status](https://drone.io/github.com/cloudflare/redoctober/status.png)](https://drone.io/github.com/cloudflare/redoctober/latest)
+
 This project requires [Go 1.1](http://golang.org/doc/install#download)
 or later to compile. Verify your go version by running `go version`:
 
