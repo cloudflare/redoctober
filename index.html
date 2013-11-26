@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<title>Red October - Two Man Rule File Encryption &amp; Decryption</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap.min.css" />
+	<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.0.2/css/bootstrap-theme.min.css" />
+	<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
+	<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.2/js/bootstrap.min.js"></script>
+	<style type="text/css">
+		body{padding-top: 50px;}
+		.footer{ border-top: 1px solid #ccc; margin-top: 50px; padding: 20px 0;}
+	</style>
+</head>
+<body>
+	<nav class="navbar navbar-default navbar-fixed-top" role="banner">
+		<div class="container">
+			<div class="navbar-header">
+				<a href="/" class="navbar-brand">Red October</a>
+			</div>
+
+			<div class="collapse navbar-collapse">
+				<ul class="nav navbar-nav">
+					<li><a href="#create">Create</a></li>
+					<li><a href="#summary">Summary</a></li>
+					<li><a href="#delegate">Delegate</a></li>
+					<li><a href="#change-password">Change Password</a></li>
+					<li><a href="#modify-user">Modify User</a></li>
+					<li><a href="#encrypt">Encrypt</a></li>
+					<li><a href="#decrypt">Decrypt</a></li>
+				</ul>
+			</div>
+		</div>
+	</nav>
+
+	<div class="container">
+		<h1 class="page-header">Red October Management</h1>
+
+		<section class="row">
+			<div class="col-md-6">
+				<h3 id="create">Create vault/admin</h3>
+				<form id="vault-create" class="form-inline ro-admin-create" role="form" action="/create" method="post">
+					<div class="feedback admin-feedback"></div>
+
+					<div class="form-group">
+						<label class="sr-only" for="admin-create-user">User name</label>
+						<input type="text" name="Name" class="form-control" id="admin-create-user" placeholder="User name" required />
+					</div>
+					<div class="form-group">
+						<label class="sr-only" for="admin-create-pass">Password</label>
+						<input type="password" name="Password" class="form-control" id="admin-create-pass" placeholder="Password" required />
+					</div>
+					<button type="submit" class="btn btn-primary">Create Admin</button>
+				</form>
+
+				<hr />
+
+				<h3 id="summary">User summary</h3>
+
+				<form id="vault-summary" class="form-inline ro-summary" role="form" action="/summary" method="post">
+					<div class="feedback summary-feedback"></div>
+
+					<div class="form-group">
+						<label class="sr-only" for="admin-user-auth">User name</label>
+						<input type="text" name="Name" class="form-control" id="admin-user-auth" placeholder="User name" required />
+					</div>
+					<div class="form-group">
+						<label class="sr-only" for="admin-pass-auth">Password</label>
+						<input type="password" name="Password" class="form-control" id="admin-pass-auth" placeholder="Password" required />
+					</div>
+					<button type="submit" class="btn btn-primary">Get Summary</button>
+				</form>
+
+				<div class="hide summary-results">
+					<h4>Current Delegations</h4>
+					<ul class="list-group summary-user-delegations"></ul>
+
+					<h4>All Users</h4>
+					<ul class="list-group summary-all-users"></ul>
+				</div>
+			</div>
+
+			<div id="delegate" class="col-md-6">
+				<h3>Delegate</h3>
+
+				<form id="user-delegate" class="ro-user-delegate" role="form" action="/delegate" method="post">
+					<div class="feedback delegate-feedback"></div>
+
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="delegate-user">User name</label>
+							<input type="text" name="Name" class="form-control" id="delegate-user" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="delegate-user-pass">Password</label>
+							<input type="password" name="Password" class="form-control" id="delegate-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="delegate-user-time">Delegation Time <small>(e.g., 2h34m)</small></label>
+							<input type="text" name="Time" class="form-control" id="delegate-user-time" placeholder="1h" required />
+						</div>
+						<div class="col-md-6">
+							<label for="delegate-uses">Uses</label>
+							<input type="number" name="Uses" class="form-control" id="delegate-uses" placeholder="5" required />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Delegate</button>
+				</form>
+			</div>
+		</section>
+
+		<hr />
+
+		<section class="row">
+			<div id="change-password" class="col-md-6">
+				<h3>Change password</h3>
+
+				<form id="user-change-password" class="ro-user-change-password" role="form" action="/password" method="post">
+					<div class="feedback change-password-feedback"></div>
+
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="user-name">User name</label>
+							<input type="text" name="Name" class="form-control" id="user-name" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="user-pass">Password</label>
+							<input type="password" name="Password" class="form-control" id="user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="user-pass">New password</label>
+						<input type="password" name="NewPassword" class="form-control" id="user-pass-new" placeholder="New password" required />
+					</div>
+					<button type="submit" class="btn btn-primary">Change password</button>
+				</form>
+			</div>
+
+			<div id="modify" class="col-md-6">
+				<h3>Modify User</h3>
+
+				<form id="user-modify" class="ro-user-modify" role="form" action="/modify" method="post">
+					<div class="feedback modify-feedback"></div>
+
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="modify-user-admin">Admin User</label>
+							<input type="text" name="Name" class="form-control" id="modify-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="modify-user-pass">Admin Password</label>
+							<input type="password" name="Password" class="form-control" id="modify-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="modify-user-user">User to modify <small>(e.g., Carol)</small></label>
+							<input type="text" name="ToModify" class="form-control" id="modify-user-user" required />
+						</div>
+						<div class="col-md-6">
+							<label for="modify-user-command">Command</label>
+							<select id="modify-user-command" name="Command" class="form-control" required>
+								<option value="revoke">Revoke Admin Status</option>
+								<option value="admin">Make Admin</option>
+								<option value="delete">Delete User</option>
+							</select>
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Modify user</button>
+				</form>
+			</div>
+		</section>
+		<hr />
+		<section class="row">
+			<div id="encrypt-data" class="col-md-6">
+				<h3>Encrypt data</h3>
+
+				<form id="encrypt" class="ro-user-encrypt" role="form" action="/encrypt" method="post">
+					<div class="feedback encrypt-feedback"></div>
+
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="encrypt-user-admin">Admin User</label>
+							<input type="text" name="Name" class="form-control" id="encrypt-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="encrypt-user-pass">Admin Password</label>
+							<input type="password" name="Password" class="form-control" id="encrypt-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="encrypt-minimum">Minimum number of user for access</label>
+							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" required />
+						</div>
+						<div class="col-md-6">
+							<label for="encrypt-owners">Owners <small>(comma separated users)</small></label>
+							<input type="text" name="Owners" class="form-control" id="encrypt-owners" placeholder="e.g., Carol, Bob" required />
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="encrypt-data">Data <small>(not base64 encoded)</small></label>
+						<textarea name="Data" class="form-control" id="encrypt-data" rows="5" required></textarea>
+					</div>
+					<button type="submit" class="btn btn-primary">Encrypt!</button>
+				</form>
+			</div>
+			<div id="decrypt-data" class="col-md-6">
+				<h3>Decrypt data</h3>
+
+				<form id="decrypt" class="ro-user-decrypt" role="form" action="/decrypt" method="post">
+					<div class="feedback decrypt-feedback"></div>
+
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="decrypt-user-admin">Admin User</label>
+							<input type="text" name="Name" class="form-control" id="decrypt-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="decrypt-user-pass">Admin Password</label>
+							<input type="password" name="Password" class="form-control" id="decrypt-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group">
+						<label for="decrypt-data">Data</label>
+						<textarea name="Data" class="form-control" id="decrypt-data" rows="5" required></textarea>
+					</div>
+					<button type="submit" class="btn btn-primary">Decrypt!</button>
+				</form>
+			</div>
+		</section>
+	</div>
+
+	<footer id="footer" class="footer">
+		<p class="container">Red October. CloudFlare</p>
+	</footer>
+
+	<script>
+		$(function(){
+			function serialize( $form ){
+				var serialized = $form.serializeArray(), data = {};
+				$.each(serialized, function(idx, item){ data[item.name] = item.value; });
+				return data;
+			}
+
+			function makeAlert(config){ return '<div class="alert alert-dismissable alert-'+config.type+'"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>'+config.message+'</div>'; }
+
+			function submit( $form, options ){
+				options || (options = {});
+
+				$.ajax({
+					url: $form.attr('action'),
+					data: JSON.stringify( options.data ),
+					success: function(data){
+						if( data.Status !== 'ok' ){
+							$form.find('.feedback').empty().append( makeAlert({type: 'danger', message: data.Status}) );
+							return;
+						}
+
+						if( options.success ){
+							options.success.apply(this, arguments);
+						}
+
+						$form.get(0).reset();
+					},
+					error: options.error || function(xhr, status, error){ $form.find('.feedback').append( makeAlert({type:'danger', message: error})); }
+				});
+			}
+
+			// Ajax defaults for JSON
+			$.ajaxSetup({
+				method: 'POST',
+				dataType : 'json',
+				processData : false
+			});
+
+
+			// Create vault/admin
+			$('body').on('submit', '#vault-create', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Created user: '+data.Name }) );
+					}
+				});
+			});
+
+			// Vault summary
+			$('body').on('submit', '#vault-summary', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				$('#summary .feedback').empty();
+
+				submit($form, {
+					data : data,
+					success : function(data){
+						// Empty out the lists
+						$('.summary-user-delegations, .summary-all-users').empty();
+						function buildItem(key, user, loc){
+							var li = $('<li />', {'class': 'list-group-item'}).appendTo(loc);
+							if( user.Uses ){ li.append( $('<span />', {'class': 'badge'}).text(user.Uses+' uses remaining') ); }
+							li.append( $('<h5 />', {'class': 'list-group-item-heading'}).text(key || 'Unknown') );
+							li.append( $('<p />', {'class': 'list-group-item-text'}).html('Type: '+user.Type+ (user.Expiry ? '<br />Expiry: '+user.Expiry : '')) );
+
+							if( user.Admin ){
+								li.find('h5').append(' (admin)');
+							}
+						}
+						function buildLiveItem(k,u){ buildItem(k,u,'.summary-user-delegations'); }
+						function buildAllItem(k,u){ buildItem(k,u,'.summary-all-users'); }
+
+						$.each(data.Live, buildLiveItem);
+						$.each(data.All, buildAllItem);
+
+						$('.summary-results').removeClass('hide');
+					}
+				})
+			});
+
+			// Delegate
+			$('body').on('submit', '#user-delegate', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				// Force uses to an integer
+				data.Uses = parseInt(data.Uses, 10);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Delegating '+data.Name }) );
+					}
+				});
+			});
+
+			// Change password
+			$('body').on('submit', '#user-change-password', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Change password for '+data.Name }) );
+					}
+				});
+			});
+
+			// Modify user
+			$('body').on('submit', '#user-modify', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Successfully modified '+data.ToModify }) );
+					}
+				});
+			});
+
+			// Encrypt data
+			$('body').on('submit', '#encrypt', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				data.Minimum = parseInt(data.Minimum, 10);
+				data.Owners = data.Owners.split(',');
+				for(var i=0, l=data.Owners.length; i<l; i++){
+					data.Owners[i] = data.Owners[i].trim();
+				}
+
+				// Convert data to base64.
+				data.Data = window.btoa(data.Data);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Successfully encrypted data:</p><pre>'+d.Response+'</pre>' }) );
+					}
+				});
+			});
+
+			// Decrypt data
+			$('body').on('submit', '#decrypt', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Response)+'</pre>' }) );
+					}
+				});
+			});
+		});
+	</script>
+</body>
+</html>

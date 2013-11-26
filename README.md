@@ -143,3 +143,8 @@ Example Output JSON format:
     {"Status":"ok","Result":"dGhpcyBpcyBhIHNlY3JldCBzdHJpbmcsIHNoaGhoaGhoaC4gZG9uJ3QgdGVsbCBhbnlvbmUsIG9rPyB3aGF0ZXZlciB5b3UgZG8sIGRvbid0IHRlbGwgdGhlIGNvcHMK"}
 
 
+### Web interface
+
+You can build a web interface to manage the Red October service using the `-static` flag and providing a path to the HTML file you want to serve.
+
+The index.html file in this repo provides a basic example for using all of the service's features, including encrypting and decrypting data. Data sent to the server *needs to be base64 encoded*. The example uses JavaScript's `btoa` and `atob` functions for string conversion. For dealing with files directly, using the [HTML5 File API](https://developer.mozilla.org/en-US/docs/Web/API/FileReader.readAsDataURL) would be a good option.
