@@ -201,9 +201,8 @@ func main() {
 	}()
 
 	s, l, err := NewServer(process, *staticPath, *addr, *certPath, *keyPath, *caPath)
-	if err == nil {
-		s.Serve(*l)
-	} else {
+	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
+	s.Serve(*l)
 }
