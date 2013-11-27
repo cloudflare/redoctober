@@ -311,7 +311,7 @@ func InitFromDisk(path string) error {
 
 	if records.Version == 0 {
 		records.Version = DEFAULT_VERSION
-		records.VaultId = mrand.Int()
+		records.VaultId = int(mrand.Int31())
 		records.HmacKey, err = makeRandom(16)
 		if err != nil {
 			return err
