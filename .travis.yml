@@ -1,0 +1,11 @@
+language: go
+go: 1.1
+script: go get github.com/cloudflare/redoctober && go test github.com/cloudflare/redoctober... && go vet github.com/cloudflare/redoctober...
+notifications:
+  email:
+    recipients:
+      - albert@cloudflare.com
+      - nick@cloudflare.com
+      - dane@cloudflare.com
+    on_success: never
+    on_failure: change
