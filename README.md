@@ -200,8 +200,8 @@ There are 3 commands:
 
 Example input JSON format:
 
-    $ curl --cacert cert/server.crt https://localhost:8080/password \
-           -d '{"Name":"Alice","Password":"Lewis","ToModify":"Bob","Command":"admin}'
+    $ curl --cacert cert/server.crt https://localhost:8080/modify \
+           -d '{"Name":"Alice","Password":"Lewis","ToModify":"Bill","Command":"admin"}'
     {"Status":"ok"}
 
 
