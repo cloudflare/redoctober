@@ -56,8 +56,8 @@ You're ready to run the server:
 
     $ ./bin/redoctober -addr=localhost:8080 \
                        -vaultpath=diskrecord.json \
-                       -cert=certs/server.crt \
-                       -key=certs/server.pem \
+                       -cert=cert/server.crt \
+                       -key=cert/server.pem \
                        -static=$GOPATH/src/github.com/cloudflare/redoctober/index.html
 
 ## Quick start: example webapp
