@@ -11,9 +11,12 @@ import (
 	"code.google.com/p/go.crypto/scrypt"
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -61,6 +64,11 @@ type PasswordRecord struct {
 		RSAPrimeQ   []byte
 		RSAPrimeQIV []byte
 		RSAPublic   rsa.PublicKey
+	}
+	ECKey struct {
+		ECPriv   []byte
+		ECPrivIV []byte
+		ECPublic ecdsa.PublicKey
 	}
 	Admin bool
 }
@@ -135,9 +143,28 @@ func encryptRSARecord(newRec *PasswordRecord, rsaPriv *rsa.PrivateKey, passKey [
 	return
 }
 
+// encryptECCRecord takes an ECDSA private key and encrypts it with
+// a password key.
+func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey []byte) (err error) {
+	ecX509, err := x509.MarshalECPrivateKey(ecPriv)
+	if err != nil {
+		return
+	}
+
+	if newRec.ECKey.ECPrivIV, err = makeRandom(16); err != nil {
+		return
+	}
+
+	paddedX509 := padding.AddPadding(ecX509)
+	if newRec.ECKey.ECPriv, err = encryptCBC(paddedX509, newRec.ECKey.ECPrivIV, passKey); err != nil {
+		return
+	}
+	return
+}
+
 // createPasswordRec creates a new record from a username and password
 func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err error) {
-	newRec.Type = RSARecord
+	newRec.Type = ECCRecord
 
 	if newRec.PasswordSalt, err = makeRandom(16); err != nil {
 		return
@@ -157,17 +184,17 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 	}
 
 	// generate a key pair
-	rsaPriv, err := rsa.GenerateKey(rand.Reader, 2048)
+	ecPriv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return
 	}
 
 	// encrypt RSA key with password key
-	if err = encryptRSARecord(&newRec, rsaPriv, passKey); err != nil {
+	if err = encryptECCRecord(&newRec, ecPriv, passKey); err != nil {
 		return
 	}
 
-	newRec.RSAKey.RSAPublic = rsaPriv.PublicKey
+	newRec.ECKey.ECPublic = ecPriv.PublicKey
 
 	// encrypt AES key with password key
 	aesKey, err := makeRandom(16)
@@ -528,7 +555,7 @@ func (pr PasswordRecord) GetKeyAES(password string) (key []byte, err error) {
 	return decryptECB(pr.AESKey, passKey)
 }
 
-// GetKeyAES returns the RSA public key of the record.
+// GetKeyRSAPub returns the RSA public key of the record.
 func (pr PasswordRecord) GetKeyRSAPub() (out *rsa.PublicKey, err error) {
 	if pr.Type != RSARecord {
 		return out, errors.New("Invalid function for record type")
@@ -536,7 +563,43 @@ func (pr PasswordRecord) GetKeyRSAPub() (out *rsa.PublicKey, err error) {
 	return &pr.RSAKey.RSAPublic, err
 }
 
-// GetKeyAES returns the RSA private key of the record given the correct password.
+// GetKeyECCPub returns the ECDSA public key out of the record.
+func (pr PasswordRecord) GetKeyECCPub() (out *ecdsa.PublicKey, err error) {
+	if pr.Type != ECCRecord {
+		return out, errors.New("Invalid function for record type")
+	}
+	return &pr.ECKey.ECPublic, err
+}
+
+// GetKeyECC returns the ECDSA private key of the record given the correct password.
+func (pr PasswordRecord) GetKeyECC(password string) (key *ecdsa.PrivateKey, err error) {
+	if pr.Type != ECCRecord {
+		return key, errors.New("Invalid function for record type")
+	}
+
+	err = pr.ValidatePassword(password)
+	if err != nil {
+		return
+	}
+
+	passKey, err := derivePasswordKey(password, pr.KeySalt)
+	if err != nil {
+		return
+	}
+
+	x509Padded, err := decryptCBC(pr.ECKey.ECPriv, pr.ECKey.ECPrivIV, passKey)
+	if err != nil {
+		return
+	}
+
+	ecX509, err := padding.RemovePadding(x509Padded)
+	if err != nil {
+		return
+	}
+	return x509.ParseECPrivateKey(ecX509)
+}
+
+// GetKeyRSA returns the RSA private key of the record given the correct password.
 func (pr PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err error) {
 	if pr.Type != RSARecord {
 		return key, errors.New("Invalid function for record type")
