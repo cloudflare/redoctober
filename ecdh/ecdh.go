@@ -11,6 +11,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
+	"crypto/sha256"
 	"errors"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/symcrypt"
@@ -36,7 +37,7 @@ func Encrypt(pub ecdsa.PublicKey, in []byte) (out []byte, err error) {
 	if x == nil {
 		return nil, errors.New("Failed to generate encryption key")
 	}
-	shared := x.Bytes()
+	shared := sha256.Sum256(x.Bytes())
 	iv, err := symcrypt.MakeRandom(16)
 	if err != nil {
 		return
@@ -82,7 +83,7 @@ func Decrypt(priv *ecdsa.PrivateKey, in []byte) (out []byte, err error) {
 	if x == nil {
 		return nil, errors.New("Failed to generate encryption key")
 	}
-	shared := x.Bytes()
+	shared := sha256.Sum256(x.Bytes())
 
 	tagStart := len(ct) - sha1.Size
 	h := hmac.New(sha1.New, shared[16:])
