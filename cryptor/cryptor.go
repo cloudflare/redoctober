@@ -33,7 +33,7 @@ type MultiWrappedKey struct {
 }
 
 // SingleWrappedKey is a structure containing a 16-byte key encrypted
-// by an RSA key.
+// by an RSA or EC key.
 type SingleWrappedKey struct {
 	Key    []byte
 	aesKey []byte
@@ -60,7 +60,7 @@ func makeRandom(length int) (bytes []byte, err error) {
 
 // encryptKey encrypts data with the key associated with name inner,
 // then name outer
-func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string]SingleWrappedKey) (out MultiWrappedKey, err error) {
+func encryptKey(nameInner, nameOuter string, clearKey []byte, pubKeys map[string]SingleWrappedKey) (out MultiWrappedKey, err error) {
 	out.Name = []string{nameOuter, nameInner}
 
 	recInner, ok := passvault.GetRecord(nameInner)
@@ -85,19 +85,18 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string
 	var overrideOuter SingleWrappedKey
 
 	// For AES records, use the live user key
-	// For RSA records, use the public key from the passvault
+	// For RSA and ECC records, use the public key from the passvault
 	switch recInner.Type {
-	case passvault.RSARecord:
-		if overrideInner, ok = rsaKeys[nameInner]; !ok {
+	case passvault.RSARecord, passvault.ECCRecord:
+		if overrideInner, ok = pubKeys[nameInner]; !ok {
 			err = errors.New("Missing user in file")
 			return
 		}
 
-		if overrideOuter, ok = rsaKeys[nameOuter]; !ok {
+		if overrideOuter, ok = pubKeys[nameOuter]; !ok {
 			err = errors.New("Missing user in file")
 			return
 		}
-
 	case passvault.AESRecord:
 		break
 
@@ -119,7 +118,7 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, rsaKeys map[string
 }
 
 // unwrapKey decrypts first key in keys whose encryption keys are in keycache
-func unwrapKey(keys []MultiWrappedKey, rsaKeys map[string]SingleWrappedKey) (unwrappedKey []byte, err error) {
+func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey) (unwrappedKey []byte, err error) {
 	var (
 		keyFound  error
 		fullMatch bool = false
@@ -133,9 +132,9 @@ func unwrapKey(keys []MultiWrappedKey, rsaKeys map[string]SingleWrappedKey) (unw
 		tmpKeyValue := mwKey.Key
 
 		for _, mwName := range mwKey.Name {
-			rsaEncrypted := rsaKeys[mwName]
+			pubEncrypted := pubKeys[mwName]
 			// if this is null, it's an AES encrypted key
-			if tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, rsaEncrypted.Key); keyFound != nil {
+			if tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, pubEncrypted.Key); keyFound != nil {
 				break
 			}
 		}
@@ -294,7 +293,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 			return
 		}
 
-		if rec.GetType() == passvault.RSARecord {
+		if rec.GetType() == passvault.RSARecord || rec.GetType() == passvault.ECCRecord {
 			// only wrap key with RSA key if found
 			if singleWrappedKey.aesKey, err = makeRandom(16); err != nil {
 				return nil, err
