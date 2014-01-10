@@ -159,9 +159,7 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 	}
 
 	paddedX509 := padding.AddPadding(ecX509)
-	if newRec.ECKey.ECPriv, err = encryptCBC(paddedX509, newRec.ECKey.ECPrivIV, passKey); err != nil {
-		return
-	}
+	newRec.ECKey.ECPriv, err = encryptCBC(paddedX509, newRec.ECKey.ECPrivIV, passKey)
 	return
 }
 
@@ -616,8 +614,7 @@ func (pr PasswordRecord) GetKeyECC(password string) (key *ecdsa.PrivateKey, err 
 		return key, errors.New("Invalid function for record type")
 	}
 
-	err = pr.ValidatePassword(password)
-	if err != nil {
+	if err = pr.ValidatePassword(password); err != nil {
 		return
 	}
 
