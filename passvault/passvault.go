@@ -10,7 +10,6 @@ import (
 	"bytes"
 	"code.google.com/p/go.crypto/scrypt"
 	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -22,6 +21,7 @@ import (
 	"errors"
 	"github.com/cloudflare/redoctober/ecdh"
 	"github.com/cloudflare/redoctober/padding"
+	"github.com/cloudflare/redoctober/symcrypt"
 	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
@@ -97,7 +97,7 @@ type Summary struct {
 
 func init() {
 	// seed math.random from crypto.random
-	seedBytes, _ := makeRandom(8)
+	seedBytes, _ := symcrypt.MakeRandom(8)
 	seedBuf := bytes.NewBuffer(seedBytes)
 	n64, _ := binary.ReadVarint(seedBuf)
 	mrand.Seed(n64)
@@ -109,40 +109,33 @@ func hashPassword(password string, salt []byte) ([]byte, error) {
 	return scrypt.Key([]byte(password), salt, N, R, P, KEYLENGTH)
 }
 
-// makeRandom is a helper that makes a new buffer full of random data
-func makeRandom(length int) ([]byte, error) {
-	bytes := make([]byte, length)
-	_, err := rand.Read(bytes)
-	return bytes, err
-}
-
 // encryptRSARecord takes an RSA private key and encrypts it with
 // a password key
 func encryptRSARecord(newRec *PasswordRecord, rsaPriv *rsa.PrivateKey, passKey []byte) (err error) {
-	if newRec.RSAKey.RSAExpIV, err = makeRandom(16); err != nil {
+	if newRec.RSAKey.RSAExpIV, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 
 	paddedExponent := padding.AddPadding(rsaPriv.D.Bytes())
-	if newRec.RSAKey.RSAExp, err = encryptCBC(paddedExponent, newRec.RSAKey.RSAExpIV, passKey); err != nil {
+	if newRec.RSAKey.RSAExp, err = symcrypt.EncryptCBC(paddedExponent, newRec.RSAKey.RSAExpIV, passKey); err != nil {
 		return
 	}
 
-	if newRec.RSAKey.RSAPrimePIV, err = makeRandom(16); err != nil {
+	if newRec.RSAKey.RSAPrimePIV, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 
 	paddedPrimeP := padding.AddPadding(rsaPriv.Primes[0].Bytes())
-	if newRec.RSAKey.RSAPrimeP, err = encryptCBC(paddedPrimeP, newRec.RSAKey.RSAPrimePIV, passKey); err != nil {
+	if newRec.RSAKey.RSAPrimeP, err = symcrypt.EncryptCBC(paddedPrimeP, newRec.RSAKey.RSAPrimePIV, passKey); err != nil {
 		return
 	}
 
-	if newRec.RSAKey.RSAPrimeQIV, err = makeRandom(16); err != nil {
+	if newRec.RSAKey.RSAPrimeQIV, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 
 	paddedPrimeQ := padding.AddPadding(rsaPriv.Primes[1].Bytes())
-	newRec.RSAKey.RSAPrimeQ, err = encryptCBC(paddedPrimeQ, newRec.RSAKey.RSAPrimeQIV, passKey)
+	newRec.RSAKey.RSAPrimeQ, err = symcrypt.EncryptCBC(paddedPrimeQ, newRec.RSAKey.RSAPrimeQIV, passKey)
 	return
 }
 
@@ -154,12 +147,12 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 		return
 	}
 
-	if newRec.ECKey.ECPrivIV, err = makeRandom(16); err != nil {
+	if newRec.ECKey.ECPrivIV, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 
 	paddedX509 := padding.AddPadding(ecX509)
-	newRec.ECKey.ECPriv, err = encryptCBC(paddedX509, newRec.ECKey.ECPrivIV, passKey)
+	newRec.ECKey.ECPriv, err = symcrypt.EncryptCBC(paddedX509, newRec.ECKey.ECPrivIV, passKey)
 	return
 }
 
@@ -167,7 +160,7 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err error) {
 	newRec.Type = DefaultRecordType
 
-	if newRec.PasswordSalt, err = makeRandom(16); err != nil {
+	if newRec.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 
@@ -175,7 +168,7 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 		return
 	}
 
-	if newRec.KeySalt, err = makeRandom(16); err != nil {
+	if newRec.KeySalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 
@@ -211,7 +204,7 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 	}
 
 	// encrypt AES key with password key
-	aesKey, err := makeRandom(16)
+	aesKey, err := symcrypt.MakeRandom(16)
 	if err != nil {
 		return
 	}
@@ -253,36 +246,6 @@ func encryptECB(data, key []byte) (encryptedData []byte, err error) {
 
 	encryptedData = make([]byte, len(data))
 	aesCrypt.Encrypt(encryptedData, data)
-
-	return
-}
-
-// decryptCBC decrypt bytes using a key and IV with AES in CBC mode.
-func decryptCBC(data, iv, key []byte) (decryptedData []byte, err error) {
-	aesCrypt, err := aes.NewCipher(key)
-	if err != nil {
-		return
-	}
-	ivBytes := append([]byte{}, iv...)
-
-	decryptedData = make([]byte, len(data))
-	aesCBC := cipher.NewCBCDecrypter(aesCrypt, ivBytes)
-	aesCBC.CryptBlocks(decryptedData, data)
-
-	return
-}
-
-// encryptCBC encrypt data using a key and IV with AES in CBC mode.
-func encryptCBC(data, iv, key []byte) (encryptedData []byte, err error) {
-	aesCrypt, err := aes.NewCipher(key)
-	if err != nil {
-		return
-	}
-	ivBytes := append([]byte{}, iv...)
-
-	encryptedData = make([]byte, len(data))
-	aesCBC := cipher.NewCBCEncrypter(aesCrypt, ivBytes)
-	aesCBC.CryptBlocks(encryptedData, data)
 
 	return
 }
@@ -358,7 +321,7 @@ func InitFromDisk(path string) error {
 	if records.Version == 0 {
 		records.Version = DEFAULT_VERSION
 		records.VaultId = int(mrand.Int31())
-		records.HmacKey, err = makeRandom(16)
+		records.HmacKey, err = symcrypt.MakeRandom(16)
 		if err != nil {
 			return err
 		}
@@ -429,14 +392,14 @@ func ChangePassword(name, password, newPassword string) (err error) {
 	}
 
 	// add the password salt and hash
-	if pr.PasswordSalt, err = makeRandom(16); err != nil {
+	if pr.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 	if pr.HashedPassword, err = hashPassword(newPassword, pr.PasswordSalt); err != nil {
 		return
 	}
 
-	if pr.KeySalt, err = makeRandom(16); err != nil {
+	if pr.KeySalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
 	newPassKey, err := derivePasswordKey(newPassword, pr.KeySalt)
@@ -623,7 +586,7 @@ func (pr PasswordRecord) GetKeyECC(password string) (key *ecdsa.PrivateKey, err 
 		return
 	}
 
-	x509Padded, err := decryptCBC(pr.ECKey.ECPriv, pr.ECKey.ECPrivIV, passKey)
+	x509Padded, err := symcrypt.DecryptCBC(pr.ECKey.ECPriv, pr.ECKey.ECPrivIV, passKey)
 	if err != nil {
 		return
 	}
@@ -651,7 +614,7 @@ func (pr PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err err
 		return
 	}
 
-	rsaExponentPadded, err := decryptCBC(pr.RSAKey.RSAExp, pr.RSAKey.RSAExpIV, passKey)
+	rsaExponentPadded, err := symcrypt.DecryptCBC(pr.RSAKey.RSAExp, pr.RSAKey.RSAExpIV, passKey)
 	if err != nil {
 		return
 	}
@@ -660,7 +623,7 @@ func (pr PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err err
 		return
 	}
 
-	rsaPrimePPadded, err := decryptCBC(pr.RSAKey.RSAPrimeP, pr.RSAKey.RSAPrimePIV, passKey)
+	rsaPrimePPadded, err := symcrypt.DecryptCBC(pr.RSAKey.RSAPrimeP, pr.RSAKey.RSAPrimePIV, passKey)
 	if err != nil {
 		return
 	}
@@ -669,7 +632,7 @@ func (pr PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err err
 		return
 	}
 
-	rsaPrimeQPadded, err := decryptCBC(pr.RSAKey.RSAPrimeQ, pr.RSAKey.RSAPrimeQIV, passKey)
+	rsaPrimeQPadded, err := symcrypt.DecryptCBC(pr.RSAKey.RSAPrimeQ, pr.RSAKey.RSAPrimeQIV, passKey)
 	if err != nil {
 		return
 	}

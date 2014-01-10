@@ -9,13 +9,13 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/symcrypt"
 	"sort"
 	"strconv"
 )
@@ -49,13 +49,6 @@ type EncryptedData struct {
 	IV        []byte
 	Data      []byte
 	Signature []byte
-}
-
-// makeRandom is a helper to make new buffer full of random data
-func makeRandom(length int) (bytes []byte, err error) {
-	bytes = make([]byte, length)
-	_, err = rand.Read(bytes)
-	return
 }
 
 // encryptKey encrypts data with the key associated with name inner,
@@ -265,7 +258,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 	}
 
 	// Generate random IV and encryption key
-	ivBytes, err := makeRandom(16)
+	ivBytes, err := symcrypt.MakeRandom(16)
 	if err != nil {
 		return
 	}
@@ -274,7 +267,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 	// encrypted.IV
 
 	encrypted.IV = append([]byte{}, ivBytes...)
-	clearKey, err := makeRandom(16)
+	clearKey, err := symcrypt.MakeRandom(16)
 	if err != nil {
 		return
 	}
@@ -295,7 +288,7 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 
 		if rec.GetType() == passvault.RSARecord || rec.GetType() == passvault.ECCRecord {
 			// only wrap key with RSA key if found
-			if singleWrappedKey.aesKey, err = makeRandom(16); err != nil {
+			if singleWrappedKey.aesKey, err = symcrypt.MakeRandom(16); err != nil {
 				return nil, err
 			}
 

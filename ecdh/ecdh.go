@@ -6,7 +6,6 @@ package ecdh
 
 import (
 	"crypto/aes"
-	"crypto/cipher"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/hmac"
@@ -14,6 +13,7 @@ import (
 	"crypto/sha1"
 	"errors"
 	"github.com/cloudflare/redoctober/padding"
+	"github.com/cloudflare/redoctober/symcrypt"
 )
 
 var Curve = elliptic.P256
@@ -37,13 +37,13 @@ func Encrypt(pub ecdsa.PublicKey, in []byte) (out []byte, err error) {
 		return nil, errors.New("Failed to generate encryption key")
 	}
 	shared := x.Bytes()
-	iv, err := makeRandom(16)
+	iv, err := symcrypt.MakeRandom(16)
 	if err != nil {
 		return
 	}
 
 	paddedIn := padding.AddPadding(in)
-	ct, err := encryptCBC(paddedIn, iv, shared[:16])
+	ct, err := symcrypt.EncryptCBC(paddedIn, iv, shared[:16])
 	if err != nil {
 		return
 	}
@@ -92,50 +92,10 @@ func Decrypt(priv *ecdsa.PrivateKey, in []byte) (out []byte, err error) {
 		return nil, errors.New("Invalid MAC")
 	}
 
-	paddedOut, err := decryptCBC(ct[aes.BlockSize:tagStart], ct[:aes.BlockSize], shared[:16])
+	paddedOut, err := symcrypt.DecryptCBC(ct[aes.BlockSize:tagStart], ct[:aes.BlockSize], shared[:16])
 	if err != nil {
 		return
 	}
 	out, err = padding.RemovePadding(paddedOut)
 	return
-}
-
-// Utility functions copied from passvault. These handle encryption
-// and decryption of data using AES-128-CBC.
-
-// decryptCBC decrypt bytes using a key and IV with AES in CBC mode.
-func decryptCBC(data, iv, key []byte) (decryptedData []byte, err error) {
-	aesCrypt, err := aes.NewCipher(key)
-	if err != nil {
-		return
-	}
-	ivBytes := append([]byte{}, iv...)
-
-	decryptedData = make([]byte, len(data))
-	aesCBC := cipher.NewCBCDecrypter(aesCrypt, ivBytes)
-	aesCBC.CryptBlocks(decryptedData, data)
-
-	return
-}
-
-// encryptCBC encrypt data using a key and IV with AES in CBC mode.
-func encryptCBC(data, iv, key []byte) (encryptedData []byte, err error) {
-	aesCrypt, err := aes.NewCipher(key)
-	if err != nil {
-		return
-	}
-	ivBytes := append([]byte{}, iv...)
-
-	encryptedData = make([]byte, len(data))
-	aesCBC := cipher.NewCBCEncrypter(aesCrypt, ivBytes)
-	aesCBC.CryptBlocks(encryptedData, data)
-
-	return
-}
-
-// makeRandom is a helper that makes a new buffer full of random data
-func makeRandom(length int) ([]byte, error) {
-	bytes := make([]byte, length)
-	_, err := rand.Read(bytes)
-	return bytes, err
 }
