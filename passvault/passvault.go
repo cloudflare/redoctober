@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"github.com/cloudflare/redoctober/ecdh"
 	"github.com/cloudflare/redoctober/padding"
 	"io/ioutil"
 	"math/big"
@@ -33,6 +34,8 @@ const (
 	RSARecord = "RSA"
 	ECCRecord = "ECC"
 )
+
+var DefaultRecordType = ECCRecord
 
 // Constants for scrypt
 const (
@@ -164,7 +167,7 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 
 // createPasswordRec creates a new record from a username and password
 func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err error) {
-	newRec.Type = ECCRecord
+	newRec.Type = DefaultRecordType
 
 	if newRec.PasswordSalt, err = makeRandom(16); err != nil {
 		return
@@ -184,17 +187,30 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 	}
 
 	// generate a key pair
-	ecPriv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return
+	switch DefaultRecordType {
+	case RSARecord:
+		var rsaPriv *rsa.PrivateKey
+		rsaPriv, err = rsa.GenerateKey(rand.Reader, 2048)
+		if err != nil {
+			return
+		}
+		// encrypt RSA key with password key
+		if err = encryptRSARecord(&newRec, rsaPriv, passKey); err != nil {
+			return
+		}
+		newRec.RSAKey.RSAPublic = rsaPriv.PublicKey
+	case ECCRecord:
+		var ecPriv *ecdsa.PrivateKey
+		ecPriv, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			return
+		}
+		// encrypt ECDSA key with password key
+		if err = encryptECCRecord(&newRec, ecPriv, passKey); err != nil {
+			return
+		}
+		newRec.ECKey.ECPublic = ecPriv.PublicKey
 	}
-
-	// encrypt RSA key with password key
-	if err = encryptECCRecord(&newRec, ecPriv, passKey); err != nil {
-		return
-	}
-
-	newRec.ECKey.ECPublic = ecPriv.PublicKey
 
 	// encrypt AES key with password key
 	aesKey, err := makeRandom(16)
@@ -331,6 +347,11 @@ func InitFromDisk(path string) error {
 				return formatErr
 			}
 		}
+		if rec.Type == ECCRecord {
+			if len(rec.ECKey.ECPriv) == 0 {
+				return formatErr
+			}
+		}
 	}
 
 	// If the Version field is 0 then it indicates that nothing was
@@ -388,6 +409,7 @@ func ChangePassword(name, password, newPassword string) (err error) {
 	// decrypt key
 	var key []byte
 	var rsaKey rsa.PrivateKey
+	var ecKey *ecdsa.PrivateKey
 	if pr.Type == AESRecord {
 		key, err = pr.GetKeyAES(password)
 		if err != nil {
@@ -395,6 +417,11 @@ func ChangePassword(name, password, newPassword string) (err error) {
 		}
 	} else if pr.Type == RSARecord {
 		rsaKey, err = pr.GetKeyRSA(password)
+		if err != nil {
+			return
+		}
+	} else if pr.Type == ECCRecord {
+		ecKey, err = pr.GetKeyECC(password)
 		if err != nil {
 			return
 		}
@@ -428,6 +455,12 @@ func ChangePassword(name, password, newPassword string) (err error) {
 	} else if pr.Type == RSARecord {
 		// encrypt RSA key with password key
 		err = encryptRSARecord(&pr, &rsaKey, newPassKey)
+		if err != nil {
+			return
+		}
+	} else if pr.Type == ECCRecord {
+		// encrypt ECDSA key with password key
+		err = encryptECCRecord(&pr, ecKey, newPassKey)
 		if err != nil {
 			return
 		}
@@ -531,9 +564,15 @@ func (pr PasswordRecord) GetType() string {
 	return pr.Type
 }
 
-// EncryptKey encrypts a 16-byte key with the RSA key of the record.
+// EncryptKey encrypts a 16-byte key with the RSA or EC key of the record.
 func (pr PasswordRecord) EncryptKey(in []byte) (out []byte, err error) {
-	return rsa.EncryptOAEP(sha1.New(), rand.Reader, &pr.RSAKey.RSAPublic, in, nil)
+	if pr.Type == RSARecord {
+		return rsa.EncryptOAEP(sha1.New(), rand.Reader, &pr.RSAKey.RSAPublic, in, nil)
+	} else if pr.Type == ECCRecord {
+		return ecdh.Encrypt(pr.ECKey.ECPublic, in)
+	} else {
+		return nil, errors.New("Invalid function for record type")
+	}
 }
 
 // GetKeyAES returns the 16-byte key of the record.
