@@ -7,9 +7,9 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
+	"os"
 	"testing"
 )
 
@@ -102,7 +102,7 @@ func TestSummary(t *testing.T) {
 	if data.Admin != true {
 		t.Fatalf("Error in summary of account, record incorrect")
 	}
-	if data.Type != passvault.RSARecord {
+	if data.Type != passvault.DefaultRecordType {
 		t.Fatalf("Error in summary of account, record incorrect")
 	}
 
@@ -138,7 +138,7 @@ func TestSummary(t *testing.T) {
 	if data.Admin != true {
 		t.Fatalf("Error in summary of account, record missing")
 	}
-	if data.Type != passvault.RSARecord {
+	if data.Type != passvault.DefaultRecordType {
 		t.Fatalf("Error in summary of account, record missing")
 	}
 
@@ -149,7 +149,7 @@ func TestSummary(t *testing.T) {
 	if data.Admin != false {
 		t.Fatalf("Error in summary of account, record missing")
 	}
-	if data.Type != passvault.RSARecord {
+	if data.Type != passvault.DefaultRecordType {
 		t.Fatalf("Error in summary of account, record missing")
 	}
 
@@ -160,7 +160,7 @@ func TestSummary(t *testing.T) {
 	if dataLive.Admin != false {
 		t.Fatalf("Error in summary of account, record missing")
 	}
-	if dataLive.Type != passvault.RSARecord {
+	if dataLive.Type != passvault.DefaultRecordType {
 		t.Fatalf("Error in summary of account, record missing")
 	}
 

@@ -9,6 +9,8 @@ import (
 )
 
 func TestRSAEncryptDecrypt(t *testing.T) {
+	oldDefaultRecordType := DefaultRecordType
+	DefaultRecordType = RSARecord
 	myRec, err := createPasswordRec("mypasswordisweak", true)
 	if err != nil {
 		t.Fatalf("Error creating record")
@@ -33,4 +35,30 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error validating RSA key")
 	}
+	DefaultRecordType = oldDefaultRecordType
+}
+
+func TestECCEncryptDecrypt(t *testing.T) {
+	oldDefaultRecordType := DefaultRecordType
+	DefaultRecordType = ECCRecord
+	myRec, err := createPasswordRec("mypasswordisweak", true)
+	if err != nil {
+		t.Fatalf("Error creating record")
+	}
+
+	_, err = myRec.GetKeyECCPub()
+	if err != nil {
+		t.Fatalf("Error extracting EC pub")
+	}
+
+	_, err = myRec.GetKeyECC("mypasswordiswrong")
+	if err == nil {
+		t.Fatalf("Incorrect password did not fail")
+	}
+
+	_, err = myRec.GetKeyECC("mypasswordisweak")
+	if err != nil {
+		t.Fatalf("Error decrypting EC key")
+	}
+	DefaultRecordType = oldDefaultRecordType
 }
