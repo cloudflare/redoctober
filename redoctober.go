@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 )
 
 // List of URLs to register and their related functions
@@ -111,9 +112,19 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 		config.ClientCAs = rootPool
 	}
 
-	conn, err := net.Listen("tcp", addr)
+	var scheme, host string
+	parts := strings.Split(addr, "://")
+	if err != nil || len(parts) != 2 {
+		scheme, host = "tcp", addr
+	} else {
+		scheme, host = parts[0], parts[1]
+	}
+
+	log.Printf("Listening on %s://%s\n", scheme, host)
+
+	conn, err := net.Listen(scheme, host)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error starting TCP listener on %s: %s\n", addr, err)
+		return nil, nil, fmt.Errorf("Error starting listener on %s: %s\n", addr, err)
 	}
 
 	lstnr := tls.NewListener(conn, &config)
