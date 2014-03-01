@@ -7,9 +7,9 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"os"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
+	"os"
 	"testing"
 )
 
