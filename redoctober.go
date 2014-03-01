@@ -13,6 +13,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/cloudflare/redoctober/core"
+	"io"
 	"io/ioutil"
 	"log"
 	"net"
@@ -130,14 +131,30 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 	}
 
 	// queue up web frontend
-	mux.HandleFunc("/index", handleIndexHtml)
-	mux.HandleFunc("/", handleIndexHtml)
+	idxHandler := &indexHandler{staticPath}
+	mux.HandleFunc("/index", idxHandler.handle)
+	mux.HandleFunc("/", idxHandler.handle)
 
 	return &srv, &lstnr, nil
 }
 
-func handleIndexHtml(w http.ResponseWriter, r *http.Request) {
-	body := bytes.NewReader(indexHtml)
+type indexHandler struct {
+	staticPath string
+}
+
+func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
+	var body io.ReadSeeker
+	if this.staticPath != "" {
+		f, err := os.Open(this.staticPath)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		defer f.Close()
+		body = f
+	} else {
+		body = bytes.NewReader(indexHtml)
+	}
 	http.ServeContent(w, r, "index.html", time.Now(), body)
 }
 
@@ -156,7 +173,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	var staticPath = flag.String("static", "", "Path to the the static entry (deprecated)")
+	var staticPath = flag.String("static", "", "Path to override built-in index.html")
 	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
 	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
 	var certPath = flag.String("cert", "", "Path of TLS certificate in PEM format")
