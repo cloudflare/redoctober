@@ -20,7 +20,7 @@ func TestGenerateKey(t *testing.T) {
 
 func TestCrypt(t *testing.T) {
 	message := []byte("One ping only, please.")
-	out, err := Encrypt(testKey.PublicKey, message)
+	out, err := Encrypt(&testKey.PublicKey, message)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}

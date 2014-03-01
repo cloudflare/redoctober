@@ -9,11 +9,11 @@ encryption and decryption server.
 
 [![Build Status](https://travis-ci.org/cloudflare/redoctober.png?branch=master)](https://travis-ci.org/cloudflare/redoctober) [![Build Status](https://drone.io/github.com/cloudflare/redoctober/status.png)](https://drone.io/github.com/cloudflare/redoctober/latest)
 
-This project requires [Go 1.1](http://golang.org/doc/install#download)
+This project requires [Go 1.2](http://golang.org/doc/install#download)
 or later to compile. Verify your go version by running `go version`:
 
     $ go version
-    go version go1.1
+    go version go1.2
 
 As with any Go program you do need to set the
 [GOPATH enviroment variable](http://golang.org/doc/code.html#GOPATH)
@@ -35,7 +35,7 @@ secure) way is to skip the
 [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority#Issuing_a_certificate)
 verification and generate a self-signed TLS certificate. Read this
 [detailed guide](http://www.akadia.com/services/ssh_test_certificate.html)
-or, alternatively, follow this unsecure commands:
+or, alternatively, follow these unsecure commands:
 
     $ mkdir cert
     $ chmod 700 cert
