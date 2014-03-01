@@ -28,7 +28,7 @@ func zero(in []byte) {
 
 // Encrypt secures and authenticates its input using the public key
 // using ECDHE with AES-128-CBC-HMAC-SHA1.
-func Encrypt(pub ecdsa.PublicKey, in []byte) (out []byte, err error) {
+func Encrypt(pub *ecdsa.PublicKey, in []byte) (out []byte, err error) {
 	ephemeral, err := ecdsa.GenerateKey(Curve(), rand.Reader)
 	if err != nil {
 		return

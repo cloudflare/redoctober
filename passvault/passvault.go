@@ -50,6 +50,22 @@ const (
 // Path of current vault
 var localPath string
 
+type ECPublicKey struct {
+        Curve *elliptic.CurveParams
+        X, Y *big.Int
+}
+
+// toECDSA takes the internal ECPublicKey and returns an equivalent
+// an ecdsa.PublicKey
+func (pk *ECPublicKey) toECDSA() *ecdsa.PublicKey {
+	ecdsaPub := new(ecdsa.PublicKey)
+	ecdsaPub.Curve = pk.Curve
+	ecdsaPub.X = pk.X
+	ecdsaPub.Y = pk.Y
+
+	return ecdsaPub	
+}
+
 // PasswordRecord is the structure used to store password and key
 // material for a single user name. It is written and read from
 // storage in JSON format.
@@ -71,7 +87,7 @@ type PasswordRecord struct {
 	ECKey struct {
 		ECPriv   []byte
 		ECPrivIV []byte
-		ECPublic ecdsa.PublicKey
+		ECPublic ECPublicKey
 	}
 	Admin bool
 }
@@ -200,7 +216,9 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 		if err = encryptECCRecord(&newRec, ecPriv, passKey); err != nil {
 			return
 		}
-		newRec.ECKey.ECPublic = ecPriv.PublicKey
+		newRec.ECKey.ECPublic.Curve = ecPriv.PublicKey.Curve.Params()
+		newRec.ECKey.ECPublic.X = ecPriv.PublicKey.X
+		newRec.ECKey.ECPublic.Y = ecPriv.PublicKey.Y
 	}
 
 	// encrypt AES key with password key
@@ -530,7 +548,7 @@ func (pr PasswordRecord) EncryptKey(in []byte) (out []byte, err error) {
 	if pr.Type == RSARecord {
 		return rsa.EncryptOAEP(sha1.New(), rand.Reader, &pr.RSAKey.RSAPublic, in, nil)
 	} else if pr.Type == ECCRecord {
-		return ecdh.Encrypt(pr.ECKey.ECPublic, in)
+		return ecdh.Encrypt(pr.ECKey.ECPublic.toECDSA(), in)
 	} else {
 		return nil, errors.New("Invalid function for record type")
 	}
@@ -568,7 +586,7 @@ func (pr PasswordRecord) GetKeyECCPub() (out *ecdsa.PublicKey, err error) {
 	if pr.Type != ECCRecord {
 		return out, errors.New("Invalid function for record type")
 	}
-	return &pr.ECKey.ECPublic, err
+	return pr.ECKey.ECPublic.toECDSA(), err
 }
 
 // GetKeyECC returns the ECDSA private key of the record given the correct password.
