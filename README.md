@@ -57,14 +57,13 @@ You're ready to run the server:
     $ ./bin/redoctober -addr=localhost:8080 \
                        -vaultpath=diskrecord.json \
                        -cert=cert/server.crt \
-                       -key=cert/server.pem \
-                       -static=$GOPATH/src/github.com/cloudflare/redoctober/index.html
+                       -key=cert/server.pem
 
 ## Quick start: example webapp
 
 At this point Red October should be serving an example webapp. Access it using your browser:
 
-  - [`https://localhost:8080/index`](https://localhost:8080/index)
+  - [`https://localhost:8080/`](https://localhost:8080/)
 
 ## Using the API
 
