@@ -12,18 +12,24 @@ encryption and decryption server.
 This project requires [Go 1.2](http://golang.org/doc/install#download)
 or later to compile. Verify your go version by running `go version`:
 
-    $ go version
-    go version go1.2
+```bash
+$ go version
+go version go1.2
+```
 
 As with any Go program you do need to set the
 [GOPATH enviroment variable](http://golang.org/doc/code.html#GOPATH)
 accordingly. With Go set up you can download and compile sources:
 
-    $ go get github.com/cloudflare/redoctober
+```bash
+$ go get github.com/cloudflare/redoctober
+```
 
 And run the tests:
 
-    $ go test github.com/cloudflare/redoctober...
+```bash
+$ go test github.com/cloudflare/redoctober...
+```
 
 ## Running
 
@@ -37,27 +43,31 @@ verification and generate a self-signed TLS certificate. Read this
 [detailed guide](http://www.akadia.com/services/ssh_test_certificate.html)
 or, alternatively, follow these unsecure commands:
 
-    $ mkdir cert
-    $ chmod 700 cert
-    ## Generate private key with password "password"
-    $ openssl genrsa -aes128 -passout pass:password -out cert/server.pem 2048
-    ## Remove password from private key
-    $ openssl rsa -passin pass:password -in cert/server.pem -out cert/server.pem
-    ## Generate CSR (make sure the common name CN field matches your server
-    ## address. It's set to "localhost" here.)
-    $ openssl req -new -key cert/server.pem -out cert/server.csr -subj '/C=US/ST=California/L=Everywhere/CN=localhost'
-    ## Sign the CSR and create certificate
-    $ openssl x509 -req -days 365 -in cert/server.csr -signkey cert/server.pem -out cert/server.crt
-    ## Clean up
-    $ rm cert/server.csr
-    $ chmod 600 cert/*
+```bash
+$ mkdir cert
+$ chmod 700 cert
+## Generate private key with password "password"
+$ openssl genrsa -aes128 -passout pass:password -out cert/server.pem 2048
+## Remove password from private key
+$ openssl rsa -passin pass:password -in cert/server.pem -out cert/server.pem
+## Generate CSR (make sure the common name CN field matches your server
+## address. It's set to "localhost" here.)
+$ openssl req -new -key cert/server.pem -out cert/server.csr -subj '/C=US/ST=California/L=Everywhere/CN=localhost'
+## Sign the CSR and create certificate
+$ openssl x509 -req -days 365 -in cert/server.csr -signkey cert/server.pem -out cert/server.crt
+## Clean up
+$ rm cert/server.csr
+$ chmod 600 cert/*
+```
 
 You're ready to run the server:
 
-    $ ./bin/redoctober -addr=localhost:8080 \
-                       -vaultpath=diskrecord.json \
-                       -cert=cert/server.crt \
-                       -key=cert/server.pem
+```bash
+$ ./bin/redoctober -addr=localhost:8080 \
+                   -vaultpath=diskrecord.json \
+                   -cert=cert/server.crt \
+                   -key=cert/server.pem
+```
 
 ## Quick start: example webapp
 
@@ -86,9 +96,11 @@ admin account.
 
 Example query:
 
-    $ curl --cacert cert/server.crt https://localhost:8080/create \
-            -d '{"Name":"Alice","Password":"Lewis"}'
-    {"Status":"ok"}
+```bash
+$ curl --cacert cert/server.crt https://localhost:8080/create \
+        -d '{"Name":"Alice","Password":"Lewis"}'
+{"Status":"ok"}
+```
 
 ### Delegate
 
@@ -99,15 +111,17 @@ Any new delegation overrides the previous delegation.
 
 Example query:
 
-    $ curl --cacert cert/server.crt https://localhost:8080/delegate \
-           -d '{"Name":"Bill","Password":"Lizard","Time":"2h34m","Uses":3}'
-    {"Status":"ok"}
-    $ curl --cacert cert/server.crt https://localhost:8080/delegate \
-           -d '{"Name":"Cat","Password":"Cheshire","Time":"2h34m","Uses":3}'
-    {"Status":"ok"}
-    $ curl --cacert cert/server.crt https://localhost:8080/delegate \
-           -d '{"Name":"Dodo","Password":"Dodgson","Time":"2h34m","Uses":3}'
-    {"Status":"ok"}
+```bash
+$ curl --cacert cert/server.crt https://localhost:8080/delegate \
+       -d '{"Name":"Bill","Password":"Lizard","Time":"2h34m","Uses":3}'
+{"Status":"ok"}
+$ curl --cacert cert/server.crt https://localhost:8080/delegate \
+       -d '{"Name":"Cat","Password":"Cheshire","Time":"2h34m","Uses":3}'
+{"Status":"ok"}
+$ curl --cacert cert/server.crt https://localhost:8080/delegate \
+       -d '{"Name":"Dodo","Password":"Dodgson","Time":"2h34m","Uses":3}'
+{"Status":"ok"}
+```
 
 ### Summary
 
@@ -117,30 +131,32 @@ server. Only Admins are allowed to call summary.
 
 Example query:
 
-    $ curl --cacert cert/server.crt https://localhost:8080/summary  \
-            -d '{"Name":"Alice","Password":"Lewis"}'
-    {"Status":"ok",
-     "Live":{
-      "Bill":{"Admin":false,
-              "Type":"RSA",
-              "Expiry":"2013-11-26T08:42:29.65501032-08:00",
-              "Uses":3},
-      "Cat":{"Admin":false,
-             "Type":"RSA",
-             "Expiry":"2013-11-26T08:42:42.016311595-08:00",
-             "Uses":3},
-      "Dodo":{"Admin":false,
-              "Type":"RSA",
-              "Expiry":"2013-11-26T08:43:06.651429104-08:00",
-              "Uses":3}
-     },
-     "All":{
-      "Alice":{"Admin":true, "Type":"RSA"},
-      "Bill":{"Admin":false, "Type":"RSA"},
-      "Cat":{"Admin":false, "Type":"RSA"},
-      "Dodo":{"Admin":false, "Type":"RSA"}
-     }
-    }
+```bash
+$ curl --cacert cert/server.crt https://localhost:8080/summary  \
+        -d '{"Name":"Alice","Password":"Lewis"}'
+{"Status":"ok",
+ "Live":{
+  "Bill":{"Admin":false,
+          "Type":"RSA",
+          "Expiry":"2013-11-26T08:42:29.65501032-08:00",
+          "Uses":3},
+  "Cat":{"Admin":false,
+         "Type":"RSA",
+         "Expiry":"2013-11-26T08:42:42.016311595-08:00",
+         "Uses":3},
+  "Dodo":{"Admin":false,
+          "Type":"RSA",
+          "Expiry":"2013-11-26T08:43:06.651429104-08:00",
+          "Uses":3}
+ },
+ "All":{
+  "Alice":{"Admin":true, "Type":"RSA"},
+  "Bill":{"Admin":false, "Type":"RSA"},
+  "Cat":{"Admin":false, "Type":"RSA"},
+  "Dodo":{"Admin":false, "Type":"RSA"}
+ }
+}
+```
 
 ### Encrypt
 
@@ -152,12 +168,14 @@ server.
 
 Example query:
 
-    $ echo "Why is a raven like a writing desk?"|python -c "print raw_input().encode('base64')"
-    V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8=
+```bash
+$ echo "Why is a raven like a writing desk?"|python -c "print raw_input().encode('base64')"
+V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8=
 
-    $ curl --cacert cert/server.crt https://localhost:8080/encrypt  \
-            -d '{"Name":"Alice","Password":"Lewis","Minimum":2, "Owners":["Alice","Bill","Cat","Dodo"],"Data":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}'
-    {"Status":"ok","Response":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
+$ curl --cacert cert/server.crt https://localhost:8080/encrypt  \
+        -d '{"Name":"Alice","Password":"Lewis","Minimum":2, "Owners":["Alice","Bill","Cat","Dodo"],"Data":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}'
+{"Status":"ok","Response":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
+```
 
 The data expansion is not tied to the size of the input.
 
@@ -169,13 +187,17 @@ keys to the server, the clear data will be returned.
 
 Example query:
 
-    $ curl --cacert cert/server.crt https://localhost:8080/decrypt  \
-            -d {"Name":"Alice","Password":"Lewis","Data":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
-    {"Status":"ok","Response":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}
+```bash
+$ curl --cacert cert/server.crt https://localhost:8080/decrypt  \
+        -d {"Name":"Alice","Password":"Lewis","Data":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
+{"Status":"ok","Response":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}
+```
 
 If there aren't enough keys delegated you'll see:
 
-    {"Status":"Need more delegated keys"}
+```json
+{"Status":"Need more delegated keys"}
+```
 
 ### Password
 
@@ -184,9 +206,11 @@ does not require the previously encrypted files to be re-encrypted.
 
 Example Input JSON format:
 
-    $ curl --cacert cert/server.crt https://localhost:8080/password \
-           -d '{"Name":"Bill","Password":"Lizard", "NewPassword": "theLizard"}'
-    {"Status":"ok"}
+```bash
+$ curl --cacert cert/server.crt https://localhost:8080/password \
+       -d '{"Name":"Bill","Password":"Lizard", "NewPassword": "theLizard"}'
+{"Status":"ok"}
+```
 
 ### Modify
 
@@ -199,9 +223,11 @@ There are 3 commands:
 
 Example input JSON format:
 
-    $ curl --cacert cert/server.crt https://localhost:8080/modify \
-           -d '{"Name":"Alice","Password":"Lewis","ToModify":"Bill","Command":"admin"}'
-    {"Status":"ok"}
+```bash
+$ curl --cacert cert/server.crt https://localhost:8080/modify \
+       -d '{"Name":"Alice","Password":"Lewis","ToModify":"Bill","Command":"admin"}'
+{"Status":"ok"}
+```
 
 
 ### Web interface
