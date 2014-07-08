@@ -28,7 +28,7 @@ And run the tests:
 ## Running
 
 Red October is a TLS server. It requires a local file to hold the key
-vault an internet address and a certificate keypair.
+vault, an internet address, and a certificate keypair.
 
 First you need to acquire a TLS certificate. The simplest (and least
 secure) way is to skip the
