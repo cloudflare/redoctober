@@ -8,10 +8,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+
 	"github.com/cloudflare/redoctober/cryptor"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
-	"log"
 )
 
 // Each of these structures corresponds to the JSON expected on the
@@ -58,6 +59,11 @@ type decrypt struct {
 	Password string
 
 	Data []byte
+}
+
+type decryptWithDelegates struct {
+	Data      []byte
+	Delegates []string
 }
 
 type modify struct {
@@ -283,13 +289,23 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	resp, err := cryptor.Decrypt(s.Data)
+	data, names, err := cryptor.Decrypt(s.Data)
 	if err != nil {
 		log.Println("Error decrypting:", err)
 		return jsonStatusError(err)
 	}
 
-	return jsonResponse(resp)
+	resp := &decryptWithDelegates{
+		Data:      data,
+		Delegates: names,
+	}
+
+	out, err := json.Marshal(resp)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	return jsonResponse(out)
 }
 
 // Modify processes a modify request.

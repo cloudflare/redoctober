@@ -12,7 +12,6 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"github.com/cloudflare/redoctober/core"
 	"io"
 	"io/ioutil"
 	"log"
@@ -21,6 +20,8 @@ import (
 	"os"
 	"runtime"
 	"time"
+
+	"github.com/cloudflare/redoctober/core"
 )
 
 // List of URLs to register and their related functions
@@ -633,7 +634,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Response)+'</pre>' }) );
+						d = JSON.parse(window.atob(d.Response));
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Data)+'</pre><p>Delegates: '+d.Delegates.sort().join(', ')+'</p>' }) );
 					}
 				});
 			});
