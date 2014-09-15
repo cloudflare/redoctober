@@ -7,10 +7,11 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/cloudflare/redoctober/keycache"
-	"github.com/cloudflare/redoctober/passvault"
 	"os"
 	"testing"
+
+	"github.com/cloudflare/redoctober/keycache"
+	"github.com/cloudflare/redoctober/passvault"
 )
 
 func TestCreate(t *testing.T) {
@@ -449,8 +450,21 @@ func TestEncryptDecrypt(t *testing.T) {
 	if s.Status != "ok" {
 		t.Fatalf("Error in decrypt, %v", s.Status)
 	}
-	if string(s.Response) != "Hello Jello" {
-		t.Fatalf("Error in decrypt, %v", string(s.Response))
+
+	var d decryptWithDelegates
+	err = json.Unmarshal(s.Response, &d)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+
+	if string(d.Data) != "Hello Jello" {
+		t.Fatalf("Error in decrypt, %v", string(d.Data))
+	}
+
+	if d.Delegates[0] != "Bob" && d.Delegates[1] != "Carol" {
+		if d.Delegates[1] != "Bob" && d.Delegates[0] != "Carol" {
+			t.Fatalf("Error in decrypt, %v", d.Delegates)
+		}
 	}
 
 	keycache.FlushCache()
@@ -707,7 +721,13 @@ func TestStatic(t *testing.T) {
 		t.Fatalf("Error in summary, %v", r.Status)
 	}
 
-	if bytes.Compare(expected, r.Response) != 0 {
+	var d decryptWithDelegates
+	err = json.Unmarshal(r.Response, &d)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+
+	if bytes.Compare(expected, d.Data) != 0 {
 		t.Fatalf("Error in summary, %v, %v", expected, r.Response)
 	}
 

@@ -12,12 +12,13 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
+	"sort"
+	"strconv"
+
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/passvault"
 	"github.com/cloudflare/redoctober/symcrypt"
-	"sort"
-	"strconv"
 )
 
 const (
@@ -111,15 +112,16 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, pubKeys map[string
 }
 
 // unwrapKey decrypts first key in keys whose encryption keys are in keycache
-func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey) (unwrappedKey []byte, err error) {
+func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey) (unwrappedKey []byte, names []string, err error) {
 	var (
 		keyFound  error
 		fullMatch bool = false
+		nameSet        = map[string]bool{}
 	)
 
 	for _, mwKey := range keys {
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		tmpKeyValue := mwKey.Key
@@ -130,6 +132,7 @@ func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey) (unw
 			if tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, pubEncrypted.Key); keyFound != nil {
 				break
 			}
+			nameSet[mwName] = true
 		}
 		if keyFound == nil {
 			fullMatch = true
@@ -141,6 +144,12 @@ func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey) (unw
 
 	if !fullMatch {
 		err = errors.New("Need more delegated keys")
+		names = nil
+	}
+
+	names = make([]string, 0, len(nameSet))
+	for name := range nameSet {
+		names = append(names, name)
 	}
 	return
 }
@@ -339,14 +348,14 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 }
 
 // Decrypt decrypts a file using the keys in the key cache.
-func Decrypt(in []byte) (resp []byte, err error) {
+func Decrypt(in []byte) (resp []byte, names []string, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
 		return
 	}
 	if encrypted.Version != DEFAULT_VERSION {
-		return nil, errors.New("Unknown version")
+		return nil, nil, errors.New("Unknown version")
 	}
 
 	// make sure file was encrypted with the active vault
@@ -355,7 +364,7 @@ func Decrypt(in []byte) (resp []byte, err error) {
 		return
 	}
 	if encrypted.VaultId != vaultId {
-		return nil, errors.New("Wrong vault")
+		return nil, nil, errors.New("Wrong vault")
 	}
 
 	// validate the size of the keys
@@ -379,7 +388,7 @@ func Decrypt(in []byte) (resp []byte, err error) {
 
 	// decrypt file key with delegate keys
 	var unwrappedKey = make([]byte, 16)
-	if unwrappedKey, err = unwrapKey(encrypted.KeySet, encrypted.KeySetRSA); err != nil {
+	if unwrappedKey, names, err = unwrapKey(encrypted.KeySet, encrypted.KeySetRSA); err != nil {
 		return
 	}
 
@@ -393,5 +402,6 @@ func Decrypt(in []byte) (resp []byte, err error) {
 	// decrypt contents of file
 	aesCBC.CryptBlocks(clearData, encrypted.Data)
 
-	return padding.RemovePadding(clearData)
+	resp, err = padding.RemovePadding(clearData)
+	return
 }
