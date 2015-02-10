@@ -49,9 +49,11 @@ type encrypt struct {
 	Name     string
 	Password string
 
-	Minimum int
-	Owners  []string
-	Data    []byte
+	Minimum     int
+	Owners      []string
+	LeftOwners  []string
+	RightOwners []string
+	Data        []byte
 }
 
 type decrypt struct {
@@ -266,8 +268,13 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
+	if len(s.Owners) > 0 {
+		s.LeftOwners = s.Owners
+		s.RightOwners = s.Owners
+	}
+
 	// Encrypt file with list of owners
-	if resp, err := cryptor.Encrypt(s.Data, s.Owners, s.Minimum); err != nil {
+	if resp, err := cryptor.Encrypt(s.Data, s.LeftOwners, s.RightOwners, s.Minimum); err != nil {
 		log.Println("Error encrypting:", err)
 		return jsonStatusError(err)
 	} else {
