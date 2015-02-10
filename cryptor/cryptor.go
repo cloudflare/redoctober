@@ -255,7 +255,7 @@ func computeHmac(key []byte, encrypted EncryptedData) []byte {
 // Encrypt encrypts data with the keys associated with names. This
 // requires a minimum of min keys to decrypt.  NOTE: as currently
 // implemented, the maximum value for min is 2.
-func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
+func Encrypt(in []byte, leftNames, rightNames []string, min int) (resp []byte, err error) {
 	if min > 2 {
 		return nil, errors.New("Minimum restricted to 2")
 	}
@@ -281,14 +281,35 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 		return
 	}
 
-	// Allocate set of keys to be able to cover all ordered subsets of
-	// length 2 of names
+	var names = make(map[string]bool)
+	var overlap int
 
-	encrypted.KeySet = make([]MultiWrappedKey, len(names)*(len(names)-1))
+	// Count overlapping names, we don't want to double-encrypt
+	// with the same name
+	for _, n := range leftNames {
+		names[n] = true
+	}
+	for _, n := range rightNames {
+		used, ok := names[n]
+		if !used && ok {
+			names[n] = true
+		} else {
+			overlap++
+		}
+	}
+
+	// Allocate set of keys to be able to cover all unequal pairs of
+	// names with one from leftNames and one from rightNames
+
+	// Combinatorially, the number of ordered pairs with one element
+	// from one set and one from another for which both elements of
+	// the pair is distinct is
+	// len(n) * len(k) - overlap
+	encrypted.KeySet = make([]MultiWrappedKey, (len(leftNames)*len(rightNames) - overlap))
 	encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
 
 	var singleWrappedKey SingleWrappedKey
-	for _, name := range names {
+	for name := range names {
 		rec, ok := passvault.GetRecord(name)
 		if !ok {
 			err = errors.New("Missing user on disk")
@@ -312,8 +333,8 @@ func Encrypt(in []byte, names []string, min int) (resp []byte, err error) {
 
 	// encrypt file key with every combination of two keys
 	var n int
-	for _, nameOuter := range names {
-		for _, nameInner := range names {
+	for _, nameOuter := range leftNames {
+		for _, nameInner := range rightNames {
 			if nameInner != nameOuter {
 				encrypted.KeySet[n], err = encryptKey(nameInner, nameOuter, clearKey, encrypted.KeySetRSA)
 				n += 1
