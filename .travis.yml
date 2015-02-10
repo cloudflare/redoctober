@@ -1,11 +1,14 @@
 language: go
-go: tip
-script: go get code.google.com/p/go.tools/cmd/vet && go get github.com/cloudflare/redoctober && go test github.com/cloudflare/redoctober... && go vet github.com/cloudflare/redoctober...
+go: 1.2
+script:
+  - go get golang.org/x/tools/cmd/vet
+  - go get github.com/cloudflare/redoctober
+  - go test github.com/cloudflare/redoctober...
+  - go vet github.com/cloudflare/redoctober...
 notifications:
   email:
     recipients:
-      - albert@cloudflare.com
       - nick@cloudflare.com
-      - dane@cloudflare.com
+      - kyle@cloudflare.com
     on_success: never
     on_failure: change
