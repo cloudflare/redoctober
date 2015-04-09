@@ -45,6 +45,7 @@ type SingleWrappedKey struct {
 type EncryptedData struct {
 	Version   int
 	VaultId   int
+	Labels    []string
 	KeySet    []MultiWrappedKey
 	KeySetRSA map[string]SingleWrappedKey
 	IV        []byte
@@ -112,7 +113,7 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, pubKeys map[string
 }
 
 // unwrapKey decrypts first key in keys whose encryption keys are in keycache
-func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey) (unwrappedKey []byte, names []string, err error) {
+func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey, user string, labels []string) (unwrappedKey []byte, names []string, err error) {
 	var (
 		keyFound  error
 		fullMatch bool = false
@@ -129,7 +130,7 @@ func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey) (unw
 		for _, mwName := range mwKey.Name {
 			pubEncrypted := pubKeys[mwName]
 			// if this is null, it's an AES encrypted key
-			if tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, pubEncrypted.Key); keyFound != nil {
+			if tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, user, labels, pubEncrypted.Key); keyFound != nil {
 				break
 			}
 			nameSet[mwName] = true
@@ -227,6 +228,9 @@ func computeHmac(key []byte, encrypted EncryptedData) []byte {
 	}
 	sort.Sort(&swks)
 
+	// sort the labels
+	sort.Strings(encrypted.Labels)
+
 	// start hashing
 	mac.Write([]byte(strconv.Itoa(encrypted.Version)))
 	mac.Write([]byte(strconv.Itoa(encrypted.VaultId)))
@@ -249,13 +253,18 @@ func computeHmac(key []byte, encrypted EncryptedData) []byte {
 	mac.Write(encrypted.IV)
 	mac.Write(encrypted.Data)
 
+	// hash the labels
+	for index := range encrypted.Labels {
+		mac.Write([]byte(encrypted.Labels[index]))
+	}
+
 	return mac.Sum(nil)
 }
 
 // Encrypt encrypts data with the keys associated with names. This
 // requires a minimum of min keys to decrypt.  NOTE: as currently
 // implemented, the maximum value for min is 2.
-func Encrypt(in []byte, leftNames, rightNames []string, min int) (resp []byte, err error) {
+func Encrypt(in []byte, labels, leftNames, rightNames []string, min int) (resp []byte, err error) {
 	if min > 2 {
 		return nil, errors.New("Minimum restricted to 2")
 	}
@@ -358,6 +367,7 @@ func Encrypt(in []byte, leftNames, rightNames []string, min int) (resp []byte, e
 	aesCBC.CryptBlocks(encryptedFile, clearFile)
 
 	encrypted.Data = encryptedFile
+	encrypted.Labels = labels
 
 	hmacKey, err := passvault.GetHmacKey()
 	if err != nil {
@@ -369,7 +379,7 @@ func Encrypt(in []byte, leftNames, rightNames []string, min int) (resp []byte, e
 }
 
 // Decrypt decrypts a file using the keys in the key cache.
-func Decrypt(in []byte) (resp []byte, names []string, err error) {
+func Decrypt(in []byte, user string) (resp []byte, names []string, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
@@ -409,7 +419,8 @@ func Decrypt(in []byte) (resp []byte, names []string, err error) {
 
 	// decrypt file key with delegate keys
 	var unwrappedKey = make([]byte, 16)
-	if unwrappedKey, names, err = unwrapKey(encrypted.KeySet, encrypted.KeySetRSA); err != nil {
+	unwrappedKey, names, err = unwrapKey(encrypted.KeySet, encrypted.KeySetRSA, user, encrypted.Labels)
+	if err != nil {
 		return
 	}
 

@@ -16,10 +16,12 @@ var dummy = make([]byte, 16)
 
 func TestUsesFlush(t *testing.T) {
 	singleUse := ActiveUser{
-		Admin:  true,
-		Type:   passvault.AESRecord,
-		Expiry: nextYear,
-		Uses:   2,
+		Admin: true,
+		Type:  passvault.AESRecord,
+		Usage: Usage{
+			Expiry: nextYear,
+			Uses:   2,
+		},
 		aesKey: emptyKey,
 	}
 
@@ -37,7 +39,7 @@ func TestUsesFlush(t *testing.T) {
 		t.Fatalf("Error in number of live keys %v", UserKeys)
 	}
 
-	DecryptKey(dummy, "first", nil)
+	DecryptKey(dummy, "first", "", []string{}, nil)
 
 	Refresh()
 	if len(UserKeys) != 0 {
@@ -50,10 +52,12 @@ func TestTimeFlush(t *testing.T) {
 	one := now.Add(oneSec)
 
 	singleUse := ActiveUser{
-		Admin:  true,
-		Type:   passvault.AESRecord,
-		Expiry: one,
-		Uses:   10,
+		Admin: true,
+		Type:  passvault.AESRecord,
+		Usage: Usage{
+			Expiry: one,
+			Uses:   10,
+		},
 		aesKey: emptyKey,
 	}
 
@@ -73,9 +77,157 @@ func TestTimeFlush(t *testing.T) {
 
 	time.Sleep(oneSec)
 
-	_, err := DecryptKey(dummy, "first", nil)
+	_, err := DecryptKey(dummy, "first", "", []string{}, nil)
 
 	if err == nil {
 		t.Fatalf("Error in pruning expired key")
+	}
+}
+
+func TestGoodLabel(t *testing.T) {
+	singleUse := ActiveUser{
+		Admin: true,
+		Type:  passvault.AESRecord,
+		Usage: Usage{
+			Expiry: nextYear,
+			Uses:   2,
+			Labels: []string{"red"},
+		},
+		aesKey: emptyKey,
+	}
+
+	UserKeys["first"] = singleUse
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	EncryptKey(dummy, "first", nil)
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	DecryptKey(dummy, "first", "", []string{"red"}, nil)
+
+	Refresh()
+	if len(UserKeys) != 0 {
+		t.Fatalf("Error in number of live keys %v", UserKeys)
+	}
+}
+
+func TestBadLabel(t *testing.T) {
+	singleUse := ActiveUser{
+		Admin: true,
+		Type:  passvault.AESRecord,
+		Usage: Usage{
+			Expiry: nextYear,
+			Uses:   2,
+			Labels: []string{"red"},
+		},
+		aesKey: emptyKey,
+	}
+
+	UserKeys["first"] = singleUse
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	EncryptKey(dummy, "first", nil)
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	_, err := DecryptKey(dummy, "first", "", []string{"blue"}, nil)
+
+	if err == nil {
+		t.Fatalf("Decryption of labeled key with no permission")
+	}
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys %v", UserKeys)
+	}
+}
+
+func TestGoodUser(t *testing.T) {
+	singleUse := ActiveUser{
+		Admin: true,
+		Type:  passvault.AESRecord,
+		Usage: Usage{
+			Expiry: nextYear,
+			Uses:   2,
+			Users:  []string{"ci", "buildeng", "first"},
+			Labels: []string{"red", "blue"},
+		},
+		aesKey: emptyKey,
+	}
+
+	UserKeys["first"] = singleUse
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	EncryptKey(dummy, "first", nil)
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	DecryptKey(dummy, "first", "ci", []string{"red"}, nil)
+
+	Refresh()
+	if len(UserKeys) != 0 {
+		t.Fatalf("Error in number of live keys %v", UserKeys)
+	}
+}
+
+func TestBadUser(t *testing.T) {
+	singleUse := ActiveUser{
+		Admin: true,
+		Type:  passvault.AESRecord,
+		Usage: Usage{
+			Expiry: nextYear,
+			Uses:   2,
+			Users:  []string{"ci", "buildeng", "first"},
+			Labels: []string{"red", "blue"},
+		},
+		aesKey: emptyKey,
+	}
+
+	UserKeys["first"] = singleUse
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	// Note that the active user needs to be in the set of delegated
+	// users in the AES case only
+	EncryptKey(dummy, "first", nil)
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	_, err := DecryptKey(dummy, "first", "", []string{"blue"}, nil)
+
+	if err == nil {
+		t.Fatalf("Decryption of labeled key by unauthorized user")
+	}
+
+	Refresh()
+	if len(UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys %v", UserKeys)
 	}
 }

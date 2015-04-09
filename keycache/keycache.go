@@ -12,21 +12,29 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"errors"
-	"github.com/cloudflare/redoctober/ecdh"
-	"github.com/cloudflare/redoctober/passvault"
 	"log"
 	"time"
+
+	"github.com/cloudflare/redoctober/ecdh"
+	"github.com/cloudflare/redoctober/passvault"
 )
 
 // UserKeys is the set of decrypted keys in memory, indexed by name.
 var UserKeys map[string]ActiveUser = make(map[string]ActiveUser)
 
+// Usage holds the permissions of a delegated permission
+type Usage struct {
+	Uses   int       // Number of uses delegated
+	Labels []string  // File labels allowed to decrypt
+	Users  []string  // Set of users allows to decrypt
+	Expiry time.Time // Expiration of usage
+}
+
 // ActiveUser holds the information about an actively delegated key.
 type ActiveUser struct {
-	Admin  bool
-	Type   string
-	Expiry time.Time
-	Uses   int
+	Usage
+	Admin bool
+	Type  string
 
 	aesKey []byte
 	rsaKey rsa.PrivateKey
@@ -35,8 +43,16 @@ type ActiveUser struct {
 
 // matchUser returns the matching active user if present
 // and a boolean to indicate its presence.
-func matchUser(name string) (out ActiveUser, present bool) {
-	out, present = UserKeys[name]
+func matchUser(name, user string, labels []string) (out ActiveUser, present bool) {
+	key, present := UserKeys[name]
+	if present {
+		if key.Usage.matches(user, labels) {
+			return key, true
+		} else {
+			present = false
+		}
+	}
+
 	return
 }
 
@@ -45,11 +61,47 @@ func setUser(in ActiveUser, name string) {
 	UserKeys[name] = in
 }
 
+// matchesLabel returns true if this usage applies the user and label
+// an empty array of Users indicates that all users are valid
+func (usage Usage) matchesLabel(labels []string) bool {
+	// if asset has no labels always match
+	if len(labels) == 0 {
+		return true
+	}
+	//
+	for _, validLabel := range usage.Labels {
+		for _, label := range labels {
+			if label == validLabel {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// matches returns true if this usage applies the user and label
+// an empty array of Users indicates that all users are valid
+func (usage Usage) matches(user string, labels []string) bool {
+	if !usage.matchesLabel(labels) {
+		return false
+	}
+	// if usage lists no users, always match
+	if len(usage.Users) == 0 {
+		return true
+	}
+	for _, validUser := range usage.Users {
+		if user == validUser {
+			return true
+		}
+	}
+	return false
+}
+
 // useKey decrements the counter on an active key
 // for decryption or symmetric encryption
-func useKey(name string) {
-	if val, present := matchUser(name); present {
-		val.Uses -= 1
+func useKey(name, user string, labels []string) {
+	if val, present := matchUser(name, user, labels); present {
+		val.Usage.Uses -= 1
 		setUser(val, name)
 	}
 }
@@ -69,15 +121,15 @@ func FlushCache() {
 // Refresh purges all expired or used up keys.
 func Refresh() {
 	for name, active := range UserKeys {
-		if active.Expiry.Before(time.Now()) || active.Uses <= 0 {
-			log.Println("Record expired", name, active.Expiry)
+		if active.Usage.Expiry.Before(time.Now()) || active.Usage.Uses <= 0 {
+			log.Println("Record expired", name, active.Usage.Users, active.Usage.Labels, active.Usage.Expiry)
 			delete(UserKeys, name)
 		}
 	}
 }
 
 // AddKeyFromRecord decrypts a key for a given record and adds it to the cache.
-func AddKeyFromRecord(record passvault.PasswordRecord, name string, password string, uses int, durationString string) (err error) {
+func AddKeyFromRecord(record passvault.PasswordRecord, name, password string, users, labels []string, uses int, durationString string) (err error) {
 	var current ActiveUser
 
 	Refresh()
@@ -87,8 +139,10 @@ func AddKeyFromRecord(record passvault.PasswordRecord, name string, password str
 	if err != nil {
 		return
 	}
-	current.Uses = uses
-	current.Expiry = time.Now().Add(duration)
+	current.Usage.Uses = uses
+	current.Usage.Expiry = time.Now().Add(duration)
+	current.Usage.Users = users
+	current.Usage.Labels = labels
 
 	// get decryption keys
 	switch record.Type {
@@ -127,7 +181,7 @@ func EncryptKey(in []byte, name string, override []byte) (out []byte, err error)
 
 	// if the override key is not set, extract from the cache
 	if aesKey == nil {
-		encryptKey, ok := matchUser(name)
+		encryptKey, ok := matchUser(name, name, []string{})
 		if !ok {
 			return nil, errors.New("Key not delegated")
 		}
@@ -140,7 +194,7 @@ func EncryptKey(in []byte, name string, override []byte) (out []byte, err error)
 			return out, errors.New("Require override for key")
 		}
 
-		useKey(name)
+		useKey(name, name, []string{})
 	}
 
 	// encrypt
@@ -159,10 +213,10 @@ func EncryptKey(in []byte, name string, override []byte) (out []byte, err error)
 // for RSA and EC keys, the cached RSA/EC key is used to decrypt
 // the pubEncryptedKey which is then used to decrypt the input
 // buffer.
-func DecryptKey(in []byte, name string, pubEncryptedKey []byte) (out []byte, err error) {
+func DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey []byte) (out []byte, err error) {
 	Refresh()
 
-	decryptKey, ok := matchUser(name)
+	decryptKey, ok := matchUser(name, user, labels)
 	if !ok {
 		return nil, errors.New("Key not delegated")
 	}
@@ -199,7 +253,7 @@ func DecryptKey(in []byte, name string, pubEncryptedKey []byte) (out []byte, err
 	out = make([]byte, 16)
 	aesSession.Decrypt(out, in)
 
-	useKey(name)
+	useKey(name, user, labels)
 
 	return
 }

@@ -34,8 +34,10 @@ type delegate struct {
 	Name     string
 	Password string
 
-	Uses int
-	Time string
+	Uses   int
+	Time   string
+	Users  []string
+	Labels []string
 }
 
 type password struct {
@@ -54,6 +56,8 @@ type encrypt struct {
 	LeftOwners  []string
 	RightOwners []string
 	Data        []byte
+
+	Labels []string
 }
 
 type decrypt struct {
@@ -228,7 +232,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	// add signed-in record to active set
-	if err := keycache.AddKeyFromRecord(pr, s.Name, s.Password, s.Uses, s.Time); err != nil {
+	if err := keycache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Time); err != nil {
 		log.Printf("Error adding key to cache for %s: %s\n", s.Name, err)
 		return jsonStatusError(err)
 	}
@@ -274,7 +278,7 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 	}
 
 	// Encrypt file with list of owners
-	if resp, err := cryptor.Encrypt(s.Data, s.LeftOwners, s.RightOwners, s.Minimum); err != nil {
+	if resp, err := cryptor.Encrypt(s.Data, s.Labels, s.LeftOwners, s.RightOwners, s.Minimum); err != nil {
 		log.Println("Error encrypting:", err)
 		return jsonStatusError(err)
 	} else {
@@ -290,13 +294,12 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	err = validateAdmin(s.Name, s.Password)
+	err = validateUser(s.Name, s.Password)
 	if err != nil {
-		log.Println("Error validating admin status", err)
 		return jsonStatusError(err)
 	}
 
-	data, names, err := cryptor.Decrypt(s.Data)
+	data, names, err := cryptor.Decrypt(s.Data, s.Name)
 	if err != nil {
 		log.Println("Error decrypting:", err)
 		return jsonStatusError(err)
