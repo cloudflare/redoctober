@@ -8,7 +8,6 @@ package passvault
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/scrypt"
 	"crypto/aes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
@@ -22,6 +21,7 @@ import (
 	"github.com/cloudflare/redoctober/ecdh"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/symcrypt"
+	"golang.org/x/crypto/scrypt"
 	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
@@ -51,8 +51,8 @@ const (
 var localPath string
 
 type ECPublicKey struct {
-        Curve *elliptic.CurveParams
-        X, Y *big.Int
+	Curve *elliptic.CurveParams
+	X, Y  *big.Int
 }
 
 // toECDSA takes the internal ECPublicKey and returns an equivalent
@@ -63,7 +63,7 @@ func (pk *ECPublicKey) toECDSA() *ecdsa.PublicKey {
 	ecdsaPub.X = pk.X
 	ecdsaPub.Y = pk.Y
 
-	return ecdsaPub	
+	return ecdsaPub
 }
 
 // PasswordRecord is the structure used to store password and key
