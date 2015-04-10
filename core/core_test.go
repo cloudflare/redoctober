@@ -288,10 +288,10 @@ func TestEncryptDecrypt(t *testing.T) {
 	delegateJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
 	delegateJson2 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
 	delegateJson3 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
-	delegateJson4 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":2}")
-	delegateJson5 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":2}")
+	delegateJson4 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":2,\"Users\":[\"Alice\"],\"Labels\":[\"blue\"]}")
+	delegateJson5 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":2,\"Users\":[\"Alice\"],\"Labels\":[\"blue\"]}")
 	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
-	encryptJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
+	encryptJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Labels\":[\"blue\",\"red\"]}")
 	os.Remove("/tmp/db1.json")
 
 	Init("/tmp/db1.json")
