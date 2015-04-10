@@ -22,9 +22,10 @@
 
 			<div class="collapse navbar-collapse">
 				<ul class="nav navbar-nav">
+					<li><a href="#delegate">Delegate</a></li>
+					<li><a href="#admin">Admin</a></li>
 					<li><a href="#create">Create</a></li>
 					<li><a href="#summary">Summary</a></li>
-					<li><a href="#delegate">Delegate</a></li>
 					<li><a href="#change-password">Change Password</a></li>
 					<li><a href="#modify-user">Modify User</a></li>
 					<li><a href="#encrypt">Encrypt</a></li>
@@ -36,10 +37,53 @@
 
 	<div class="container">
 		<h1 class="page-header">Red October Management</h1>
+		<section class="row">
+			<div id="delegate" class="col-md-6">
+				<h3>Delegate</h3>
+
+				<form id="user-delegate" class="ro-user-delegate" role="form" action="/delegate" method="post">
+					<div class="feedback delegate-feedback"></div>
+
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="delegate-user">User name</label>
+							<input type="text" name="Name" class="form-control" id="delegate-user" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="delegate-user-pass">Password</label>
+							<input type="password" name="Password" class="form-control" id="delegate-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="delegate-user-time">Delegation Time <small>(e.g., 2h34m)</small></label>
+							<input type="text" name="Time" class="form-control" id="delegate-user-time" placeholder="1h" required />
+						</div>
+						<div class="col-md-6">
+							<label for="delegate-uses">Uses</label>
+							<input type="number" name="Uses" class="form-control" id="delegate-uses" placeholder="5" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="delegate-users">Users to allow <small>(comma separated)</small></label>
+							<input type="text" name="Users" class="form-control" id="delegate-users" placeholder="e.g. Alice, Bob" />
+						</div>
+						<div class="col-md-6">
+							<label for="delegate-labels">Labels to allow <small>(comma separated)</small></label>
+							<input type="text" name="Labels" class="form-control" id="delegate-labels" placeholder="e.g. Blue, Red" />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Delegate</button>
+				</form>
+			</div>
+		</section>
+
+		<hr />
 
 		<section class="row">
 			<div class="col-md-6">
-				<h3 id="create">Create vault/admin</h3>
+				<h3 id="admin">Create vault/admin</h3>
 				<form id="vault-create" class="form-inline ro-admin-create" role="form" action="/create" method="post">
 					<div class="feedback admin-feedback"></div>
 
@@ -81,33 +125,31 @@
 				</div>
 			</div>
 
-			<div id="delegate" class="col-md-6">
-				<h3>Delegate</h3>
+			<div id="create" class="col-md-6">
+				<h3 id="create">Create</h3>
 
-				<form id="user-delegate" class="ro-user-delegate" role="form" action="/delegate" method="post">
-					<div class="feedback delegate-feedback"></div>
+				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
+					<div class="feedback create-feedback"></div>
 
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="delegate-user">User name</label>
-							<input type="text" name="Name" class="form-control" id="delegate-user" placeholder="User name" required />
+							<label for="create-user">User name</label>
+							<input type="text" name="Name" class="form-control" id="create-user" placeholder="User name" required />
 						</div>
 						<div class="col-md-6">
-							<label for="delegate-user-pass">Password</label>
-							<input type="password" name="Password" class="form-control" id="delegate-user-pass" placeholder="Password" required />
+							<label for="create-user-pass">Password</label>
+							<input type="password" name="Password" class="form-control" id="create-user-pass" placeholder="Password" required />
 						</div>
 					</div>
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="delegate-user-time">Delegation Time <small>(e.g., 2h34m)</small></label>
-							<input type="text" name="Time" class="form-control" id="delegate-user-time" placeholder="1h" required />
+							<input type="hidden" name="Time" class="form-control" id="create-user-time" value="0h" required />
 						</div>
 						<div class="col-md-6">
-							<label for="delegate-uses">Uses</label>
-							<input type="number" name="Uses" class="form-control" id="delegate-uses" placeholder="5" required />
+							<input type="hidden" name="Uses" class="form-control" id="create-uses" value="0" required />
 						</div>
 					</div>
-					<button type="submit" class="btn btn-primary">Delegate</button>
+					<button type="submit" class="btn btn-primary">Create</button>
 				</form>
 			</div>
 		</section>
@@ -199,6 +241,12 @@
 						<div class="col-md-6">
 							<label for="encrypt-owners">Owners <small>(comma separated users)</small></label>
 							<input type="text" name="Owners" class="form-control" id="encrypt-owners" placeholder="e.g., Carol, Bob" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="encrypt-labels">Labels to use <small>(comma separated)</small></label>
+							<input type="text" name="Labels" class="form-control" id="encrypt-labels" placeholder="e.g. Blue, Red" />
 						</div>
 					</div>
 					<div class="form-group">
@@ -334,11 +382,36 @@
 
 				// Force uses to an integer
 				data.Uses = parseInt(data.Uses, 10);
+				data.Users = data.Users.split(',');
+				for(var i=0, l=data.Users.length; i<l; i++){
+					data.Users[i] = data.Users[i].trim();
+				}
+				data.Labels = data.Labels.split(',');
+				for(var i=0, l=data.Labels.length; i<l; i++){
+					data.Labels[i] = data.Labels[i].trim();
+				}
 
 				submit( $form, {
 					data : data,
 					success : function(d){
 						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Delegating '+data.Name }) );
+					}
+				});
+			});
+
+			// Create
+			$('body').on('submit', '#user-create', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				// Force uses to an integer
+				data.Uses = parseInt(data.Uses, 10);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Creating '+data.Name }) );
 					}
 				});
 			});
@@ -381,6 +454,10 @@
 				data.Owners = data.Owners.split(',');
 				for(var i=0, l=data.Owners.length; i<l; i++){
 					data.Owners[i] = data.Owners[i].trim();
+				}
+				data.Labels = data.Labels.split(',');
+				for(var i=0, l=data.Labels.length; i<l; i++){
+					data.Labels[i] = data.Labels[i].trim();
 				}
 
 				// Convert data to base64.
