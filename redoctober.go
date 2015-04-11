@@ -466,7 +466,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					</div>
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="encrypt-minimum">Minimum number of user for access</label>
+							<label for="encrypt-minimum">Minimum number of users for access</label>
 							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" required />
 						</div>
 						<div class="col-md-6">
@@ -589,6 +589,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							if( user.Uses ){ li.append( $('<span />', {'class': 'badge'}).text(user.Uses+' uses remaining') ); }
 							li.append( $('<h5 />', {'class': 'list-group-item-heading'}).text(key || 'Unknown') );
 							li.append( $('<p />', {'class': 'list-group-item-text'}).html('Type: '+user.Type+ (user.Expiry ? '<br />Expiry: '+user.Expiry : '')+ (user.Users ? '<br />Users: '+user.Users.join(', ') : '')+ (user.Labels ? '<br />Labels: '+user.Labels.join(', ') : '')) );
+
 							if( user.Admin ){
 								li.find('h5').append(' (admin)');
 							}
@@ -717,4 +718,5 @@ var indexHtml = []byte(`<!DOCTYPE html>
 			});
 		});
 	</script>
-</body>`)
+</body>
+</html>`)

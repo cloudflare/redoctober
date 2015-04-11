@@ -9,12 +9,11 @@
 	<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 	<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.2/js/bootstrap.min.js"></script>
 	<style type="text/css">
-		body{padding-top: 50px;}
 		.footer{ border-top: 1px solid #ccc; margin-top: 50px; padding: 20px 0;}
 	</style>
 </head>
 <body>
-	<nav class="navbar navbar-default navbar-fixed-top" role="banner">
+	<nav class="navbar navbar-default" role="banner">
 		<div class="container">
 			<div class="navbar-header">
 				<a href="/" class="navbar-brand">Red October</a>
@@ -125,7 +124,7 @@
 				</div>
 			</div>
 
-			<div id="create" class="col-md-6">
+			<div class="col-md-6">
 				<h3 id="create">Create</h3>
 
 				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
@@ -235,7 +234,7 @@
 					</div>
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="encrypt-minimum">Minimum number of user for access</label>
+							<label for="encrypt-minimum">Minimum number of users for access</label>
 							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" required />
 						</div>
 						<div class="col-md-6">
@@ -357,7 +356,7 @@
 							var li = $('<li />', {'class': 'list-group-item'}).appendTo(loc);
 							if( user.Uses ){ li.append( $('<span />', {'class': 'badge'}).text(user.Uses+' uses remaining') ); }
 							li.append( $('<h5 />', {'class': 'list-group-item-heading'}).text(key || 'Unknown') );
-							li.append( $('<p />', {'class': 'list-group-item-text'}).html('Type: '+user.Type+ (user.Expiry ? '<br />Expiry: '+user.Expiry : '')) );
+							li.append( $('<p />', {'class': 'list-group-item-text'}).html('Type: '+user.Type+ (user.Expiry ? '<br />Expiry: '+user.Expiry : '')+ (user.Users ? '<br />Users: '+user.Users.join(', ') : '')+ (user.Labels ? '<br />Labels: '+user.Labels.join(', ') : '')) );
 
 							if( user.Admin ){
 								li.find('h5').append(' (admin)');
