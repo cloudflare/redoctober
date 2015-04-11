@@ -166,7 +166,7 @@ The data expansion is not tied to the size of the input.
 Decrypt allows an admin to decrypt a piece of data. As long as
 "Minimum" number users from the set of "Owners" have delegated their
 keys to the server, a base64 encoded object with the clear data and the
-set of "Owners" whose private keys were used.
+set of "Owners" whose private keys were used is returned.
 
 Example query:
 
