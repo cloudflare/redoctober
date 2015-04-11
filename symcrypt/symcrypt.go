@@ -5,7 +5,6 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
-	"io"
 )
 
 // DecryptCBC decrypt bytes using a key and IV with AES in CBC mode.
@@ -41,6 +40,6 @@ func EncryptCBC(data, iv, key []byte) (encryptedData []byte, err error) {
 // MakeRandom is a helper that makes a new buffer full of random data.
 func MakeRandom(length int) ([]byte, error) {
 	bytes := make([]byte, length)
-	_, err := io.ReadFull(rand.Reader, bytes)
+	_, err := rand.Read(bytes)
 	return bytes, err
 }
