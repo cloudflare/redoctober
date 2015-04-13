@@ -41,7 +41,7 @@ type userRequest struct {
 	// keys of the functions map above
 	in []byte // Arbitrary input data (depends on the core.*
 	// function called)
-	resp chan []byte // Channel down which a response is sent (the
+	resp chan<- []byte // Channel down which a response is sent (the
 	// data sent will depend on the core.* function
 	// called to handle this request)
 }
@@ -50,7 +50,7 @@ type userRequest struct {
 // one of the functions named in the functions map above. It reads the
 // request and sends it to the goroutine started in main() below for
 // processing and then waits for the response.
-func queueRequest(process chan userRequest, requestType string, w http.ResponseWriter, r *http.Request) {
+func queueRequest(process chan<- userRequest, requestType string, w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -74,12 +74,7 @@ func queueRequest(process chan userRequest, requestType string, w http.ResponseW
 //
 // Returns a valid http.Server handling redoctober JSON requests (and
 // its associated listener) or an error
-func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, caPath string) (*http.Server, *net.Listener, error) {
-	mux := http.NewServeMux()
-	srv := http.Server{
-		Addr:    addr,
-		Handler: mux,
-	}
+func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, caPath string) (*http.Server, *net.Listener, error) {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error loading certificate (%s, %s): %s", certPath, keyPath, err)
@@ -90,27 +85,31 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 		Rand:         rand.Reader,
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
+		MinVersion: tls.VersionTLS10,
 	}
 
 	// If a caPath has been specified then a local CA is being used
 	// and not the system configuration.
 
 	if caPath != "" {
-		rootPool := x509.NewCertPool()
 		pemCert, err := ioutil.ReadFile(caPath)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error reading %s: %s\n", caPath, err)
 		}
-		derCert, pemCert := pem.Decode(pemCert)
+
+		derCert, _ := pem.Decode(pemCert)
 		if derCert == nil {
-			return nil, nil, fmt.Errorf("Error decoding CA certificate: %s\n", err)
+			return nil, nil, fmt.Errorf("No PEM data was found in the CA certificate file\n")
 		}
+
 		cert, err := x509.ParseCertificate(derCert.Bytes)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error parsing CA certificate: %s\n", err)
 		}
 
+		rootPool := x509.NewCertPool()
 		rootPool.AddCert(cert)
+
 		config.ClientAuth = tls.RequireAndVerifyClientCert
 		config.ClientCAs = rootPool
 	}
@@ -122,10 +121,12 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 
 	lstnr := tls.NewListener(conn, &config)
 
+	mux := http.NewServeMux()
+
 	// queue up post URIs
 	for current := range functions {
 		// copy this so reference does not get overwritten
-		var requestType = current
+		requestType := current
 		mux.HandleFunc(requestType, func(w http.ResponseWriter, r *http.Request) {
 			queueRequest(process, requestType, w, r)
 		})
@@ -135,6 +136,11 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 	idxHandler := &indexHandler{staticPath}
 	mux.HandleFunc("/index", idxHandler.handle)
 	mux.HandleFunc("/", idxHandler.handle)
+
+	srv := http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
 
 	return &srv, &lstnr, nil
 }
@@ -156,6 +162,12 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		body = bytes.NewReader(indexHtml)
 	}
+
+	header := w.Header()
+	header.Set("Content-Type", "text/html")
+	header.Set("Strict-Transport-Security", "max-age=86400; includeSubDomains; preload")
+	// If the server isn't HTTPS worthy, the HSTS header won't be honored.
+
 	http.ServeContent(w, r, "index.html", time.Now(), body)
 }
 
