@@ -352,7 +352,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Fatalf("Error in summary, %v", sum.Status)
 	}
 
-	// Encrypt with non-admin (fail)
+	// Encrypt with non-admin
 	respJson, err = Encrypt(encryptJson)
 	if err != nil {
 		t.Fatalf("Error in encrypt, %v", err)
@@ -361,7 +361,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error in encrypt, %v", err)
 	}
-	if s.Status == "ok" {
+	if s.Status != "ok" {
 		t.Fatalf("Error in encrypt, %v", s.Status)
 	}
 
