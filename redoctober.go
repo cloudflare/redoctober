@@ -324,6 +324,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<button type="submit" class="btn btn-primary">Delegate</button>
 				</form>
 			</div>
+
 		</section>
 
 		<hr />
@@ -472,11 +473,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="encrypt-user-admin">Admin User</label>
+							<label for="encrypt-user-admin">User name</label>
 							<input type="text" name="Name" class="form-control" id="encrypt-user-admin" placeholder="User name" required />
 						</div>
 						<div class="col-md-6">
-							<label for="encrypt-user-pass">Admin Password</label>
+							<label for="encrypt-user-pass">Password</label>
 							<input type="password" name="Password" class="form-control" id="encrypt-user-pass" placeholder="Password" required />
 						</div>
 					</div>
@@ -511,11 +512,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="decrypt-user-admin">Admin User</label>
+							<label for="decrypt-user-admin">User name</label>
 							<input type="text" name="Name" class="form-control" id="decrypt-user-admin" placeholder="User name" required />
 						</div>
 						<div class="col-md-6">
-							<label for="decrypt-user-pass">Admin Password</label>
+							<label for="decrypt-user-pass">Password</label>
 							<input type="password" name="Password" class="form-control" id="decrypt-user-pass" placeholder="Password" required />
 						</div>
 					</div>

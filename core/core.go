@@ -191,7 +191,7 @@ func Summary(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
-	if err := validateAdmin(s.Name, s.Password); err != nil {
+	if err := validateUser(s.Name, s.Password); err != nil {
 		log.Printf("Error validating admin status of %s: %s", s.Name, err)
 		return jsonStatusError(err)
 	}
@@ -267,7 +267,7 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if err := validateAdmin(s.Name, s.Password); err != nil {
+	if err := validateUser(s.Name, s.Password); err != nil {
 		log.Println("Error validating admin status", err)
 		return jsonStatusError(err)
 	}
