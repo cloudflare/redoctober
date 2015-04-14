@@ -19,13 +19,6 @@ import (
 
 var Curve = elliptic.P256
 
-func zero(in []byte) {
-	inLen := len(in)
-	for i := 0; i < inLen; i++ {
-		in[i] ^= in[i]
-	}
-}
-
 // Encrypt secures and authenticates its input using the public key
 // using ECDHE with AES-128-CBC-HMAC-SHA1.
 func Encrypt(pub *ecdsa.PublicKey, in []byte) (out []byte, err error) {
@@ -63,7 +56,7 @@ func Encrypt(pub *ecdsa.PublicKey, in []byte) (out []byte, err error) {
 	return
 }
 
-// Decrypt authentications and recovers the original message from
+// Decrypt authenticates and recovers the original message from
 // its input using the private key and the ephemeral key included in
 // the message.
 func Decrypt(priv *ecdsa.PrivateKey, in []byte) (out []byte, err error) {

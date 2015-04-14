@@ -61,6 +61,10 @@ func queueRequest(process chan<- userRequest, requestType string, w http.Respons
 	process <- userRequest{rt: requestType, in: body, resp: response}
 
 	if resp, ok := <-response; ok {
+		header := w.Header()
+		header.Set("Content-Type", "application/json")
+		header.Set("Strict-Transport-Security", "max-age=86400; includeSubDomains; preload")
+
 		w.Write(resp)
 	} else {
 		http.Error(w, "Unknown request", http.StatusInternalServerError)
