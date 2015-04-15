@@ -256,12 +256,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 	<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 	<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.2/js/bootstrap.min.js"></script>
 	<style type="text/css">
-		body{padding-top: 50px;}
 		.footer{ border-top: 1px solid #ccc; margin-top: 50px; padding: 20px 0;}
 	</style>
 </head>
 <body>
-	<nav class="navbar navbar-default navbar-fixed-top" role="banner">
+	<nav class="navbar navbar-default" role="banner">
 		<div class="container">
 			<div class="navbar-header">
 				<a href="/" class="navbar-brand">Red October</a>
@@ -373,7 +372,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				</div>
 			</div>
 
-			<div id="create" class="col-md-6">
+			<div class="col-md-6">
 				<h3 id="create">Create</h3>
 
 				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
