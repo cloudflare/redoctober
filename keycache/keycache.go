@@ -36,7 +36,6 @@ type ActiveUser struct {
 	Admin bool
 	Type  string
 
-	aesKey []byte
 	rsaKey rsa.PrivateKey
 	eccKey *ecdsa.PrivateKey
 }
@@ -68,7 +67,7 @@ func (usage Usage) matchesLabel(labels []string) bool {
 	if len(labels) == 0 {
 		return true
 	}
-	//
+
 	for _, validLabel := range usage.Labels {
 		for _, label := range labels {
 			if label == validLabel {
@@ -146,8 +145,6 @@ func AddKeyFromRecord(record passvault.PasswordRecord, name, password string, us
 
 	// get decryption keys
 	switch record.Type {
-	case passvault.AESRecord:
-		current.aesKey, err = record.GetKeyAES(password)
 	case passvault.RSARecord:
 		current.rsaKey, err = record.GetKeyRSA(password)
 	case passvault.ECCRecord:
@@ -171,31 +168,8 @@ func AddKeyFromRecord(record passvault.PasswordRecord, name, password string, us
 }
 
 // EncryptKey encrypts a 16 byte key using the cached key corresponding to name.
-// For AES keys, use the cached key.
-// For RSA and EC keys, the cache is not necessary; use the override
-// key instead.
-func EncryptKey(in []byte, name string, override []byte) (out []byte, err error) {
+func EncryptKey(in []byte, name string, aesKey []byte) (out []byte, err error) {
 	Refresh()
-
-	aesKey := override
-
-	// if the override key is not set, extract from the cache
-	if aesKey == nil {
-		encryptKey, ok := matchUser(name, name, []string{})
-		if !ok {
-			return nil, errors.New("Key not delegated")
-		}
-
-		switch encryptKey.Type {
-		case passvault.AESRecord:
-			aesKey = encryptKey.aesKey
-
-		default:
-			return out, errors.New("Require override for key")
-		}
-
-		useKey(name, name, []string{})
-	}
 
 	// encrypt
 	aesSession, err := aes.NewCipher(aesKey)
@@ -209,8 +183,7 @@ func EncryptKey(in []byte, name string, override []byte) (out []byte, err error)
 }
 
 // DecryptKey decrypts a 16 byte key using the key corresponding to the name parameter
-// for AES keys, the cached AES key is used directly to decrypt in
-// for RSA and EC keys, the cached RSA/EC key is used to decrypt
+// For RSA and EC keys, the cached RSA/EC key is used to decrypt
 // the pubEncryptedKey which is then used to decrypt the input
 // buffer.
 func DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey []byte) (out []byte, err error) {
@@ -225,9 +198,6 @@ func DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey [
 
 	// pick the aesKey to use for decryption
 	switch decryptKey.Type {
-	case passvault.AESRecord:
-		aesKey = decryptKey.aesKey
-
 	case passvault.RSARecord:
 		// extract the aes key from the pubEncryptedKey
 		aesKey, err = rsa.DecryptOAEP(sha1.New(), rand.Reader, &decryptKey.rsaKey, pubEncryptedKey, nil)

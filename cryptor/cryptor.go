@@ -92,8 +92,6 @@ func encryptKey(nameInner, nameOuter string, clearKey []byte, pubKeys map[string
 			err = errors.New("Missing user in file")
 			return
 		}
-	case passvault.AESRecord:
-		break
 
 	default:
 		return out, errors.New("Unknown record type inner")

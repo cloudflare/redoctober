@@ -30,7 +30,6 @@ import (
 
 // Constants for record type
 const (
-	AESRecord = "AES"
 	RSARecord = "RSA"
 	ECCRecord = "ECC"
 )
@@ -74,7 +73,6 @@ type PasswordRecord struct {
 	PasswordSalt   []byte
 	HashedPassword []byte
 	KeySalt        []byte
-	AESKey         []byte
 	RSAKey         struct {
 		RSAExp      []byte
 		RSAExpIV    []byte
@@ -221,16 +219,6 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 		newRec.ECKey.ECPublic.Y = ecPriv.PublicKey.Y
 	}
 
-	// encrypt AES key with password key
-	aesKey, err := symcrypt.MakeRandom(16)
-	if err != nil {
-		return
-	}
-
-	if newRec.AESKey, err = encryptECB(aesKey, passKey); err != nil {
-		return
-	}
-
 	newRec.Admin = admin
 
 	return
@@ -301,11 +289,6 @@ func InitFromDisk(path string) error {
 		if len(rec.KeySalt) != 16 {
 			return formatErr
 		}
-		if rec.Type == AESRecord {
-			if len(rec.AESKey) != 16 {
-				return formatErr
-			}
-		}
 		if rec.Type == RSARecord {
 			if len(rec.RSAKey.RSAExp) == 0 || len(rec.RSAKey.RSAExp)%16 != 0 {
 				return formatErr
@@ -327,7 +310,10 @@ func InitFromDisk(path string) error {
 			}
 		}
 		if rec.Type == ECCRecord {
-			if len(rec.ECKey.ECPriv) == 0 {
+			if len(rec.ECKey.ECPriv) == 0 || len(rec.ECKey.ECPriv)%16 != 0 {
+				return formatErr
+			}
+			if len(rec.ECKey.ECPrivIV) != 16 {
 				return formatErr
 			}
 		}
@@ -385,30 +371,6 @@ func ChangePassword(name, password, newPassword string) (err error) {
 		return
 	}
 
-	// decrypt key
-	var key []byte
-	var rsaKey rsa.PrivateKey
-	var ecKey *ecdsa.PrivateKey
-	if pr.Type == AESRecord {
-		key, err = pr.GetKeyAES(password)
-		if err != nil {
-			return
-		}
-	} else if pr.Type == RSARecord {
-		rsaKey, err = pr.GetKeyRSA(password)
-		if err != nil {
-			return
-		}
-	} else if pr.Type == ECCRecord {
-		ecKey, err = pr.GetKeyECC(password)
-		if err != nil {
-			return
-		}
-	} else {
-		err = errors.New("Unkown record type")
-		return
-	}
-
 	// add the password salt and hash
 	if pr.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
@@ -425,19 +387,26 @@ func ChangePassword(name, password, newPassword string) (err error) {
 		return
 	}
 
-	// encrypt original key with new password
-	if pr.Type == AESRecord {
-		pr.AESKey, err = encryptECB(key, newPassKey)
+	// decrypt with old password and re-encrypt original key with new password
+	if pr.Type == RSARecord {
+		var rsaKey rsa.PrivateKey
+		rsaKey, err = pr.GetKeyRSA(password)
 		if err != nil {
 			return
 		}
-	} else if pr.Type == RSARecord {
+
 		// encrypt RSA key with password key
 		err = encryptRSARecord(&pr, &rsaKey, newPassKey)
 		if err != nil {
 			return
 		}
 	} else if pr.Type == ECCRecord {
+		var ecKey *ecdsa.PrivateKey
+		ecKey, err = pr.GetKeyECC(password)
+		if err != nil {
+			return
+		}
+
 		// encrypt ECDSA key with password key
 		err = encryptECCRecord(&pr, ecKey, newPassKey)
 		if err != nil {
@@ -458,9 +427,9 @@ func DeleteRecord(name string) error {
 	if _, ok := GetRecord(name); ok {
 		delete(records.Passwords, name)
 		return WriteRecordsToDisk()
+	} else {
+		return errors.New("Record missing")
 	}
-
-	return errors.New("Record missing")
 }
 
 // RevokeRecord removes admin status from a record.
@@ -469,9 +438,9 @@ func RevokeRecord(name string) error {
 		rec.Admin = false
 		SetRecord(rec, name)
 		return WriteRecordsToDisk()
+	} else {
+		return errors.New("Record missing")
 	}
-
-	return errors.New("Record missing")
 }
 
 // MakeAdmin adds admin status to a given record.
@@ -480,9 +449,9 @@ func MakeAdmin(name string) error {
 		rec.Admin = true
 		SetRecord(rec, name)
 		return WriteRecordsToDisk()
+	} else {
+		return errors.New("Record missing")
 	}
-
-	return errors.New("Record missing")
 }
 
 // SetRecord puts a record into the global status.
@@ -500,18 +469,18 @@ func GetRecord(name string) (PasswordRecord, bool) {
 func GetVaultId() (id int, err error) {
 	if !IsInitialized() {
 		return 0, errors.New("Path not initialized")
+	} else {
+		return records.VaultId, nil
 	}
-
-	return records.VaultId, nil
 }
 
 // GetHmacKey returns the hmac key of the current vault.
 func GetHmacKey() (key []byte, err error) {
 	if !IsInitialized() {
 		return nil, errors.New("Path not initialized")
+	} else {
+		return records.HmacKey, nil
 	}
-
-	return records.HmacKey, nil
 }
 
 // IsInitialized returns true if the disk vault has been loaded.
@@ -554,39 +523,22 @@ func (pr PasswordRecord) EncryptKey(in []byte) (out []byte, err error) {
 	}
 }
 
-// GetKeyAES returns the 16-byte key of the record.
-func (pr PasswordRecord) GetKeyAES(password string) (key []byte, err error) {
-	if pr.Type != AESRecord {
-		return nil, errors.New("Invalid function for record type")
-	}
-
-	err = pr.ValidatePassword(password)
-	if err != nil {
-		return
-	}
-
-	passKey, err := derivePasswordKey(password, pr.KeySalt)
-	if err != nil {
-		return
-	}
-
-	return decryptECB(pr.AESKey, passKey)
-}
-
 // GetKeyRSAPub returns the RSA public key of the record.
 func (pr PasswordRecord) GetKeyRSAPub() (out *rsa.PublicKey, err error) {
 	if pr.Type != RSARecord {
 		return out, errors.New("Invalid function for record type")
+	} else {
+		return &pr.RSAKey.RSAPublic, err
 	}
-	return &pr.RSAKey.RSAPublic, err
 }
 
 // GetKeyECCPub returns the ECDSA public key out of the record.
 func (pr PasswordRecord) GetKeyECCPub() (out *ecdsa.PublicKey, err error) {
 	if pr.Type != ECCRecord {
 		return out, errors.New("Invalid function for record type")
+	} else {
+		return pr.ECKey.ECPublic.toECDSA(), err
 	}
-	return pr.ECKey.ECPublic.toECDSA(), err
 }
 
 // GetKeyECC returns the ECDSA private key of the record given the correct password.
@@ -675,13 +627,14 @@ func (pr PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err err
 
 // ValidatePassword returns an error if the password is incorrect.
 func (pr PasswordRecord) ValidatePassword(password string) error {
-	if h, err := hashPassword(password, pr.PasswordSalt); err != nil {
+	h, err := hashPassword(password, pr.PasswordSalt)
+	if err != nil {
 		return err
-	} else {
-		if bytes.Compare(h, pr.HashedPassword) != 0 {
-			return errors.New("Wrong Password")
-		}
 	}
 
-	return nil
+	if bytes.Compare(h, pr.HashedPassword) != 0 {
+		return errors.New("Wrong Password")
+	} else {
+		return nil
+	}
 }
