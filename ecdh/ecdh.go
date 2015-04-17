@@ -68,7 +68,8 @@ func Decrypt(priv *ecdsa.PrivateKey, in []byte) (out []byte, err error) {
 	}
 
 	x, y := elliptic.Unmarshal(Curve(), ephPub)
-	if x == nil {
+	ok := Curve().IsOnCurve(x, y) // Rejects the identity point too.
+	if x == nil || !ok {
 		return nil, errors.New("Invalid public key")
 	}
 
