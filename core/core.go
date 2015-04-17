@@ -20,17 +20,17 @@ import (
 // JSON that should be sent on the /delegate URI and it is handled by
 // the Delegate function below).
 
-type create struct {
+type CreateRequest struct {
 	Name     string
 	Password string
 }
 
-type summary struct {
+type SummaryRequest struct {
 	Name     string
 	Password string
 }
 
-type delegate struct {
+type DelegateRequest struct {
 	Name     string
 	Password string
 
@@ -40,14 +40,14 @@ type delegate struct {
 	Labels []string
 }
 
-type password struct {
+type PasswordRequest struct {
 	Name     string
 	Password string
 
 	NewPassword string
 }
 
-type encrypt struct {
+type EncryptRequest struct {
 	Name     string
 	Password string
 
@@ -60,19 +60,14 @@ type encrypt struct {
 	Labels []string
 }
 
-type decrypt struct {
+type DecryptRequest struct {
 	Name     string
 	Password string
 
 	Data []byte
 }
 
-type decryptWithDelegates struct {
-	Data      []byte
-	Delegates []string
-}
-
-type modify struct {
+type ModifyRequest struct {
 	Name     string
 	Password string
 
@@ -82,34 +77,35 @@ type modify struct {
 
 // These structures map the JSON responses that will be sent from the API
 
-type status struct {
-	Status string
-}
-
-type responseData struct {
+type ResponseData struct {
 	Status   string
-	Response []byte
+	Response []byte `json:",omitempty"`
 }
 
-type summaryData struct {
+type SummaryData struct {
 	Status string
 	Live   map[string]keycache.ActiveUser
 	All    map[string]passvault.Summary
 }
 
+type DecryptWithDelegates struct {
+	Data      []byte
+	Delegates []string
+}
+
 // Helper functions that create JSON responses sent by core
 
 func jsonStatusOk() ([]byte, error) {
-	return json.Marshal(status{Status: "ok"})
+	return json.Marshal(ResponseData{Status: "ok"})
 }
 func jsonStatusError(err error) ([]byte, error) {
-	return json.Marshal(status{Status: err.Error()})
+	return json.Marshal(ResponseData{Status: err.Error()})
 }
 func jsonSummary() ([]byte, error) {
-	return json.Marshal(summaryData{Status: "ok", Live: keycache.GetSummary(), All: passvault.GetSummary()})
+	return json.Marshal(SummaryData{Status: "ok", Live: keycache.GetSummary(), All: passvault.GetSummary()})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
-	return json.Marshal(responseData{Status: "ok", Response: resp})
+	return json.Marshal(ResponseData{Status: "ok", Response: resp})
 }
 
 // validateAdmin checks that the username and password passed in are
@@ -156,7 +152,7 @@ func Init(path string) (err error) {
 
 // Create processes a create request.
 func Create(jsonIn []byte) ([]byte, error) {
-	var s create
+	var s CreateRequest
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
@@ -180,7 +176,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 
 // Summary processes a summary request.
 func Summary(jsonIn []byte) ([]byte, error) {
-	var s summary
+	var s SummaryRequest
 	keycache.Refresh()
 
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
@@ -201,7 +197,7 @@ func Summary(jsonIn []byte) ([]byte, error) {
 
 // Delegate processes a delegation request.
 func Delegate(jsonIn []byte) ([]byte, error) {
-	var s delegate
+	var s DelegateRequest
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
@@ -242,7 +238,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 // Password processes a password change request.
 func Password(jsonIn []byte) ([]byte, error) {
-	var s password
+	var s PasswordRequest
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
@@ -262,7 +258,7 @@ func Password(jsonIn []byte) ([]byte, error) {
 
 // Encrypt processes an encrypt request.
 func Encrypt(jsonIn []byte) ([]byte, error) {
-	var s encrypt
+	var s EncryptRequest
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
@@ -288,9 +284,10 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 
 // Decrypt processes a decrypt request.
 func Decrypt(jsonIn []byte) ([]byte, error) {
-	var s decrypt
+	var s DecryptRequest
 	err := json.Unmarshal(jsonIn, &s)
 	if err != nil {
+		log.Println("Error unmarshaling input:", err)
 		return jsonStatusError(err)
 	}
 
@@ -305,7 +302,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	resp := &decryptWithDelegates{
+	resp := &DecryptWithDelegates{
 		Data:      data,
 		Delegates: names,
 	}
@@ -320,7 +317,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 
 // Modify processes a modify request.
 func Modify(jsonIn []byte) ([]byte, error) {
-	var s modify
+	var s ModifyRequest
 
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
