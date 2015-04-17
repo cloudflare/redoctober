@@ -46,9 +46,6 @@ const (
 	DEFAULT_VERSION = 1
 )
 
-// Path of current vault
-var localPath string
-
 type ECPublicKey struct {
 	Curve *elliptic.CurveParams
 	X, Y  *big.Int
@@ -92,16 +89,14 @@ type PasswordRecord struct {
 
 // diskRecords is the structure used to read and write a JSON file
 // containing the contents of a password vault
-type diskRecords struct {
+type Records struct {
 	Version   int
 	VaultId   int
 	HmacKey   []byte
 	Passwords map[string]PasswordRecord
-}
 
-// records is the set of encrypted records read from disk and
-// unmarshalled
-var records diskRecords
+	localPath string // Path of current vault
+}
 
 // Summary is a minmial account summary.
 type Summary struct {
@@ -171,8 +166,8 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 }
 
 // createPasswordRec creates a new record from a username and password
-func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err error) {
-	newRec.Type = DefaultRecordType
+func createPasswordRec(password string, admin bool, userType string) (newRec PasswordRecord, err error) {
+	newRec.Type = userType
 
 	if newRec.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
@@ -192,7 +187,7 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 	}
 
 	// generate a key pair
-	switch DefaultRecordType {
+	switch userType {
 	case RSARecord:
 		var rsaPriv *rsa.PrivateKey
 		rsaPriv, err = rsa.GenerateKey(rand.Reader, 2048)
@@ -217,6 +212,8 @@ func createPasswordRec(password string, admin bool) (newRec PasswordRecord, err 
 		newRec.ECKey.ECPublic.Curve = ecPriv.PublicKey.Curve.Params()
 		newRec.ECKey.ECPublic.X = ecPriv.PublicKey.X
 		newRec.ECKey.ECPublic.Y = ecPriv.PublicKey.Y
+	default:
+		err = errors.New("Unknown record type")
 	}
 
 	newRec.Admin = admin
@@ -257,14 +254,18 @@ func encryptECB(data, key []byte) (encryptedData []byte, err error) {
 }
 
 // InitFromDisk reads the record from disk and initialize global context.
-func InitFromDisk(path string) error {
-	jsonDiskRecord, err := ioutil.ReadFile(path)
+func InitFrom(path string) (records Records, err error) {
+	var jsonDiskRecord []byte
 
-	// It's OK for the file to be missing, we'll create it later if
-	// anything is added.
+	if path != "memory" {
+		jsonDiskRecord, err = ioutil.ReadFile(path)
 
-	if err != nil && !os.IsNotExist(err) {
-		return err
+		// It's OK for the file to be missing, we'll create it later if
+		// anything is added.
+
+		if err != nil && !os.IsNotExist(err) {
+			return
+		}
 	}
 
 	// Initialized so that we can determine later if anything was read
@@ -274,47 +275,47 @@ func InitFromDisk(path string) error {
 
 	if len(jsonDiskRecord) != 0 {
 		if err = json.Unmarshal(jsonDiskRecord, &records); err != nil {
-			return err
+			return
 		}
 	}
 
-	formatErr := errors.New("Format error")
+	err = errors.New("Format error")
 	for _, rec := range records.Passwords {
 		if len(rec.PasswordSalt) != 16 {
-			return formatErr
+			return
 		}
 		if len(rec.HashedPassword) != 16 {
-			return formatErr
+			return
 		}
 		if len(rec.KeySalt) != 16 {
-			return formatErr
+			return
 		}
 		if rec.Type == RSARecord {
 			if len(rec.RSAKey.RSAExp) == 0 || len(rec.RSAKey.RSAExp)%16 != 0 {
-				return formatErr
+				return
 			}
 			if len(rec.RSAKey.RSAPrimeP) == 0 || len(rec.RSAKey.RSAPrimeP)%16 != 0 {
-				return formatErr
+				return
 			}
 			if len(rec.RSAKey.RSAPrimeQ) == 0 || len(rec.RSAKey.RSAPrimeQ)%16 != 0 {
-				return formatErr
+				return
 			}
 			if len(rec.RSAKey.RSAExpIV) != 16 {
-				return formatErr
+				return
 			}
 			if len(rec.RSAKey.RSAPrimePIV) != 16 {
-				return formatErr
+				return
 			}
 			if len(rec.RSAKey.RSAPrimeQIV) != 16 {
-				return formatErr
+				return
 			}
 		}
 		if rec.Type == ECCRecord {
 			if len(rec.ECKey.ECPriv) == 0 || len(rec.ECKey.ECPriv)%16 != 0 {
-				return formatErr
+				return
 			}
 			if len(rec.ECKey.ECPrivIV) != 16 {
-				return formatErr
+				return
 			}
 		}
 	}
@@ -327,62 +328,53 @@ func InitFromDisk(path string) error {
 		records.VaultId = int(mrand.Int31())
 		records.HmacKey, err = symcrypt.MakeRandom(16)
 		if err != nil {
-			return err
+			return
 		}
 		records.Passwords = make(map[string]PasswordRecord)
 	}
 
-	localPath = path
+	records.localPath = path
 
-	return nil
+	err = nil
+	return
 }
 
 // WriteRecordsToDisk saves the current state of the records to disk.
-func WriteRecordsToDisk() error {
-	if !IsInitialized() {
-		return errors.New("Path not initialized")
+func (records *Records) WriteRecordsToDisk() error {
+	if records.localPath == "memory" {
+		return nil
+	} else {
+		jsonDiskRecord, err := json.Marshal(records)
+		if err != nil {
+			return err
+		}
+		return ioutil.WriteFile(records.localPath, jsonDiskRecord, 0644)
 	}
-
-	jsonDiskRecord, err := json.Marshal(records)
-	if err != nil {
-		return err
-	}
-	return ioutil.WriteFile(localPath, jsonDiskRecord, 0644)
 }
 
 // AddNewRecord adds a new record for a given username and password.
-func AddNewRecord(name, password string, admin bool) (PasswordRecord, error) {
-	pr, err := createPasswordRec(password, admin)
+func (records *Records) AddNewRecord(name, password string, admin bool, userType string) (PasswordRecord, error) {
+	pr, err := createPasswordRec(password, admin, userType)
 	if err != nil {
 		return pr, err
 	}
-	SetRecord(pr, name)
-	return pr, WriteRecordsToDisk()
+	records.SetRecord(pr, name)
+	return pr, records.WriteRecordsToDisk()
 }
 
 // ChangePassword changes the password for a given user.
-func ChangePassword(name, password, newPassword string) (err error) {
-	pr, ok := GetRecord(name)
+func (records *Records) ChangePassword(name, password, newPassword string) (err error) {
+	pr, ok := records.GetRecord(name)
 	if !ok {
 		err = errors.New("Record not present")
 		return
 	}
-	if err = pr.ValidatePassword(password); err != nil {
-		return
-	}
 
-	// add the password salt and hash
-	if pr.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
+	var keySalt []byte
+	if keySalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
 	}
-	if pr.HashedPassword, err = hashPassword(newPassword, pr.PasswordSalt); err != nil {
-		return
-	}
-
-	if pr.KeySalt, err = symcrypt.MakeRandom(16); err != nil {
-		return
-	}
-	newPassKey, err := derivePasswordKey(newPassword, pr.KeySalt)
+	newPassKey, err := derivePasswordKey(newPassword, keySalt)
 	if err != nil {
 		return
 	}
@@ -417,84 +409,81 @@ func ChangePassword(name, password, newPassword string) (err error) {
 		return
 	}
 
-	SetRecord(pr, name)
+	// add the password salt and hash
+	if pr.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
+		return
+	}
+	if pr.HashedPassword, err = hashPassword(newPassword, pr.PasswordSalt); err != nil {
+		return
+	}
 
-	return WriteRecordsToDisk()
+	pr.KeySalt = keySalt
+
+	records.SetRecord(pr, name)
+
+	return records.WriteRecordsToDisk()
 }
 
 // DeleteRecord deletes a given record.
-func DeleteRecord(name string) error {
-	if _, ok := GetRecord(name); ok {
+func (records *Records) DeleteRecord(name string) error {
+	if _, ok := records.GetRecord(name); ok {
 		delete(records.Passwords, name)
-		return WriteRecordsToDisk()
+		return records.WriteRecordsToDisk()
 	} else {
 		return errors.New("Record missing")
 	}
 }
 
 // RevokeRecord removes admin status from a record.
-func RevokeRecord(name string) error {
-	if rec, ok := GetRecord(name); ok {
+func (records *Records) RevokeRecord(name string) error {
+	if rec, ok := records.GetRecord(name); ok {
 		rec.Admin = false
-		SetRecord(rec, name)
-		return WriteRecordsToDisk()
+		records.SetRecord(rec, name)
+		return records.WriteRecordsToDisk()
 	} else {
 		return errors.New("Record missing")
 	}
 }
 
 // MakeAdmin adds admin status to a given record.
-func MakeAdmin(name string) error {
-	if rec, ok := GetRecord(name); ok {
+func (records *Records) MakeAdmin(name string) error {
+	if rec, ok := records.GetRecord(name); ok {
 		rec.Admin = true
-		SetRecord(rec, name)
-		return WriteRecordsToDisk()
+		records.SetRecord(rec, name)
+		return records.WriteRecordsToDisk()
 	} else {
 		return errors.New("Record missing")
 	}
 }
 
 // SetRecord puts a record into the global status.
-func SetRecord(pr PasswordRecord, name string) {
+func (records *Records) SetRecord(pr PasswordRecord, name string) {
 	records.Passwords[name] = pr
 }
 
 // GetRecord returns a record given a name.
-func GetRecord(name string) (PasswordRecord, bool) {
+func (records *Records) GetRecord(name string) (PasswordRecord, bool) {
 	dpr, found := records.Passwords[name]
 	return dpr, found
 }
 
 // GetVaultId returns the id of the current vault.
-func GetVaultId() (id int, err error) {
-	if !IsInitialized() {
-		return 0, errors.New("Path not initialized")
-	} else {
-		return records.VaultId, nil
-	}
+func (records *Records) GetVaultId() (id int, err error) {
+	return records.VaultId, nil
 }
 
 // GetHmacKey returns the hmac key of the current vault.
-func GetHmacKey() (key []byte, err error) {
-	if !IsInitialized() {
-		return nil, errors.New("Path not initialized")
-	} else {
-		return records.HmacKey, nil
-	}
-}
-
-// IsInitialized returns true if the disk vault has been loaded.
-func IsInitialized() bool {
-	return localPath != ""
+func (records *Records) GetHmacKey() (key []byte, err error) {
+	return records.HmacKey, nil
 }
 
 // NumRecords returns the number of records in the vault.
-func NumRecords() int {
+func (records *Records) NumRecords() int {
 	return len(records.Passwords)
 }
 
 // GetSummary returns a summary of the records on disk.
-func GetSummary() (summary map[string]Summary) {
+func (records *Records) GetSummary() (summary map[string]Summary) {
 	summary = make(map[string]Summary)
 	for name, pass := range records.Passwords {
 		summary[name] = Summary{pass.Admin, pass.Type}
@@ -503,17 +492,17 @@ func GetSummary() (summary map[string]Summary) {
 }
 
 // IsAdmin returns the admin status of the PasswordRecord.
-func (pr PasswordRecord) IsAdmin() bool {
+func (pr *PasswordRecord) IsAdmin() bool {
 	return pr.Admin
 }
 
 // GetType returns the type status of the PasswordRecord.
-func (pr PasswordRecord) GetType() string {
+func (pr *PasswordRecord) GetType() string {
 	return pr.Type
 }
 
 // EncryptKey encrypts a 16-byte key with the RSA or EC key of the record.
-func (pr PasswordRecord) EncryptKey(in []byte) (out []byte, err error) {
+func (pr *PasswordRecord) EncryptKey(in []byte) (out []byte, err error) {
 	if pr.Type == RSARecord {
 		return rsa.EncryptOAEP(sha1.New(), rand.Reader, &pr.RSAKey.RSAPublic, in, nil)
 	} else if pr.Type == ECCRecord {
@@ -524,7 +513,7 @@ func (pr PasswordRecord) EncryptKey(in []byte) (out []byte, err error) {
 }
 
 // GetKeyRSAPub returns the RSA public key of the record.
-func (pr PasswordRecord) GetKeyRSAPub() (out *rsa.PublicKey, err error) {
+func (pr *PasswordRecord) GetKeyRSAPub() (out *rsa.PublicKey, err error) {
 	if pr.Type != RSARecord {
 		return out, errors.New("Invalid function for record type")
 	} else {
@@ -533,7 +522,7 @@ func (pr PasswordRecord) GetKeyRSAPub() (out *rsa.PublicKey, err error) {
 }
 
 // GetKeyECCPub returns the ECDSA public key out of the record.
-func (pr PasswordRecord) GetKeyECCPub() (out *ecdsa.PublicKey, err error) {
+func (pr *PasswordRecord) GetKeyECCPub() (out *ecdsa.PublicKey, err error) {
 	if pr.Type != ECCRecord {
 		return out, errors.New("Invalid function for record type")
 	} else {
@@ -542,7 +531,7 @@ func (pr PasswordRecord) GetKeyECCPub() (out *ecdsa.PublicKey, err error) {
 }
 
 // GetKeyECC returns the ECDSA private key of the record given the correct password.
-func (pr PasswordRecord) GetKeyECC(password string) (key *ecdsa.PrivateKey, err error) {
+func (pr *PasswordRecord) GetKeyECC(password string) (key *ecdsa.PrivateKey, err error) {
 	if pr.Type != ECCRecord {
 		return key, errors.New("Invalid function for record type")
 	}
@@ -569,7 +558,7 @@ func (pr PasswordRecord) GetKeyECC(password string) (key *ecdsa.PrivateKey, err 
 }
 
 // GetKeyRSA returns the RSA private key of the record given the correct password.
-func (pr PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err error) {
+func (pr *PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err error) {
 	if pr.Type != RSARecord {
 		return key, errors.New("Invalid function for record type")
 	}
@@ -626,7 +615,7 @@ func (pr PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err err
 }
 
 // ValidatePassword returns an error if the password is incorrect.
-func (pr PasswordRecord) ValidatePassword(password string) error {
+func (pr *PasswordRecord) ValidatePassword(password string) error {
 	h, err := hashPassword(password, pr.PasswordSalt)
 	if err != nil {
 		return err

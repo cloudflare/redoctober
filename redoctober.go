@@ -89,7 +89,7 @@ func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, 
 		Rand:         rand.Reader,
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
-		MinVersion: tls.VersionTLS10,
+		MinVersion:               tls.VersionTLS10,
 	}
 
 	// If a caPath has been specified then a local CA is being used

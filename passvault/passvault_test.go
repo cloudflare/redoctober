@@ -5,33 +5,41 @@
 package passvault
 
 import (
-	"testing"
 	"os"
+	"testing"
 )
 
 func TestStaticVault(t *testing.T) {
-	err := InitFromDisk("/tmp/redoctober.json")
+	// Initial create.
+	records, err := InitFrom("/tmp/redoctober.jso")
 	if err != nil {
 		t.Fatalf("Error reading record")
 	}
 
-	_, err = AddNewRecord("test", "bad pass", true) 
+	_, err = records.AddNewRecord("test", "bad pass", true, DefaultRecordType)
 	if err != nil {
 		t.Fatalf("Error creating record")
 	}
-	err = InitFromDisk("/tmp/redoctober.json")
+
+	// Reads data written last time.
+	_, err = InitFrom("/tmp/redoctober.json")
 	if err != nil {
 		t.Fatalf("Error reading record")
 	}
+
+	// Cleaning.
 	os.Remove("/tmp/redoctober.json")
 }
 
 func TestRSAEncryptDecrypt(t *testing.T) {
-	oldDefaultRecordType := DefaultRecordType
-	DefaultRecordType = RSARecord
-	myRec, err := createPasswordRec("mypasswordisweak", true)
+	records, err := InitFrom("memory")
 	if err != nil {
-		t.Fatalf("Error creating record")
+		t.Fatalf("%v", err)
+	}
+
+	myRec, err := records.AddNewRecord("user", "weakpassword", true, RSARecord)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
 	_, err = myRec.GetKeyRSAPub()
@@ -44,7 +52,7 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 		t.Fatalf("Incorrect password did not fail")
 	}
 
-	rsaPriv, err = myRec.GetKeyRSA("mypasswordisweak")
+	rsaPriv, err = myRec.GetKeyRSA("weakpassword")
 	if err != nil {
 		t.Fatalf("Error decrypting RSA key")
 	}
@@ -53,20 +61,22 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error validating RSA key")
 	}
-	DefaultRecordType = oldDefaultRecordType
 }
 
 func TestECCEncryptDecrypt(t *testing.T) {
-	oldDefaultRecordType := DefaultRecordType
-	DefaultRecordType = ECCRecord
-	myRec, err := createPasswordRec("mypasswordisweak", true)
+	records, err := InitFrom("memory")
 	if err != nil {
-		t.Fatalf("Error creating record")
+		t.Fatalf("%v", err)
+	}
+
+	myRec, err := records.AddNewRecord("user", "weakpassword", true, ECCRecord)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
 	_, err = myRec.GetKeyECCPub()
 	if err != nil {
-		t.Fatalf("Error extracting EC pub")
+		t.Fatalf("%v", err)
 	}
 
 	_, err = myRec.GetKeyECC("mypasswordiswrong")
@@ -74,9 +84,8 @@ func TestECCEncryptDecrypt(t *testing.T) {
 		t.Fatalf("Incorrect password did not fail")
 	}
 
-	_, err = myRec.GetKeyECC("mypasswordisweak")
+	_, err = myRec.GetKeyECC("weakpassword")
 	if err != nil {
-		t.Fatalf("Error decrypting EC key")
+		t.Fatalf("%v", err)
 	}
-	DefaultRecordType = oldDefaultRecordType
 }

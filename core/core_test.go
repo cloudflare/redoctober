@@ -10,7 +10,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
 )
 
@@ -156,7 +155,7 @@ func TestSummary(t *testing.T) {
 
 	dataLive, ok := s.Live["Bob"]
 	if !ok {
-		t.Fatalf("Error in summary of account, record missing, %v", keycache.UserKeys)
+		t.Fatalf("Error in summary of account, record missing, %v", cache.UserKeys)
 	}
 	if dataLive.Admin != false {
 		t.Fatalf("Error in summary of account, record missing")
@@ -165,7 +164,7 @@ func TestSummary(t *testing.T) {
 		t.Fatalf("Error in summary of account, record missing")
 	}
 
-	keycache.FlushCache()
+	cache.FlushCache()
 
 	os.Remove("/tmp/db1.json")
 }
@@ -278,7 +277,7 @@ func TestPassword(t *testing.T) {
 		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
-	keycache.FlushCache()
+	cache.FlushCache()
 
 	os.Remove("/tmp/db1.json")
 }
@@ -335,7 +334,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// check summary to see if none are delegated
-	keycache.Refresh()
+	cache.Refresh()
 	respJson, err = Summary(summaryJson)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -422,7 +421,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// verify the presence of the two delgations
-	keycache.Refresh()
+	cache.Refresh()
 	var sum2 SummaryData
 	respJson, err = Summary(summaryJson)
 	if err != nil {
@@ -467,7 +466,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		}
 	}
 
-	keycache.FlushCache()
+	cache.FlushCache()
 
 	os.Remove("/tmp/db1.json")
 }
@@ -526,7 +525,7 @@ func TestModify(t *testing.T) {
 	}
 
 	// check summary to see if none are delegated
-	keycache.Refresh()
+	cache.Refresh()
 	respJson, err = Summary(summaryJson)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -654,7 +653,7 @@ func TestModify(t *testing.T) {
 		t.Fatalf("Error in summary, %v", sum3.All)
 	}
 
-	keycache.FlushCache()
+	cache.FlushCache()
 
 	os.Remove("/tmp/db1.json")
 }
@@ -731,7 +730,7 @@ func TestStatic(t *testing.T) {
 		t.Fatalf("Error in summary, %v, %v", expected, r.Response)
 	}
 
-	keycache.FlushCache()
+	cache.FlushCache()
 
 	os.Remove("/tmp/db1.json")
 }

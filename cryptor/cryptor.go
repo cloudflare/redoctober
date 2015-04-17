@@ -25,6 +25,15 @@ const (
 	DEFAULT_VERSION = 1
 )
 
+type Cryptor struct {
+	records *passvault.Records
+	cache   *keycache.Cache
+}
+
+func New(records *passvault.Records, cache *keycache.Cache) Cryptor {
+	return Cryptor{records, cache}
+}
+
 // MultiWrappedKey is a structure containing a 16-byte key encrypted
 // once for each of the keys corresponding to the names of the users
 // in Name in order.
@@ -53,174 +62,47 @@ type EncryptedData struct {
 	Signature []byte
 }
 
-// encryptKey encrypts data with the key associated with name inner,
-// then name outer
-func encryptKey(nameInner, nameOuter string, clearKey []byte, pubKeys map[string]SingleWrappedKey) (out MultiWrappedKey, err error) {
-	out.Name = []string{nameOuter, nameInner}
-
-	recInner, ok := passvault.GetRecord(nameInner)
-	if !ok {
-		err = errors.New("Missing user on disk")
-		return
-	}
-
-	recOuter, ok := passvault.GetRecord(nameOuter)
-	if !ok {
-		err = errors.New("Missing user on disk")
-		return
-	}
-
-	if recInner.Type != recOuter.Type {
-		err = errors.New("Mismatched record types")
-		return
-	}
-
-	var keyBytes []byte
-	var overrideInner SingleWrappedKey
-	var overrideOuter SingleWrappedKey
-
-	// For AES records, use the live user key
-	// For RSA and ECC records, use the public key from the passvault
-	switch recInner.Type {
-	case passvault.RSARecord, passvault.ECCRecord:
-		if overrideInner, ok = pubKeys[nameInner]; !ok {
-			err = errors.New("Missing user in file")
-			return
-		}
-
-		if overrideOuter, ok = pubKeys[nameOuter]; !ok {
-			err = errors.New("Missing user in file")
-			return
-		}
-
-	default:
-		return out, errors.New("Unknown record type inner")
-	}
-
-	// double-wrap the keys
-	if keyBytes, err = keycache.EncryptKey(clearKey, nameInner, overrideInner.aesKey); err != nil {
-		return out, err
-	}
-	if keyBytes, err = keycache.EncryptKey(keyBytes, nameOuter, overrideOuter.aesKey); err != nil {
-		return out, err
-	}
-
-	out.Key = keyBytes
-
-	return
+type pair struct {
+	name string
+	key  []byte
 }
 
-// unwrapKey decrypts first key in keys whose encryption keys are in keycache
-func unwrapKey(keys []MultiWrappedKey, pubKeys map[string]SingleWrappedKey, user string, labels []string) (unwrappedKey []byte, names []string, err error) {
-	var (
-		keyFound  error
-		fullMatch bool = false
-		nameSet        = map[string]bool{}
-	)
+type mwkSlice []MultiWrappedKey
+type swkSlice []pair
 
-	for _, mwKey := range keys {
-		if err != nil {
-			return nil, nil, err
-		}
-
-		tmpKeyValue := mwKey.Key
-
-		for _, mwName := range mwKey.Name {
-			pubEncrypted := pubKeys[mwName]
-			// if this is null, it's an AES encrypted key
-			if tmpKeyValue, keyFound = keycache.DecryptKey(tmpKeyValue, mwName, user, labels, pubEncrypted.Key); keyFound != nil {
-				break
-			}
-			nameSet[mwName] = true
-		}
-		if keyFound == nil {
-			fullMatch = true
-			// concatenate all the decrypted bytes
-			unwrappedKey = tmpKeyValue
-			break
-		}
-	}
-
-	if !fullMatch {
-		err = errors.New("Need more delegated keys")
-		names = nil
-	}
-
-	names = make([]string, 0, len(nameSet))
-	for name := range nameSet {
-		names = append(names, name)
-	}
-	return
-}
-
-// mwkSorter describes a slice of MultiWrappedKeys to be sorted.
-type mwkSorter struct {
-	keySet []MultiWrappedKey
-}
-
-// Len is part of sort.Interface.
-func (s *mwkSorter) Len() int {
-	return len(s.keySet)
-}
-
-// Swap is part of sort.Interface.
-func (s *mwkSorter) Swap(i, j int) {
-	s.keySet[i], s.keySet[j] = s.keySet[j], s.keySet[i]
-}
-
-// Less is part of sort.Interface, it sorts lexicographically
-// based on the list of names
-func (s *mwkSorter) Less(i, j int) bool {
+func (s mwkSlice) Len() int             { return len(s) }
+func (s mwkSlice) Swap(i, j int)        { s[i], s[j] = s[j], s[i] }
+func (s mwkSlice) Less(i, j int) bool { // Alphabetic order
 	var shorter = i
-	if len(s.keySet[i].Name) > len(s.keySet[j].Name) {
+	if len(s[i].Name) > len(s[j].Name) {
 		shorter = j
 	}
-	for index := range s.keySet[shorter].Name {
-		if s.keySet[i].Name[index] != s.keySet[j].Name[index] {
-			return s.keySet[i].Name[index] < s.keySet[j].Name[index]
+
+	for index := range s[shorter].Name {
+		if s[i].Name[index] != s[j].Name[index] {
+			return s[i].Name[index] < s[j].Name[index]
 		}
 	}
 
 	return false
 }
 
-// swkSorter joins a slice of names with SingleWrappedKeys to be sorted.
-type pair struct {
-	name string
-	key  []byte
-}
-
-type swkSorter []pair
-
-// Len is part of sort.Interface.
-func (s swkSorter) Len() int {
-	return len(s)
-}
-
-// Swap is part of sort.Interface.
-func (s swkSorter) Swap(i, j int) {
-	s[i], s[j] = s[j], s[i]
-}
-
-// Less is part of sort.Interface.
-func (s swkSorter) Less(i, j int) bool {
-	return s[i].name < s[j].name
-}
+func (s swkSlice) Len() int           { return len(s) }
+func (s swkSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s swkSlice) Less(i, j int) bool { return s[i].name < s[j].name }
 
 // computeHmac computes the signature of the encrypted data structure
 // the signature takes into account every element of the EncryptedData
 // structure, with all keys sorted alphabetically by name
-func computeHmac(key []byte, encrypted EncryptedData) []byte {
+func (encrypted *EncryptedData) computeHmac(key []byte) []byte {
 	mac := hmac.New(sha1.New, key)
 
 	// sort the multi-wrapped keys
-	mwks := &mwkSorter{
-		keySet: encrypted.KeySet,
-	}
+	mwks := mwkSlice(encrypted.KeySet)
 	sort.Sort(mwks)
 
 	// sort the singly-wrapped keys
-	var swks swkSorter
+	var swks swkSlice
 	for name, val := range encrypted.KeySetRSA {
 		swks = append(swks, pair{name, val.Key})
 	}
@@ -259,97 +141,141 @@ func computeHmac(key []byte, encrypted EncryptedData) []byte {
 	return mac.Sum(nil)
 }
 
+// wrapKey encrypts the clear key such that a minimum number of delegated keys
+// are required to decrypt.  NOTE:  Currently the max value for min is 2.
+func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []byte, names []string, min int) (err error) {
+	// Generate a random AES key for each user and RSA/ECIES encrypt it
+	encrypted.KeySetRSA = make(map[string]SingleWrappedKey, len(names))
+
+	for _, name := range names {
+		rec, ok := records.GetRecord(name)
+		if !ok {
+			err = errors.New("Missing user on disk")
+			return
+		}
+
+		var singleWrappedKey SingleWrappedKey
+
+		if singleWrappedKey.aesKey, err = symcrypt.MakeRandom(16); err != nil {
+			return err
+		}
+
+		if singleWrappedKey.Key, err = rec.EncryptKey(singleWrappedKey.aesKey); err != nil {
+			return err
+		}
+
+		encrypted.KeySetRSA[name] = singleWrappedKey
+	}
+
+	// encrypt file key with every combination of two keys
+	encrypted.KeySet = make([]MultiWrappedKey, 0)
+
+	for i := 0; i < len(names); i++ {
+		for j := i + 1; j < len(names); j++ {
+			var outerCrypt, innerCrypt cipher.Block
+			keyBytes := make([]byte, 16)
+
+			outerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[names[i]].aesKey)
+			if err != nil {
+				return
+			}
+
+			innerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[names[j]].aesKey)
+			if err != nil {
+				return
+			}
+
+			innerCrypt.Encrypt(keyBytes, clearKey)
+			outerCrypt.Encrypt(keyBytes, keyBytes)
+
+			out := MultiWrappedKey{
+				Name: []string{names[i], names[j]},
+				Key:  keyBytes,
+			}
+
+			encrypted.KeySet = append(encrypted.KeySet, out)
+		}
+	}
+
+	return nil
+}
+
+// unwrapKey decrypts first key in keys whose encryption keys are in keycache
+func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (unwrappedKey []byte, names []string, err error) {
+	var (
+		keyFound  error
+		fullMatch bool = false
+		nameSet        = map[string]bool{}
+	)
+
+	for _, mwKey := range encrypted.KeySet {
+		// validate the size of the keys
+		if len(mwKey.Key) != 16 {
+			err = errors.New("Invalid Input")
+		}
+
+		if err != nil {
+			return nil, nil, err
+		}
+
+		tmpKeyValue := mwKey.Key
+
+		for _, mwName := range mwKey.Name {
+			pubEncrypted := encrypted.KeySetRSA[mwName]
+			// if this is null, it's an AES encrypted key
+			if tmpKeyValue, keyFound = cache.DecryptKey(tmpKeyValue, mwName, user, encrypted.Labels, pubEncrypted.Key); keyFound != nil {
+				break
+			}
+			nameSet[mwName] = true
+		}
+		if keyFound == nil {
+			fullMatch = true
+			// concatenate all the decrypted bytes
+			unwrappedKey = tmpKeyValue
+			break
+		}
+	}
+
+	if !fullMatch {
+		err = errors.New("Need more delegated keys")
+		names = nil
+	}
+
+	names = make([]string, 0, len(nameSet))
+	for name := range nameSet {
+		names = append(names, name)
+	}
+	return
+}
+
 // Encrypt encrypts data with the keys associated with names. This
 // requires a minimum of min keys to decrypt.  NOTE: as currently
 // implemented, the maximum value for min is 2.
-func Encrypt(in []byte, labels, leftNames, rightNames []string, min int) (resp []byte, err error) {
+func (c *Cryptor) Encrypt(in []byte, labels, names []string, min int) (resp []byte, err error) {
 	if min > 2 {
 		return nil, errors.New("Minimum restricted to 2")
 	}
 
 	var encrypted EncryptedData
 	encrypted.Version = DEFAULT_VERSION
-	if encrypted.VaultId, err = passvault.GetVaultId(); err != nil {
+	if encrypted.VaultId, err = c.records.GetVaultId(); err != nil {
 		return
 	}
 
 	// Generate random IV and encryption key
-	ivBytes, err := symcrypt.MakeRandom(16)
+	encrypted.IV, err = symcrypt.MakeRandom(16)
 	if err != nil {
 		return
 	}
 
-	// append used here to make a new slice from ivBytes and assign to
-	// encrypted.IV
-
-	encrypted.IV = append([]byte{}, ivBytes...)
 	clearKey, err := symcrypt.MakeRandom(16)
 	if err != nil {
 		return
 	}
 
-	var names = make(map[string]bool)
-	var overlap int
-
-	// Count overlapping names, we don't want to double-encrypt
-	// with the same name
-	for _, n := range leftNames {
-		names[n] = true
-	}
-	for _, n := range rightNames {
-		used, ok := names[n]
-		if !used && ok {
-			names[n] = true
-		} else {
-			overlap++
-		}
-	}
-
-	// Allocate set of keys to be able to cover all unequal pairs of
-	// names with one from leftNames and one from rightNames
-
-	// Combinatorially, the number of ordered pairs with one element
-	// from one set and one from another for which both elements of
-	// the pair is distinct is
-	// len(n) * len(k) - overlap
-	encrypted.KeySet = make([]MultiWrappedKey, (len(leftNames)*len(rightNames) - overlap))
-	encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
-
-	var singleWrappedKey SingleWrappedKey
-	for name := range names {
-		rec, ok := passvault.GetRecord(name)
-		if !ok {
-			err = errors.New("Missing user on disk")
-			return
-		}
-
-		if rec.GetType() == passvault.RSARecord || rec.GetType() == passvault.ECCRecord {
-			// only wrap key with RSA key if found
-			if singleWrappedKey.aesKey, err = symcrypt.MakeRandom(16); err != nil {
-				return nil, err
-			}
-
-			if singleWrappedKey.Key, err = rec.EncryptKey(singleWrappedKey.aesKey); err != nil {
-				return nil, err
-			}
-			encrypted.KeySetRSA[name] = singleWrappedKey
-		} else {
-			err = nil
-		}
-	}
-
-	// encrypt file key with every combination of two keys
-	var n int
-	for _, nameOuter := range leftNames {
-		for _, nameInner := range rightNames {
-			if nameInner != nameOuter {
-				encrypted.KeySet[n], err = encryptKey(nameInner, nameOuter, clearKey, encrypted.KeySetRSA)
-				n += 1
-			}
-			if err != nil {
-				return
-			}
-		}
+	err = encrypted.wrapKey(c.records, clearKey, names, min)
+	if err != nil {
+		return
 	}
 
 	// encrypt file with clear key
@@ -361,23 +287,23 @@ func Encrypt(in []byte, labels, leftNames, rightNames []string, min int) (resp [
 	clearFile := padding.AddPadding(in)
 
 	encryptedFile := make([]byte, len(clearFile))
-	aesCBC := cipher.NewCBCEncrypter(aesCrypt, ivBytes)
+	aesCBC := cipher.NewCBCEncrypter(aesCrypt, encrypted.IV)
 	aesCBC.CryptBlocks(encryptedFile, clearFile)
 
 	encrypted.Data = encryptedFile
 	encrypted.Labels = labels
 
-	hmacKey, err := passvault.GetHmacKey()
+	hmacKey, err := c.records.GetHmacKey()
 	if err != nil {
 		return
 	}
-	encrypted.Signature = computeHmac(hmacKey, encrypted)
+	encrypted.Signature = encrypted.computeHmac(hmacKey)
 
 	return json.Marshal(encrypted)
 }
 
 // Decrypt decrypts a file using the keys in the key cache.
-func Decrypt(in []byte, user string) (resp []byte, names []string, err error) {
+func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
@@ -388,7 +314,7 @@ func Decrypt(in []byte, user string) (resp []byte, names []string, err error) {
 	}
 
 	// make sure file was encrypted with the active vault
-	vaultId, err := passvault.GetVaultId()
+	vaultId, err := c.records.GetVaultId()
 	if err != nil {
 		return
 	}
@@ -396,20 +322,12 @@ func Decrypt(in []byte, user string) (resp []byte, names []string, err error) {
 		return nil, nil, errors.New("Wrong vault")
 	}
 
-	// validate the size of the keys
-	for _, multiKey := range encrypted.KeySet {
-		if len(multiKey.Key) != 16 {
-			err = errors.New("Invalid Input")
-			return
-		}
-	}
-
 	// compute HMAC
-	hmacKey, err := passvault.GetHmacKey()
+	hmacKey, err := c.records.GetHmacKey()
 	if err != nil {
 		return
 	}
-	expectedMAC := computeHmac(hmacKey, encrypted)
+	expectedMAC := encrypted.computeHmac(hmacKey)
 	if !hmac.Equal(encrypted.Signature, expectedMAC) {
 		err = errors.New("Signature mismatch")
 		return
@@ -417,7 +335,7 @@ func Decrypt(in []byte, user string) (resp []byte, names []string, err error) {
 
 	// decrypt file key with delegate keys
 	var unwrappedKey = make([]byte, 16)
-	unwrappedKey, names, err = unwrapKey(encrypted.KeySet, encrypted.KeySetRSA, user, encrypted.Labels)
+	unwrappedKey, names, err = encrypted.unwrapKey(c.cache, user)
 	if err != nil {
 		return
 	}
