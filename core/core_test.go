@@ -25,7 +25,7 @@ func TestCreate(t *testing.T) {
 		t.Fatalf("Error in creating account, %v", err)
 	}
 
-	var s responseData
+	var s ResponseData
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
 		t.Fatalf("Error in creating account, %v", err)
@@ -60,7 +60,7 @@ func TestSummary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error in summary of account with no vault, %v", err)
 	}
-	var s summaryData
+	var s SummaryData
 	err = json.Unmarshal(respJson, &s)
 	if err != nil {
 		t.Fatalf("Error in summary of account with no vault, %v", err)
@@ -181,7 +181,7 @@ func TestPassword(t *testing.T) {
 	Init("/tmp/db1.json")
 
 	// check for summary of initialized vault with new member
-	var s responseData
+	var s ResponseData
 	respJson, err := Create(createJson)
 	if err != nil {
 		t.Fatalf("Error in creating account, %v", err)
@@ -297,7 +297,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	Init("/tmp/db1.json")
 
 	// check for summary of initialized vault with new member
-	var s responseData
+	var s ResponseData
 	respJson, err := Create(delegateJson)
 	if err != nil {
 		t.Fatalf("Error in creating account, %v", err)
@@ -340,7 +340,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
 	}
-	var sum summaryData
+	var sum SummaryData
 	err = json.Unmarshal(respJson, &sum)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -379,7 +379,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// decrypt file
-	decryptJson, err := json.Marshal(decrypt{Name: "Alice", Password: "Hello", Data: s.Response})
+	decryptJson, err := json.Marshal(DecryptRequest{Name: "Alice", Password: "Hello", Data: s.Response})
 	if err != nil {
 		t.Fatalf("Error in marshalling decryption, %v", err)
 	}
@@ -423,7 +423,7 @@ func TestEncryptDecrypt(t *testing.T) {
 
 	// verify the presence of the two delgations
 	keycache.Refresh()
-	var sum2 summaryData
+	var sum2 SummaryData
 	respJson, err = Summary(summaryJson)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -451,7 +451,7 @@ func TestEncryptDecrypt(t *testing.T) {
 		t.Fatalf("Error in decrypt, %v", s.Status)
 	}
 
-	var d decryptWithDelegates
+	var d DecryptWithDelegates
 	err = json.Unmarshal(s.Response, &d)
 	if err != nil {
 		t.Fatalf("Error in decrypt, %v", err)
@@ -488,7 +488,7 @@ func TestModify(t *testing.T) {
 	Init("/tmp/db1.json")
 
 	// check for summary of initialized vault with new member
-	var s responseData
+	var s ResponseData
 	respJson, err := Create(delegateJson)
 	if err != nil {
 		t.Fatalf("Error in creating account, %v", err)
@@ -531,7 +531,7 @@ func TestModify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
 	}
-	var sum summaryData
+	var sum SummaryData
 	err = json.Unmarshal(respJson, &sum)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -638,7 +638,7 @@ func TestModify(t *testing.T) {
 		t.Fatalf("Error in modify, %v", s.Status)
 	}
 
-	var sum3 summaryData
+	var sum3 SummaryData
 	respJson, err = Summary(summaryJson2)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -683,7 +683,7 @@ func TestStatic(t *testing.T) {
 	Init("/tmp/db1.json")
 
 	// check for summary of initialized vault with new member
-	var s responseData
+	var s ResponseData
 	respJson, err := Delegate(delegateJson2)
 	if err != nil {
 		t.Fatalf("Error in delegating account, %v", err)
@@ -708,7 +708,7 @@ func TestStatic(t *testing.T) {
 		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
 
-	var r responseData
+	var r ResponseData
 	respJson, err = Decrypt(decryptJson)
 	if err != nil {
 		t.Fatalf("Error in decrypt, %v", err)
@@ -721,7 +721,7 @@ func TestStatic(t *testing.T) {
 		t.Fatalf("Error in summary, %v", r.Status)
 	}
 
-	var d decryptWithDelegates
+	var d DecryptWithDelegates
 	err = json.Unmarshal(r.Response, &d)
 	if err != nil {
 		t.Fatalf("Error in decrypt, %v", err)
