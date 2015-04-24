@@ -35,7 +35,7 @@ secure) way is to skip the
 [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority#Issuing_a_certificate)
 verification and generate a self-signed TLS certificate. Read this
 [detailed guide](http://www.akadia.com/services/ssh_test_certificate.html)
-or, alternatively, follow these unsecure commands:
+or, alternatively, follow these insecure commands:
 
     $ mkdir cert
     $ chmod 700 cert
@@ -152,11 +152,11 @@ server.
 
 Example query:
 
-    $ echo "Why is a raven like a writing desk?"|python -c "print raw_input().encode('base64')"
-    V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8=
+    $ echo "Why is a raven like a writing desk?" | openssl base64
+    V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8K
 
     $ curl --cacert cert/server.crt https://localhost:8080/encrypt  \
-            -d '{"Name":"Alice","Password":"Lewis","Minimum":2, "Owners":["Alice","Bill","Cat","Dodo"],"Data":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}'
+            -d '{"Name":"Alice","Password":"Lewis","Minimum":2, "Owners":["Alice","Bill","Cat","Dodo"],"Data":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8K"}'
     {"Status":"ok","Response":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
 
 The data expansion is not tied to the size of the input.
@@ -165,13 +165,14 @@ The data expansion is not tied to the size of the input.
 
 Decrypt allows an admin to decrypt a piece of data. As long as
 "Minimum" number users from the set of "Owners" have delegated their
-keys to the server, the clear data will be returned.
+keys to the server, a base64 encoded object with the clear data and the
+set of "Owners" whose private keys were used is returned.
 
 Example query:
 
     $ curl --cacert cert/server.crt https://localhost:8080/decrypt  \
-            -d {"Name":"Alice","Password":"Lewis","Data":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
-    {"Status":"ok","Response":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8="}
+            -d '{"Name":"Alice","Password":"Lewis","Data":"eyJWZXJzaW9uIj...NSSllzPSJ9"}'
+    {"Status":"ok","Response":"eyJEYXRhI...FuMiJdfQ=="}
 
 If there aren't enough keys delegated you'll see:
 
