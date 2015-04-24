@@ -35,7 +35,7 @@ const (
 	ECCRecord = "ECC"
 )
 
-var DefaultRecordType = ECCRecord
+var DefaultRecordType = RSARecord
 
 // Constants for scrypt
 const (
