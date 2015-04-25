@@ -41,7 +41,7 @@ type userRequest struct {
 	// keys of the functions map above
 	in []byte // Arbitrary input data (depends on the core.*
 	// function called)
-	resp chan []byte // Channel down which a response is sent (the
+	resp chan<- []byte // Channel down which a response is sent (the
 	// data sent will depend on the core.* function
 	// called to handle this request)
 }
@@ -50,7 +50,7 @@ type userRequest struct {
 // one of the functions named in the functions map above. It reads the
 // request and sends it to the goroutine started in main() below for
 // processing and then waits for the response.
-func queueRequest(process chan userRequest, requestType string, w http.ResponseWriter, r *http.Request) {
+func queueRequest(process chan<- userRequest, requestType string, w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -61,6 +61,10 @@ func queueRequest(process chan userRequest, requestType string, w http.ResponseW
 	process <- userRequest{rt: requestType, in: body, resp: response}
 
 	if resp, ok := <-response; ok {
+		header := w.Header()
+		header.Set("Content-Type", "application/json")
+		header.Set("Strict-Transport-Security", "max-age=86400; includeSubDomains; preload")
+
 		w.Write(resp)
 	} else {
 		http.Error(w, "Unknown request", http.StatusInternalServerError)
@@ -74,12 +78,7 @@ func queueRequest(process chan userRequest, requestType string, w http.ResponseW
 //
 // Returns a valid http.Server handling redoctober JSON requests (and
 // its associated listener) or an error
-func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, caPath string) (*http.Server, *net.Listener, error) {
-	mux := http.NewServeMux()
-	srv := http.Server{
-		Addr:    addr,
-		Handler: mux,
-	}
+func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, caPath string) (*http.Server, *net.Listener, error) {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error loading certificate (%s, %s): %s", certPath, keyPath, err)
@@ -90,27 +89,31 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 		Rand:         rand.Reader,
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
+		MinVersion: tls.VersionTLS10,
 	}
 
 	// If a caPath has been specified then a local CA is being used
 	// and not the system configuration.
 
 	if caPath != "" {
-		rootPool := x509.NewCertPool()
 		pemCert, err := ioutil.ReadFile(caPath)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error reading %s: %s\n", caPath, err)
 		}
-		derCert, pemCert := pem.Decode(pemCert)
+
+		derCert, _ := pem.Decode(pemCert)
 		if derCert == nil {
-			return nil, nil, fmt.Errorf("Error decoding CA certificate: %s\n", err)
+			return nil, nil, fmt.Errorf("No PEM data was found in the CA certificate file\n")
 		}
+
 		cert, err := x509.ParseCertificate(derCert.Bytes)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error parsing CA certificate: %s\n", err)
 		}
 
+		rootPool := x509.NewCertPool()
 		rootPool.AddCert(cert)
+
 		config.ClientAuth = tls.RequireAndVerifyClientCert
 		config.ClientCAs = rootPool
 	}
@@ -122,10 +125,12 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 
 	lstnr := tls.NewListener(conn, &config)
 
+	mux := http.NewServeMux()
+
 	// queue up post URIs
 	for current := range functions {
 		// copy this so reference does not get overwritten
-		var requestType = current
+		requestType := current
 		mux.HandleFunc(requestType, func(w http.ResponseWriter, r *http.Request) {
 			queueRequest(process, requestType, w, r)
 		})
@@ -135,6 +140,11 @@ func NewServer(process chan userRequest, staticPath, addr, certPath, keyPath, ca
 	idxHandler := &indexHandler{staticPath}
 	mux.HandleFunc("/index", idxHandler.handle)
 	mux.HandleFunc("/", idxHandler.handle)
+
+	srv := http.Server{
+		Addr:    addr,
+		Handler: mux,
+	}
 
 	return &srv, &lstnr, nil
 }
@@ -156,6 +166,12 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 	} else {
 		body = bytes.NewReader(indexHtml)
 	}
+
+	header := w.Header()
+	header.Set("Content-Type", "text/html")
+	header.Set("Strict-Transport-Security", "max-age=86400; includeSubDomains; preload")
+	// If the server isn't HTTPS worthy, the HSTS header won't be honored.
+
 	http.ServeContent(w, r, "index.html", time.Now(), body)
 }
 
@@ -240,12 +256,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 	<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.0.3/jquery.min.js"></script>
 	<script src="//netdna.bootstrapcdn.com/bootstrap/3.0.2/js/bootstrap.min.js"></script>
 	<style type="text/css">
-		body{padding-top: 50px;}
 		.footer{ border-top: 1px solid #ccc; margin-top: 50px; padding: 20px 0;}
 	</style>
 </head>
 <body>
-	<nav class="navbar navbar-default navbar-fixed-top" role="banner">
+	<nav class="navbar navbar-default" role="banner">
 		<div class="container">
 			<div class="navbar-header">
 				<a href="/" class="navbar-brand">Red October</a>
@@ -357,7 +372,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				</div>
 			</div>
 
-			<div id="create" class="col-md-6">
+			<div class="col-md-6">
 				<h3 id="create">Create</h3>
 
 				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
@@ -467,7 +482,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					</div>
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="encrypt-minimum">Minimum number of user for access</label>
+							<label for="encrypt-minimum">Minimum number of users for access</label>
 							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" required />
 						</div>
 						<div class="col-md-6">
@@ -590,6 +605,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							if( user.Uses ){ li.append( $('<span />', {'class': 'badge'}).text(user.Uses+' uses remaining') ); }
 							li.append( $('<h5 />', {'class': 'list-group-item-heading'}).text(key || 'Unknown') );
 							li.append( $('<p />', {'class': 'list-group-item-text'}).html('Type: '+user.Type+ (user.Expiry ? '<br />Expiry: '+user.Expiry : '')+ (user.Users ? '<br />Users: '+user.Users.join(', ') : '')+ (user.Labels ? '<br />Labels: '+user.Labels.join(', ') : '')) );
+
 							if( user.Admin ){
 								li.find('h5').append(' (admin)');
 							}
@@ -718,4 +734,5 @@ var indexHtml = []byte(`<!DOCTYPE html>
 			});
 		});
 	</script>
-</body>`)
+</body>
+</html>`)

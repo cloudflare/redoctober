@@ -457,7 +457,7 @@ func ChangePassword(name, password, newPassword string) (err error) {
 func DeleteRecord(name string) error {
 	if _, ok := GetRecord(name); ok {
 		delete(records.Passwords, name)
-		return nil
+		return WriteRecordsToDisk()
 	}
 
 	return errors.New("Record missing")
@@ -468,7 +468,7 @@ func RevokeRecord(name string) error {
 	if rec, ok := GetRecord(name); ok {
 		rec.Admin = false
 		SetRecord(rec, name)
-		return nil
+		return WriteRecordsToDisk()
 	}
 
 	return errors.New("Record missing")
@@ -479,7 +479,7 @@ func MakeAdmin(name string) error {
 	if rec, ok := GetRecord(name); ok {
 		rec.Admin = true
 		SetRecord(rec, name)
-		return nil
+		return WriteRecordsToDisk()
 	}
 
 	return errors.New("Record missing")
