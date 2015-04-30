@@ -632,10 +632,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				data.Users = data.Users.split(',');
 				for(var i=0, l=data.Users.length; i<l; i++){
 					data.Users[i] = data.Users[i].trim();
+					if (data.Users[i] == "") { data.Users.splice(i, 1); }
 				}
 				data.Labels = data.Labels.split(',');
 				for(var i=0, l=data.Labels.length; i<l; i++){
 					data.Labels[i] = data.Labels[i].trim();
+					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
 				}
 
 				submit( $form, {
@@ -701,10 +703,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				data.Owners = data.Owners.split(',');
 				for(var i=0, l=data.Owners.length; i<l; i++){
 					data.Owners[i] = data.Owners[i].trim();
+					if (data.Owners[i] == "") { data.Owners.splice(i, 1); }
 				}
 				data.Labels = data.Labels.split(',');
 				for(var i=0, l=data.Labels.length; i<l; i++){
 					data.Labels[i] = data.Labels[i].trim();
+					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
 				}
 
 				// Convert data to base64.
