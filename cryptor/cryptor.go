@@ -53,11 +53,11 @@ type SingleWrappedKey struct {
 // keys necessary to decrypt it when delegated.
 type EncryptedData struct {
 	Version   int
-	VaultId   int
-	Labels    []string
-	KeySet    []MultiWrappedKey
-	KeySetRSA map[string]SingleWrappedKey
-	IV        []byte
+	VaultId   int                         `json:",omitempty"`
+	Labels    []string                    `json:",omitempty"`
+	KeySet    []MultiWrappedKey           `json:",omitempty"`
+	KeySetRSA map[string]SingleWrappedKey `json:",omitempty"`
+	IV        []byte                      `json:",omitempty"`
 	Data      []byte
 	Signature []byte
 }
@@ -139,6 +139,42 @@ func (encrypted *EncryptedData) computeHmac(key []byte) []byte {
 	}
 
 	return mac.Sum(nil)
+}
+
+func (encrypted *EncryptedData) lock(key []byte) (err error) {
+	payload, err := json.Marshal(encrypted)
+	if err != nil {
+		return
+	}
+
+	mac := hmac.New(sha1.New, key)
+	mac.Write(payload)
+	sig := mac.Sum(nil)
+
+	*encrypted = EncryptedData{
+		Version:   -1,
+		Data:      payload,
+		Signature: sig,
+	}
+
+	return
+}
+
+func (encrypted *EncryptedData) unlock(key []byte) (err error) {
+	if encrypted.Version != -1 {
+		return
+	}
+
+	mac := hmac.New(sha1.New, key)
+	mac.Write(encrypted.Data)
+	sig := mac.Sum(nil)
+
+	if !hmac.Equal(encrypted.Signature, sig) {
+		err = errors.New("Signature mismatch")
+		return
+	}
+
+	return json.Unmarshal(encrypted.Data, encrypted)
 }
 
 // wrapKey encrypts the clear key such that a minimum number of delegated keys
@@ -298,20 +334,33 @@ func (c *Cryptor) Encrypt(in []byte, labels, names []string, min int) (resp []by
 		return
 	}
 	encrypted.Signature = encrypted.computeHmac(hmacKey)
+	encrypted.lock(hmacKey)
 
 	return json.Marshal(encrypted)
 }
 
 // Decrypt decrypts a file using the keys in the key cache.
-func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, err error) {
+func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, secure bool, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
 		return
 	}
-	if encrypted.Version != DEFAULT_VERSION {
-		return nil, nil, errors.New("Unknown version")
+	if encrypted.Version != DEFAULT_VERSION && encrypted.Version != -1 {
+		return nil, nil, secure, errors.New("Unknown version")
 	}
+
+	secure = encrypted.Version == -1
+
+	hmacKey, err := c.records.GetHmacKey()
+	if err != nil {
+		return
+	}
+
+	if err = encrypted.unlock(hmacKey); err != nil {
+		return
+	}
+
 
 	// make sure file was encrypted with the active vault
 	vaultId, err := c.records.GetVaultId()
@@ -319,14 +368,10 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 		return
 	}
 	if encrypted.VaultId != vaultId {
-		return nil, nil, errors.New("Wrong vault")
+		return nil, nil, secure, errors.New("Wrong vault")
 	}
 
 	// compute HMAC
-	hmacKey, err := c.records.GetHmacKey()
-	if err != nil {
-		return
-	}
 	expectedMAC := encrypted.computeHmac(hmacKey)
 	if !hmac.Equal(encrypted.Signature, expectedMAC) {
 		err = errors.New("Signature mismatch")

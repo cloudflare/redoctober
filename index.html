@@ -485,7 +485,7 @@
 					data : data,
 					success : function(d){
 					d = JSON.parse(window.atob(d.Response));
-					$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Data)+'</pre><p>Delegates: '+d.Delegates.sort().join(', ')+'</p>' }) );
+					$form.find('.feedback').empty().append( makeAlert({ type: (d.Secure ? 'success' : 'warning'), message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Data)+'</pre><p>Delegates: '+d.Delegates.sort().join(', ')+'</p>' }) );
 					}
 				});
 			});

@@ -94,6 +94,7 @@ type SummaryData struct {
 
 type DecryptWithDelegates struct {
 	Data      []byte
+	Secure    bool
 	Delegates []string
 }
 
@@ -299,7 +300,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, names, err := crypt.Decrypt(s.Data, s.Name)
+	data, names, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		log.Println("Error decrypting:", err)
 		return jsonStatusError(err)
@@ -307,6 +308,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 
 	resp := &DecryptWithDelegates{
 		Data:      data,
+		Secure:    secure,
 		Delegates: names,
 	}
 
