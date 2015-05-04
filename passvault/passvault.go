@@ -343,13 +343,13 @@ func InitFrom(path string) (records Records, err error) {
 func (records *Records) WriteRecordsToDisk() error {
 	if records.localPath == "memory" {
 		return nil
-	} else {
-		jsonDiskRecord, err := json.Marshal(records)
-		if err != nil {
-			return err
-		}
-		return ioutil.WriteFile(records.localPath, jsonDiskRecord, 0644)
 	}
+
+	jsonDiskRecord, err := json.Marshal(records)
+	if err != nil {
+		return err
+	}
+	return ioutil.WriteFile(records.localPath, jsonDiskRecord, 0644)
 }
 
 // AddNewRecord adds a new record for a given username and password.
@@ -429,9 +429,8 @@ func (records *Records) DeleteRecord(name string) error {
 	if _, ok := records.GetRecord(name); ok {
 		delete(records.Passwords, name)
 		return records.WriteRecordsToDisk()
-	} else {
-		return errors.New("Record missing")
 	}
+	return errors.New("Record missing")
 }
 
 // RevokeRecord removes admin status from a record.
@@ -440,9 +439,8 @@ func (records *Records) RevokeRecord(name string) error {
 		rec.Admin = false
 		records.SetRecord(rec, name)
 		return records.WriteRecordsToDisk()
-	} else {
-		return errors.New("Record missing")
 	}
+	return errors.New("Record missing")
 }
 
 // MakeAdmin adds admin status to a given record.
@@ -451,9 +449,8 @@ func (records *Records) MakeAdmin(name string) error {
 		rec.Admin = true
 		records.SetRecord(rec, name)
 		return records.WriteRecordsToDisk()
-	} else {
-		return errors.New("Record missing")
 	}
+	return errors.New("Record missing")
 }
 
 // SetRecord puts a record into the global status.
@@ -516,18 +513,16 @@ func (pr *PasswordRecord) EncryptKey(in []byte) (out []byte, err error) {
 func (pr *PasswordRecord) GetKeyRSAPub() (out *rsa.PublicKey, err error) {
 	if pr.Type != RSARecord {
 		return out, errors.New("Invalid function for record type")
-	} else {
-		return &pr.RSAKey.RSAPublic, err
 	}
+	return &pr.RSAKey.RSAPublic, err
 }
 
 // GetKeyECCPub returns the ECDSA public key out of the record.
 func (pr *PasswordRecord) GetKeyECCPub() (out *ecdsa.PublicKey, err error) {
 	if pr.Type != ECCRecord {
 		return out, errors.New("Invalid function for record type")
-	} else {
-		return pr.ECKey.ECPublic.toECDSA(), err
 	}
+	return pr.ECKey.ECPublic.toECDSA(), err
 }
 
 // GetKeyECC returns the ECDSA private key of the record given the correct password.
@@ -623,7 +618,6 @@ func (pr *PasswordRecord) ValidatePassword(password string) error {
 
 	if bytes.Compare(h, pr.HashedPassword) != 0 {
 		return errors.New("Wrong Password")
-	} else {
-		return nil
 	}
+	return nil
 }

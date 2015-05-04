@@ -34,6 +34,18 @@ func New(records *passvault.Records, cache *keycache.Cache) Cryptor {
 	return Cryptor{records, cache}
 }
 
+// AccessStructure represents different possible access structures for
+// encrypted data.  If len(Names) > 0, then at least 2 of the users in the list
+// must be delegated to decrypt.  If len(LeftNames) > 0 & len(RightNames) > 0,
+// then at least one from each list must be delegated (if the same user is in
+// both, then he can decrypt it alone).
+type AccessStructure struct {
+	Names []string
+
+	LeftNames  []string
+	RightNames []string
+}
+
 // MultiWrappedKey is a structure containing a 16-byte key encrypted
 // once for each of the keys corresponding to the names of the users
 // in Name in order.
@@ -179,61 +191,117 @@ func (encrypted *EncryptedData) unlock(key []byte) (err error) {
 
 // wrapKey encrypts the clear key such that a minimum number of delegated keys
 // are required to decrypt.  NOTE:  Currently the max value for min is 2.
-func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []byte, names []string, min int) (err error) {
-	// Generate a random AES key for each user and RSA/ECIES encrypt it
-	encrypted.KeySetRSA = make(map[string]SingleWrappedKey, len(names))
-
-	for _, name := range names {
+func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []byte, access AccessStructure) (err error) {
+	generateRandomKey := func(name string) (singleWrappedKey SingleWrappedKey, err error) {
 		rec, ok := records.GetRecord(name)
 		if !ok {
 			err = errors.New("Missing user on disk")
 			return
 		}
 
-		var singleWrappedKey SingleWrappedKey
-
 		if singleWrappedKey.aesKey, err = symcrypt.MakeRandom(16); err != nil {
-			return err
+			return
 		}
 
 		if singleWrappedKey.Key, err = rec.EncryptKey(singleWrappedKey.aesKey); err != nil {
-			return err
+			return
 		}
 
-		encrypted.KeySetRSA[name] = singleWrappedKey
+		return
 	}
 
-	// encrypt file key with every combination of two keys
-	encrypted.KeySet = make([]MultiWrappedKey, 0)
+	encryptKey := func(outer, inner string, clearKey []byte) (keyBytes []byte, err error) {
+		var outerCrypt, innerCrypt cipher.Block
+		keyBytes = make([]byte, 16)
 
-	for i := 0; i < len(names); i++ {
-		for j := i + 1; j < len(names); j++ {
-			var outerCrypt, innerCrypt cipher.Block
-			keyBytes := make([]byte, 16)
-
-			outerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[names[i]].aesKey)
-			if err != nil {
-				return
-			}
-
-			innerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[names[j]].aesKey)
-			if err != nil {
-				return
-			}
-
-			innerCrypt.Encrypt(keyBytes, clearKey)
-			outerCrypt.Encrypt(keyBytes, keyBytes)
-
-			out := MultiWrappedKey{
-				Name: []string{names[i], names[j]},
-				Key:  keyBytes,
-			}
-
-			encrypted.KeySet = append(encrypted.KeySet, out)
+		outerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[outer].aesKey)
+		if err != nil {
+			return
 		}
+
+		innerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[inner].aesKey)
+		if err != nil {
+			return
+		}
+
+		innerCrypt.Encrypt(keyBytes, clearKey)
+		outerCrypt.Encrypt(keyBytes, keyBytes)
+
+		return
 	}
 
-	return nil
+	if len(access.Names) > 0 {
+		// Generate a random AES key for each user and RSA/ECIES encrypt it
+		encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
+
+		for _, name := range access.Names {
+			encrypted.KeySetRSA[name], err = generateRandomKey(name)
+			if err != nil {
+				return err
+			}
+		}
+
+		// encrypt file key with every combination of two keys
+		encrypted.KeySet = make([]MultiWrappedKey, 0)
+
+		for i := 0; i < len(access.Names); i++ {
+			for j := i + 1; j < len(access.Names); j++ {
+				keyBytes, err := encryptKey(access.Names[i], access.Names[j], clearKey)
+				if err != nil {
+					return err
+				}
+
+				out := MultiWrappedKey{
+					Name: []string{access.Names[i], access.Names[j]},
+					Key:  keyBytes,
+				}
+
+				encrypted.KeySet = append(encrypted.KeySet, out)
+			}
+		}
+
+		return nil
+	} else if len(access.LeftNames) > 0 && len(access.RightNames) > 0 {
+		// Generate a random AES key for each user and RSA/ECIES encrypt it
+		encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
+
+		for _, name := range access.LeftNames {
+			encrypted.KeySetRSA[name], err = generateRandomKey(name)
+			if err != nil {
+				return err
+			}
+		}
+
+		for _, name := range access.RightNames {
+			encrypted.KeySetRSA[name], err = generateRandomKey(name)
+			if err != nil {
+				return err
+			}
+		}
+
+		// encrypt file key with every combination of one left key and one right key
+		encrypted.KeySet = make([]MultiWrappedKey, 0)
+
+		for _, leftName := range access.LeftNames {
+			for _, rightName := range access.RightNames {
+				keyBytes, err := encryptKey(leftName, rightName, clearKey)
+				if err != nil {
+					return err
+				}
+
+				out := MultiWrappedKey{
+					Name: []string{leftName, rightName},
+					Key:  keyBytes,
+				}
+
+				encrypted.KeySet = append(encrypted.KeySet, out)
+			}
+		}
+
+		return nil
+	} else {
+		return errors.New("Invalid access structure.")
+	}
 }
 
 // unwrapKey decrypts first key in keys whose encryption keys are in keycache
@@ -287,11 +355,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 // Encrypt encrypts data with the keys associated with names. This
 // requires a minimum of min keys to decrypt.  NOTE: as currently
 // implemented, the maximum value for min is 2.
-func (c *Cryptor) Encrypt(in []byte, labels, names []string, min int) (resp []byte, err error) {
-	if min > 2 {
-		return nil, errors.New("Minimum restricted to 2")
-	}
-
+func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (resp []byte, err error) {
 	var encrypted EncryptedData
 	encrypted.Version = DEFAULT_VERSION
 	if encrypted.VaultId, err = c.records.GetVaultId(); err != nil {
@@ -309,7 +373,7 @@ func (c *Cryptor) Encrypt(in []byte, labels, names []string, min int) (resp []by
 		return
 	}
 
-	err = encrypted.wrapKey(c.records, clearKey, names, min)
+	err = encrypted.wrapKey(c.records, clearKey, access)
 	if err != nil {
 		return
 	}
@@ -360,7 +424,6 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 	if err = encrypted.unlock(hmacKey); err != nil {
 		return
 	}
-
 
 	// make sure file was encrypted with the active vault
 	vaultId, err := c.records.GetVaultId()
