@@ -15,6 +15,12 @@ import (
 	"github.com/cloudflare/redoctober/passvault"
 )
 
+var (
+	crypt   cryptor.Cryptor
+	records passvault.Records
+	cache   keycache.Cache
+)
+
 // Each of these structures corresponds to the JSON expected on the
 // correspondingly named URI (e.g. the delegate structure maps to the
 // JSON that should be sent on the /delegate URI and it is handled by
@@ -51,11 +57,11 @@ type EncryptRequest struct {
 	Name     string
 	Password string
 
-	Minimum     int
 	Owners      []string
 	LeftOwners  []string
 	RightOwners []string
-	Data        []byte
+
+	Data []byte
 
 	Labels []string
 }
@@ -90,6 +96,7 @@ type SummaryData struct {
 
 type DecryptWithDelegates struct {
 	Data      []byte
+	Secure    bool
 	Delegates []string
 }
 
@@ -102,7 +109,7 @@ func jsonStatusError(err error) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: err.Error()})
 }
 func jsonSummary() ([]byte, error) {
-	return json.Marshal(SummaryData{Status: "ok", Live: keycache.GetSummary(), All: passvault.GetSummary()})
+	return json.Marshal(SummaryData{Status: "ok", Live: cache.GetSummary(), All: records.GetSummary()})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
@@ -111,11 +118,11 @@ func jsonResponse(resp []byte) ([]byte, error) {
 // validateAdmin checks that the username and password passed in are
 // correct and that the user is an admin
 func validateAdmin(name, password string) error {
-	if passvault.NumRecords() == 0 {
+	if records.NumRecords() == 0 {
 		return errors.New("Vault is not created yet")
 	}
 
-	pr, ok := passvault.GetRecord(name)
+	pr, ok := records.GetRecord(name)
 	if !ok {
 		return errors.New("User not present")
 	}
@@ -144,9 +151,13 @@ func validateUser(name, password string) error {
 
 // Init reads the records from disk from a given path
 func Init(path string) (err error) {
-	if err = passvault.InitFromDisk(path); err != nil {
+	if records, err = passvault.InitFrom(path); err != nil {
 		err = fmt.Errorf("Failed to load password vault %s: %s", path, err)
 	}
+
+	cache = keycache.Cache{make(map[string]keycache.ActiveUser)}
+	crypt = cryptor.New(&records, &cache)
+
 	return
 }
 
@@ -157,7 +168,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if passvault.NumRecords() != 0 {
+	if records.NumRecords() != 0 {
 		return jsonStatusError(errors.New("Vault is already created"))
 	}
 
@@ -166,7 +177,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, err := passvault.AddNewRecord(s.Name, s.Password, true); err != nil {
+	if _, err := records.AddNewRecord(s.Name, s.Password, true, passvault.DefaultRecordType); err != nil {
 		log.Printf("Error adding record for %s: %s\n", s.Name, err)
 		return jsonStatusError(err)
 	}
@@ -177,13 +188,13 @@ func Create(jsonIn []byte) ([]byte, error) {
 // Summary processes a summary request.
 func Summary(jsonIn []byte) ([]byte, error) {
 	var s SummaryRequest
-	keycache.Refresh()
+	cache.Refresh()
 
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
 
-	if passvault.NumRecords() == 0 {
+	if records.NumRecords() == 0 {
 		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
@@ -202,7 +213,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if passvault.NumRecords() == 0 {
+	if records.NumRecords() == 0 {
 		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
@@ -214,21 +225,21 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	// Find password record for user and verify that their password
 	// matches. If not found then add a new entry for this user.
 
-	pr, found := passvault.GetRecord(s.Name)
+	pr, found := records.GetRecord(s.Name)
 	if found {
 		if err := pr.ValidatePassword(s.Password); err != nil {
 			return jsonStatusError(err)
 		}
 	} else {
 		var err error
-		if pr, err = passvault.AddNewRecord(s.Name, s.Password, false); err != nil {
+		if pr, err = records.AddNewRecord(s.Name, s.Password, false, passvault.DefaultRecordType); err != nil {
 			log.Printf("Error adding record for %s: %s\n", s.Name, err)
 			return jsonStatusError(err)
 		}
 	}
 
 	// add signed-in record to active set
-	if err := keycache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Time); err != nil {
+	if err := cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Time); err != nil {
 		log.Printf("Error adding key to cache for %s: %s\n", s.Name, err)
 		return jsonStatusError(err)
 	}
@@ -243,12 +254,12 @@ func Password(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if passvault.NumRecords() == 0 {
+	if records.NumRecords() == 0 {
 		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
 	// add signed-in record to active set
-	if err := passvault.ChangePassword(s.Name, s.Password, s.NewPassword); err != nil {
+	if err := records.ChangePassword(s.Name, s.Password, s.NewPassword); err != nil {
 		log.Println("Error changing password:", err)
 		return jsonStatusError(err)
 	}
@@ -268,13 +279,9 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if len(s.Owners) > 0 {
-		s.LeftOwners = s.Owners
-		s.RightOwners = s.Owners
-	}
-
-	// Encrypt file with list of owners
-	if resp, err := cryptor.Encrypt(s.Data, s.Labels, s.LeftOwners, s.RightOwners, s.Minimum); err != nil {
+	// Encrypt file
+	access := cryptor.AccessStructure{s.Owners, s.LeftOwners, s.RightOwners}
+	if resp, err := crypt.Encrypt(s.Data, s.Labels, access); err != nil {
 		log.Println("Error encrypting:", err)
 		return jsonStatusError(err)
 	} else {
@@ -296,7 +303,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, names, err := cryptor.Decrypt(s.Data, s.Name)
+	data, names, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		log.Println("Error decrypting:", err)
 		return jsonStatusError(err)
@@ -304,6 +311,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 
 	resp := &DecryptWithDelegates{
 		Data:      data,
+		Secure:    secure,
 		Delegates: names,
 	}
 
@@ -328,7 +336,7 @@ func Modify(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, ok := passvault.GetRecord(s.ToModify); !ok {
+	if _, ok := records.GetRecord(s.ToModify); !ok {
 		return jsonStatusError(errors.New("Record to modify missing"))
 	}
 
@@ -339,11 +347,11 @@ func Modify(jsonIn []byte) ([]byte, error) {
 	var err error
 	switch s.Command {
 	case "delete":
-		err = passvault.DeleteRecord(s.ToModify)
+		err = records.DeleteRecord(s.ToModify)
 	case "revoke":
-		err = passvault.RevokeRecord(s.ToModify)
+		err = records.RevokeRecord(s.ToModify)
 	case "admin":
-		err = passvault.MakeAdmin(s.ToModify)
+		err = records.MakeAdmin(s.ToModify)
 	default:
 		return jsonStatusError(errors.New("Unknown command"))
 	}

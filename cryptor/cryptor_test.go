@@ -22,7 +22,7 @@ func TestHash(t *testing.T) {
 	var hmacKey, _ = base64.StdEncoding.DecodeString("Qugc5ZQ0vC7KQSgmDHTVgQ==")
 	var signature = append([]byte{}, encrypted.Signature...)
 
-	expectedSig := computeHmac(hmacKey, encrypted)
+	expectedSig := encrypted.computeHmac(hmacKey)
 
 	if diff := bytes.Compare(signature, expectedSig); diff != 0 {
 		t.Fatalf("Error comparing signature %v", base64.StdEncoding.EncodeToString(expectedSig))
@@ -30,7 +30,7 @@ func TestHash(t *testing.T) {
 
 	// change version and check hmac
 	encrypted.Version = 2
-	unexpectedSig := computeHmac(hmacKey, encrypted)
+	unexpectedSig := encrypted.computeHmac(hmacKey)
 
 	if diff := bytes.Compare(signature, unexpectedSig); diff == 0 {
 		t.Fatalf("Error comparing signature")
@@ -39,7 +39,7 @@ func TestHash(t *testing.T) {
 
 	// change vaultid and check hmac
 	encrypted.VaultId = 529853896
-	unexpectedSig = computeHmac(hmacKey, encrypted)
+	unexpectedSig = encrypted.computeHmac(hmacKey)
 
 	if diff := bytes.Compare(signature, unexpectedSig); diff == 0 {
 		t.Fatalf("Error comparing signature")
@@ -48,7 +48,7 @@ func TestHash(t *testing.T) {
 
 	// swap two records and check hmac
 	encrypted.KeySet[0], encrypted.KeySet[1] = encrypted.KeySet[1], encrypted.KeySet[0]
-	unexpectedSig = computeHmac(hmacKey, encrypted)
+	unexpectedSig = encrypted.computeHmac(hmacKey)
 
 	if diff := bytes.Compare(signature, unexpectedSig); diff != 0 {
 		t.Fatalf("Error comparing signature %v, %v",
@@ -59,7 +59,7 @@ func TestHash(t *testing.T) {
 	// delete RSA key and check hmac
 	encrypted.Version = 1
 	delete(encrypted.KeySetRSA, "Carol")
-	unexpectedSig = computeHmac(hmacKey, encrypted)
+	unexpectedSig = encrypted.computeHmac(hmacKey)
 
 	if diff := bytes.Compare(signature, unexpectedSig); diff == 0 {
 		t.Fatalf("Error comparing signature")

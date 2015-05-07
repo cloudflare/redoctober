@@ -4,230 +4,290 @@
 package keycache
 
 import (
+	"bytes"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/symcrypt"
 	"testing"
 	"time"
 )
 
-var now = time.Now()
-var nextYear = now.AddDate(1, 0, 0)
-var emptyKey = make([]byte, 16)
-var dummy = make([]byte, 16)
-
 func TestUsesFlush(t *testing.T) {
-	singleUse := ActiveUser{
-		Admin: true,
-		Type:  passvault.AESRecord,
-		Usage: Usage{
-			Expiry: nextYear,
-			Uses:   2,
-		},
-		aesKey: emptyKey,
+	// Initialize passvault with one dummy user.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	UserKeys["first"] = singleUse
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
+	// Initialize keycache and delegate the user's key to it.
+	cache := NewCache()
+
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 2, "1h")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys")
 	}
 
-	EncryptKey(dummy, "first", nil)
-
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys %v", UserKeys)
+	// Generate a random symmetric key, encrypt a blank block with it, and encrypt
+	// the key itself with the user's public key.
+	dummy := make([]byte, 16)
+	key, err := symcrypt.MakeRandom(16)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	DecryptKey(dummy, "first", "", []string{}, nil)
+	encKey, err := symcrypt.EncryptCBC(dummy, dummy, key)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 0 {
-		t.Fatalf("Error in number of live keys %v", UserKeys)
+	pubEncryptedKey, err := pr.EncryptKey(key)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	key2, err := cache.DecryptKey(encKey, "user", "anybody", []string{}, pubEncryptedKey)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	if bytes.Equal(key, key2) {
+		t.Fatalf("cache.DecryptKey didnt decrypt the right key!")
+	}
+
+	// Second decryption allowed.
+	_, err = cache.DecryptKey(encKey, "user", "anybody else", []string{}, pubEncryptedKey)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 0 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
 }
 
 func TestTimeFlush(t *testing.T) {
-	oneSec, _ := time.ParseDuration("1s")
-	one := now.Add(oneSec)
-
-	singleUse := ActiveUser{
-		Admin: true,
-		Type:  passvault.AESRecord,
-		Usage: Usage{
-			Expiry: one,
-			Uses:   10,
-		},
-		aesKey: emptyKey,
+	// Initialize passvault and keycache.  Delegate a key for 1s, wait a
+	// second and then make sure that it's gone.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	UserKeys["first"] = singleUse
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
+	cache := NewCache()
+
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 10, "1s")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys")
 	}
 
-	EncryptKey(dummy, "first", nil)
+	time.Sleep(time.Second)
 
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys")
+	dummy := make([]byte, 16)
+	pubEncryptedKey, err := pr.EncryptKey(dummy)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	time.Sleep(oneSec)
-
-	_, err := DecryptKey(dummy, "first", "", []string{}, nil)
-
+	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{}, pubEncryptedKey)
 	if err == nil {
 		t.Fatalf("Error in pruning expired key")
 	}
 }
 
 func TestGoodLabel(t *testing.T) {
-	singleUse := ActiveUser{
-		Admin: true,
-		Type:  passvault.AESRecord,
-		Usage: Usage{
-			Expiry: nextYear,
-			Uses:   2,
-			Labels: []string{"red"},
-		},
-		aesKey: emptyKey,
+	// Initialize passvault and keycache.  Delegate a key with the tag "red" and
+	// verify that decryption with the tag "red" is allowed.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	UserKeys["first"] = singleUse
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
+	cache := NewCache()
+
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "1h")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys")
 	}
 
-	EncryptKey(dummy, "first", nil)
-
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys")
+	dummy := make([]byte, 16)
+	pubEncryptedKey, err := pr.EncryptKey(dummy)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	DecryptKey(dummy, "first", "", []string{"red"}, nil)
+	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{"red"}, pubEncryptedKey)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 0 {
-		t.Fatalf("Error in number of live keys %v", UserKeys)
+	cache.Refresh()
+	if len(cache.UserKeys) != 0 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
 }
 
 func TestBadLabel(t *testing.T) {
-	singleUse := ActiveUser{
-		Admin: true,
-		Type:  passvault.AESRecord,
-		Usage: Usage{
-			Expiry: nextYear,
-			Uses:   2,
-			Labels: []string{"red"},
-		},
-		aesKey: emptyKey,
+	// Initialize passvault and keycache.  Delegate a key with the tag "red" and
+	// verify that decryption with the tag "blue" is disallowed.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	UserKeys["first"] = singleUse
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
+	cache := NewCache()
+
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "1h")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys")
 	}
 
-	EncryptKey(dummy, "first", nil)
-
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys")
+	dummy := make([]byte, 16)
+	pubEncryptedKey, err := pr.EncryptKey(dummy)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	_, err := DecryptKey(dummy, "first", "", []string{"blue"}, nil)
-
+	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{"blue"}, pubEncryptedKey)
 	if err == nil {
-		t.Fatalf("Decryption of labeled key with no permission")
+		t.Fatalf("Decryption of labeled key allowed without permission.")
 	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys %v", UserKeys)
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
 }
 
 func TestGoodUser(t *testing.T) {
-	singleUse := ActiveUser{
-		Admin: true,
-		Type:  passvault.AESRecord,
-		Usage: Usage{
-			Expiry: nextYear,
-			Uses:   2,
-			Users:  []string{"ci", "buildeng", "first"},
-			Labels: []string{"red", "blue"},
-		},
-		aesKey: emptyKey,
+	// Initialize passvault and keycache.  Delegate a key with tag and user
+	// restrictions and verify that permissible decryption is allowed.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	UserKeys["first"] = singleUse
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
+	cache := NewCache()
+
+	err = cache.AddKeyFromRecord(
+		pr, "user", "weakpassword",
+		[]string{"ci", "buildeng", "user"},
+		[]string{"red", "blue"},
+		1, "1h",
+	)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys")
 	}
 
-	EncryptKey(dummy, "first", nil)
-
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys")
+	dummy := make([]byte, 16)
+	pubEncryptedKey, err := pr.EncryptKey(dummy)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	DecryptKey(dummy, "first", "ci", []string{"red"}, nil)
+	_, err = cache.DecryptKey(dummy, "user", "ci", []string{"red"}, pubEncryptedKey)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 0 {
-		t.Fatalf("Error in number of live keys %v", UserKeys)
+	cache.Refresh()
+	if len(cache.UserKeys) != 0 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
 }
 
 func TestBadUser(t *testing.T) {
-	singleUse := ActiveUser{
-		Admin: true,
-		Type:  passvault.AESRecord,
-		Usage: Usage{
-			Expiry: nextYear,
-			Uses:   2,
-			Users:  []string{"ci", "buildeng", "first"},
-			Labels: []string{"red", "blue"},
-		},
-		aesKey: emptyKey,
+	// Initialize passvault and keycache.  Delegate a key with tag and user
+	// restrictions and verify that illegal decryption is disallowed.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	UserKeys["first"] = singleUse
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
+	cache := NewCache()
+
+	err = cache.AddKeyFromRecord(
+		pr, "user", "weakpassword",
+		[]string{"ci", "buildeng", "user"},
+		[]string{"red", "blue"},
+		1, "1h",
+	)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys")
 	}
 
-	// Note that the active user needs to be in the set of delegated
-	// users in the AES case only
-	EncryptKey(dummy, "first", nil)
-
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys")
+	dummy := make([]byte, 16)
+	pubEncryptedKey, err := pr.EncryptKey(dummy)
+	if err != nil {
+		t.Fatalf("%v", err)
 	}
 
-	_, err := DecryptKey(dummy, "first", "", []string{"blue"}, nil)
-
+	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{"blue"}, pubEncryptedKey)
 	if err == nil {
-		t.Fatalf("Decryption of labeled key by unauthorized user")
+		t.Fatalf("Decryption of labeled key allowed without permission.")
 	}
 
-	Refresh()
-	if len(UserKeys) != 1 {
-		t.Fatalf("Error in number of live keys %v", UserKeys)
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
 }

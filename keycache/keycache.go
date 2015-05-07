@@ -19,9 +19,6 @@ import (
 	"github.com/cloudflare/redoctober/passvault"
 )
 
-// UserKeys is the set of decrypted keys in memory, indexed by name.
-var UserKeys map[string]ActiveUser = make(map[string]ActiveUser)
-
 // Usage holds the permissions of a delegated permission
 type Usage struct {
 	Uses   int       // Number of uses delegated
@@ -36,29 +33,12 @@ type ActiveUser struct {
 	Admin bool
 	Type  string
 
-	aesKey []byte
 	rsaKey rsa.PrivateKey
 	eccKey *ecdsa.PrivateKey
 }
 
-// matchUser returns the matching active user if present
-// and a boolean to indicate its presence.
-func matchUser(name, user string, labels []string) (out ActiveUser, present bool) {
-	key, present := UserKeys[name]
-	if present {
-		if key.Usage.matches(user, labels) {
-			return key, true
-		} else {
-			present = false
-		}
-	}
-
-	return
-}
-
-// setUser takes an ActiveUser and adds it to the cache.
-func setUser(in ActiveUser, name string) {
-	UserKeys[name] = in
+type Cache struct {
+	UserKeys map[string]ActiveUser // Decrypted keys in memory, indexed by name.
 }
 
 // matchesLabel returns true if this usage applies the user and label
@@ -68,7 +48,7 @@ func (usage Usage) matchesLabel(labels []string) bool {
 	if len(labels) == 0 {
 		return true
 	}
-	//
+
 	for _, validLabel := range usage.Labels {
 		for _, label := range labels {
 			if label == validLabel {
@@ -97,42 +77,66 @@ func (usage Usage) matches(user string, labels []string) bool {
 	return false
 }
 
+func NewCache() Cache {
+	return Cache{make(map[string]ActiveUser)}
+}
+
+// setUser takes an ActiveUser and adds it to the cache.
+func (cache *Cache) setUser(in ActiveUser, name string) {
+	cache.UserKeys[name] = in
+}
+
+// matchUser returns the matching active user if present
+// and a boolean to indicate its presence.
+func (cache *Cache) matchUser(name, user string, labels []string) (out ActiveUser, present bool) {
+	key, present := cache.UserKeys[name]
+	if present {
+		if key.Usage.matches(user, labels) {
+			return key, true
+		} else {
+			present = false
+		}
+	}
+
+	return
+}
+
 // useKey decrements the counter on an active key
 // for decryption or symmetric encryption
-func useKey(name, user string, labels []string) {
-	if val, present := matchUser(name, user, labels); present {
+func (cache *Cache) useKey(name, user string, labels []string) {
+	if val, present := cache.matchUser(name, user, labels); present {
 		val.Usage.Uses -= 1
-		setUser(val, name)
+		cache.setUser(val, name)
 	}
 }
 
 // GetSummary returns the list of active user keys.
-func GetSummary() map[string]ActiveUser {
-	return UserKeys
+func (cache *Cache) GetSummary() map[string]ActiveUser {
+	return cache.UserKeys
 }
 
 // FlushCache removes all delegated keys.
-func FlushCache() {
-	for name := range UserKeys {
-		delete(UserKeys, name)
+func (cache *Cache) FlushCache() {
+	for name := range cache.UserKeys {
+		delete(cache.UserKeys, name)
 	}
 }
 
 // Refresh purges all expired or used up keys.
-func Refresh() {
-	for name, active := range UserKeys {
+func (cache *Cache) Refresh() {
+	for name, active := range cache.UserKeys {
 		if active.Usage.Expiry.Before(time.Now()) || active.Usage.Uses <= 0 {
 			log.Println("Record expired", name, active.Usage.Users, active.Usage.Labels, active.Usage.Expiry)
-			delete(UserKeys, name)
+			delete(cache.UserKeys, name)
 		}
 	}
 }
 
 // AddKeyFromRecord decrypts a key for a given record and adds it to the cache.
-func AddKeyFromRecord(record passvault.PasswordRecord, name, password string, users, labels []string, uses int, durationString string) (err error) {
+func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, password string, users, labels []string, uses int, durationString string) (err error) {
 	var current ActiveUser
 
-	Refresh()
+	cache.Refresh()
 
 	// compute exipiration
 	duration, err := time.ParseDuration(durationString)
@@ -146,8 +150,6 @@ func AddKeyFromRecord(record passvault.PasswordRecord, name, password string, us
 
 	// get decryption keys
 	switch record.Type {
-	case passvault.AESRecord:
-		current.aesKey, err = record.GetKeyAES(password)
 	case passvault.RSARecord:
 		current.rsaKey, err = record.GetKeyRSA(password)
 	case passvault.ECCRecord:
@@ -165,58 +167,19 @@ func AddKeyFromRecord(record passvault.PasswordRecord, name, password string, us
 	current.Admin = record.Admin
 
 	// add current to map (overwriting previous for this name)
-	setUser(current, name)
-
-	return
-}
-
-// EncryptKey encrypts a 16 byte key using the cached key corresponding to name.
-// For AES keys, use the cached key.
-// For RSA and EC keys, the cache is not necessary; use the override
-// key instead.
-func EncryptKey(in []byte, name string, override []byte) (out []byte, err error) {
-	Refresh()
-
-	aesKey := override
-
-	// if the override key is not set, extract from the cache
-	if aesKey == nil {
-		encryptKey, ok := matchUser(name, name, []string{})
-		if !ok {
-			return nil, errors.New("Key not delegated")
-		}
-
-		switch encryptKey.Type {
-		case passvault.AESRecord:
-			aesKey = encryptKey.aesKey
-
-		default:
-			return out, errors.New("Require override for key")
-		}
-
-		useKey(name, name, []string{})
-	}
-
-	// encrypt
-	aesSession, err := aes.NewCipher(aesKey)
-	if err != nil {
-		return
-	}
-	out = make([]byte, 16)
-	aesSession.Encrypt(out, in)
+	cache.setUser(current, name)
 
 	return
 }
 
 // DecryptKey decrypts a 16 byte key using the key corresponding to the name parameter
-// for AES keys, the cached AES key is used directly to decrypt in
-// for RSA and EC keys, the cached RSA/EC key is used to decrypt
+// For RSA and EC keys, the cached RSA/EC key is used to decrypt
 // the pubEncryptedKey which is then used to decrypt the input
 // buffer.
-func DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey []byte) (out []byte, err error) {
-	Refresh()
+func (cache *Cache) DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey []byte) (out []byte, err error) {
+	cache.Refresh()
 
-	decryptKey, ok := matchUser(name, user, labels)
+	decryptKey, ok := cache.matchUser(name, user, labels)
 	if !ok {
 		return nil, errors.New("Key not delegated")
 	}
@@ -225,9 +188,6 @@ func DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey [
 
 	// pick the aesKey to use for decryption
 	switch decryptKey.Type {
-	case passvault.AESRecord:
-		aesKey = decryptKey.aesKey
-
 	case passvault.RSARecord:
 		// extract the aes key from the pubEncryptedKey
 		aesKey, err = rsa.DecryptOAEP(sha1.New(), rand.Reader, &decryptKey.rsaKey, pubEncryptedKey, nil)
@@ -253,7 +213,7 @@ func DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey [
 	out = make([]byte, 16)
 	aesSession.Decrypt(out, in)
 
-	useKey(name, user, labels)
+	cache.useKey(name, user, labels)
 
 	return
 }

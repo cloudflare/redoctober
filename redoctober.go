@@ -89,7 +89,7 @@ func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, 
 		Rand:         rand.Reader,
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
-		MinVersion: tls.VersionTLS10,
+		MinVersion:               tls.VersionTLS10,
 	}
 
 	// If a caPath has been specified then a local CA is being used
@@ -632,10 +632,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				data.Users = data.Users.split(',');
 				for(var i=0, l=data.Users.length; i<l; i++){
 					data.Users[i] = data.Users[i].trim();
+					if (data.Users[i] == "") { data.Users.splice(i, 1); }
 				}
 				data.Labels = data.Labels.split(',');
 				for(var i=0, l=data.Labels.length; i<l; i++){
 					data.Labels[i] = data.Labels[i].trim();
+					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
 				}
 
 				submit( $form, {
@@ -701,10 +703,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				data.Owners = data.Owners.split(',');
 				for(var i=0, l=data.Owners.length; i<l; i++){
 					data.Owners[i] = data.Owners[i].trim();
+					if (data.Owners[i] == "") { data.Owners.splice(i, 1); }
 				}
 				data.Labels = data.Labels.split(',');
 				for(var i=0, l=data.Labels.length; i<l; i++){
 					data.Labels[i] = data.Labels[i].trim();
+					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
 				}
 
 				// Convert data to base64.
@@ -728,7 +732,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					data : data,
 					success : function(d){
 					d = JSON.parse(window.atob(d.Response));
-					$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Data)+'</pre><p>Delegates: '+d.Delegates.sort().join(', ')+'</p>' }) );
+					$form.find('.feedback').empty().append( makeAlert({ type: (d.Secure ? 'success' : 'warning'), message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Data)+'</pre><p>Delegates: '+d.Delegates.sort().join(', ')+'</p>' }) );
 					}
 				});
 			});

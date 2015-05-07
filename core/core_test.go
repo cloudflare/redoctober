@@ -10,15 +10,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
 )
 
 func TestCreate(t *testing.T) {
 	createJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
 
-	os.Remove("/tmp/db1.json")
-	Init("/tmp/db1.json")
+	Init("memory")
 
 	respJson, err := Create(createJson)
 	if err != nil {
@@ -46,14 +44,11 @@ func TestCreate(t *testing.T) {
 	if s.Status == "ok" {
 		t.Fatalf("Error in creating account when one exists, %v", s.Status)
 	}
-
-	os.Remove("/tmp/db1.json")
 }
 
 func TestSummary(t *testing.T) {
 	createJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
 	delegateJson := []byte("{\"Name\":\"Bob\",\"Password\":\"Rob\",\"Time\":\"2h\",\"Uses\":1}")
-	os.Remove("/tmp/db1.json")
 
 	// check for summary of uninitialized vault
 	respJson, err := Summary(createJson)
@@ -69,7 +64,7 @@ func TestSummary(t *testing.T) {
 		t.Fatalf("Error in summary of account with no vault, %v", s.Status)
 	}
 
-	Init("/tmp/db1.json")
+	Init("memory")
 
 	// check for summary of initialized vault
 	respJson, err = Create(createJson)
@@ -156,7 +151,7 @@ func TestSummary(t *testing.T) {
 
 	dataLive, ok := s.Live["Bob"]
 	if !ok {
-		t.Fatalf("Error in summary of account, record missing, %v", keycache.UserKeys)
+		t.Fatalf("Error in summary of account, record missing, %v", cache.UserKeys)
 	}
 	if dataLive.Admin != false {
 		t.Fatalf("Error in summary of account, record missing")
@@ -164,10 +159,6 @@ func TestSummary(t *testing.T) {
 	if dataLive.Type != passvault.DefaultRecordType {
 		t.Fatalf("Error in summary of account, record missing")
 	}
-
-	keycache.FlushCache()
-
-	os.Remove("/tmp/db1.json")
 }
 
 func TestPassword(t *testing.T) {
@@ -176,9 +167,8 @@ func TestPassword(t *testing.T) {
 	passwordJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"NewPassword\":\"Olleh\"}")
 	delegateJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Olleh\",\"Time\":\"2h\",\"Uses\":1}")
 	passwordJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Olleh\",\"NewPassword\":\"Hello\"}")
-	os.Remove("/tmp/db1.json")
 
-	Init("/tmp/db1.json")
+	Init("memory")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -277,10 +267,6 @@ func TestPassword(t *testing.T) {
 	if s.Status != "ok" {
 		t.Fatalf("Error in delegating account, %v", s.Status)
 	}
-
-	keycache.FlushCache()
-
-	os.Remove("/tmp/db1.json")
 }
 
 func TestEncryptDecrypt(t *testing.T) {
@@ -292,9 +278,8 @@ func TestEncryptDecrypt(t *testing.T) {
 	delegateJson5 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":2,\"Users\":[\"Alice\"],\"Labels\":[\"blue\"]}")
 	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
 	encryptJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Labels\":[\"blue\",\"red\"]}")
-	os.Remove("/tmp/db1.json")
 
-	Init("/tmp/db1.json")
+	Init("memory")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -335,7 +320,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// check summary to see if none are delegated
-	keycache.Refresh()
+	cache.Refresh()
 	respJson, err = Summary(summaryJson)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -422,7 +407,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// verify the presence of the two delgations
-	keycache.Refresh()
+	cache.Refresh()
 	var sum2 SummaryData
 	respJson, err = Summary(summaryJson)
 	if err != nil {
@@ -466,10 +451,6 @@ func TestEncryptDecrypt(t *testing.T) {
 			t.Fatalf("Error in decrypt, %v", d.Delegates)
 		}
 	}
-
-	keycache.FlushCache()
-
-	os.Remove("/tmp/db1.json")
 }
 
 func TestModify(t *testing.T) {
@@ -484,8 +465,7 @@ func TestModify(t *testing.T) {
 	modifyJson4 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"ToModify\":\"Alice\",\"Command\":\"revoke\"}")
 	modifyJson5 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"ToModify\":\"Alice\",\"Command\":\"delete\"}")
 
-	os.Remove("/tmp/db1.json")
-	Init("/tmp/db1.json")
+	Init("memory")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -526,7 +506,7 @@ func TestModify(t *testing.T) {
 	}
 
 	// check summary to see if none are delegated
-	keycache.Refresh()
+	cache.Refresh()
 	respJson, err = Summary(summaryJson)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -653,10 +633,6 @@ func TestModify(t *testing.T) {
 	if len(sum3.All) != 2 {
 		t.Fatalf("Error in summary, %v", sum3.All)
 	}
-
-	keycache.FlushCache()
-
-	os.Remove("/tmp/db1.json")
 }
 
 func TestStatic(t *testing.T) {
@@ -731,7 +707,7 @@ func TestStatic(t *testing.T) {
 		t.Fatalf("Error in summary, %v, %v", expected, r.Response)
 	}
 
-	keycache.FlushCache()
+	cache.FlushCache()
 
 	os.Remove("/tmp/db1.json")
 }
