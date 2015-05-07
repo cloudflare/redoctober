@@ -5,10 +5,11 @@ package keycache
 
 import (
 	"bytes"
-	"github.com/cloudflare/redoctober/passvault"
-	"github.com/cloudflare/redoctober/symcrypt"
 	"testing"
 	"time"
+
+	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/symcrypt"
 )
 
 func TestUsesFlush(t *testing.T) {
