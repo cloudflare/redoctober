@@ -358,7 +358,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (resp []byte, err error) {
 	var encrypted EncryptedData
 	encrypted.Version = DEFAULT_VERSION
-	if encrypted.VaultId, err = c.records.GetVaultId(); err != nil {
+	if encrypted.VaultId, err = c.records.GetVaultID(); err != nil {
 		return
 	}
 
@@ -393,7 +393,7 @@ func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (r
 	encrypted.Data = encryptedFile
 	encrypted.Labels = labels
 
-	hmacKey, err := c.records.GetHmacKey()
+	hmacKey, err := c.records.GetHMACKey()
 	if err != nil {
 		return
 	}
@@ -416,7 +416,7 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 
 	secure = encrypted.Version == -1
 
-	hmacKey, err := c.records.GetHmacKey()
+	hmacKey, err := c.records.GetHMACKey()
 	if err != nil {
 		return
 	}
@@ -426,7 +426,7 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 	}
 
 	// make sure file was encrypted with the active vault
-	vaultId, err := c.records.GetVaultId()
+	vaultId, err := c.records.GetVaultID()
 	if err != nil {
 		return
 	}

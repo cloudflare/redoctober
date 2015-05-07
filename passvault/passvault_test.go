@@ -10,8 +10,10 @@ import (
 )
 
 func TestStaticVault(t *testing.T) {
-	// Initial create.
-	records, err := InitFrom("/tmp/redoctober.jso")
+	// Creates a temporary on-disk database to test if passvault can read and
+	// write from/to disk.  It's deleted at the bottom of the function--this
+	// should be the only test that requires touching disk.
+	records, err := InitFrom("/tmp/redoctober.json")
 	if err != nil {
 		t.Fatalf("Error reading record")
 	}
@@ -27,7 +29,6 @@ func TestStaticVault(t *testing.T) {
 		t.Fatalf("Error reading record")
 	}
 
-	// Cleaning.
 	os.Remove("/tmp/redoctober.json")
 }
 

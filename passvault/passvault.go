@@ -465,12 +465,12 @@ func (records *Records) GetRecord(name string) (PasswordRecord, bool) {
 }
 
 // GetVaultId returns the id of the current vault.
-func (records *Records) GetVaultId() (id int, err error) {
+func (records *Records) GetVaultID() (id int, err error) {
 	return records.VaultId, nil
 }
 
 // GetHmacKey returns the hmac key of the current vault.
-func (records *Records) GetHmacKey() (key []byte, err error) {
+func (records *Records) GetHMACKey() (key []byte, err error) {
 	return records.HmacKey, nil
 }
 
