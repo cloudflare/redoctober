@@ -23,15 +23,19 @@ type RemoteServer struct {
 // the root CA the server uses to authenticate itself.
 func NewRemoteServer(serverAddress, CAFile string) (*RemoteServer, error) {
 
-	// populate a root CA pool from file
-	rootCAs := x509.NewCertPool()
-	pemBytes, err := ioutil.ReadFile(CAFile)
-	if err != nil {
-		return nil, errors.New("fail to read CA file: " + err.Error())
-	}
-	ok := rootCAs.AppendCertsFromPEM(pemBytes)
-	if !ok {
-		return nil, errors.New("fail to populate CA root pool.")
+	var rootCAs *x509.CertPool
+	// populate a root CA pool from input CAfile
+	// otherwise, use the system's default root CA set
+	if CAFile != "" {
+		rootCAs = x509.NewCertPool()
+		pemBytes, err := ioutil.ReadFile(CAFile)
+		if err != nil {
+			return nil, errors.New("fail to read CA file: " + err.Error())
+		}
+		ok := rootCAs.AppendCertsFromPEM(pemBytes)
+		if !ok {
+			return nil, errors.New("fail to populate CA root pool.")
+		}
 	}
 
 	tr := &http.Transport{
