@@ -2,8 +2,9 @@ package symcrypt
 
 import (
 	"bytes"
-	"github.com/cloudflare/redoctober/padding"
 	"testing"
+
+	"github.com/cloudflare/redoctober/padding"
 )
 
 func TestCrypt(t *testing.T) {

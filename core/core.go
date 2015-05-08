@@ -155,7 +155,7 @@ func Init(path string) (err error) {
 		err = fmt.Errorf("Failed to load password vault %s: %s", path, err)
 	}
 
-	cache = keycache.Cache{make(map[string]keycache.ActiveUser)}
+	cache = keycache.Cache{UserKeys: make(map[string]keycache.ActiveUser)}
 	crypt = cryptor.New(&records, &cache)
 
 	return
@@ -279,8 +279,12 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	// Encrypt file
-	access := cryptor.AccessStructure{s.Owners, s.LeftOwners, s.RightOwners}
+	access := cryptor.AccessStructure{
+		Names:      s.Owners,
+		LeftNames:  s.LeftOwners,
+		RightNames: s.RightOwners,
+	}
+
 	if resp, err := crypt.Encrypt(s.Data, s.Labels, access); err != nil {
 		log.Println("Error encrypting:", err)
 		return jsonStatusError(err)

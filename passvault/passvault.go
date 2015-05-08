@@ -18,14 +18,15 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"github.com/cloudflare/redoctober/ecdh"
-	"github.com/cloudflare/redoctober/padding"
-	"github.com/cloudflare/redoctober/symcrypt"
-	"golang.org/x/crypto/scrypt"
 	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
 	"os"
+
+	"github.com/cloudflare/redoctober/ecdh"
+	"github.com/cloudflare/redoctober/padding"
+	"github.com/cloudflare/redoctober/symcrypt"
+	"golang.org/x/crypto/scrypt"
 )
 
 // Constants for record type
