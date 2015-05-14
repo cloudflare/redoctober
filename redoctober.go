@@ -269,11 +269,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 			<div class="collapse navbar-collapse">
 				<ul class="nav navbar-nav">
 					<li><a href="#delegate">Delegate</a></li>
-					<li><a href="#admin">Admin</a></li>
-					<li><a href="#create">Create</a></li>
 					<li><a href="#summary">Summary</a></li>
-					<li><a href="#change-password">Change Password</a></li>
-					<li><a href="#modify-user">Modify User</a></li>
+					<li><a href="#admin">Admin</a></li>
 					<li><a href="#encrypt">Encrypt</a></li>
 					<li><a href="#decrypt">Decrypt</a></li>
 				</ul>
@@ -323,31 +320,13 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<button type="submit" class="btn btn-primary">Delegate</button>
 				</form>
 			</div>
-
 		</section>
 
 		<hr />
 
 		<section class="row">
-			<div class="col-md-6">
-				<h3 id="admin">Create vault/admin</h3>
-				<form id="vault-create" class="form-inline ro-admin-create" role="form" action="/create" method="post">
-					<div class="feedback admin-feedback"></div>
-
-					<div class="form-group">
-						<label class="sr-only" for="admin-create-user">User name</label>
-						<input type="text" name="Name" class="form-control" id="admin-create-user" placeholder="User name" required />
-					</div>
-					<div class="form-group">
-						<label class="sr-only" for="admin-create-pass">Password</label>
-						<input type="password" name="Password" class="form-control" id="admin-create-pass" placeholder="Password" required />
-					</div>
-					<button type="submit" class="btn btn-primary">Create Admin</button>
-				</form>
-
-				<hr />
-
-				<h3 id="summary">User summary</h3>
+			<div id="summary" class="col-md-6">
+				<h3>User summary</h3>
 
 				<form id="vault-summary" class="form-inline ro-summary" role="form" action="/summary" method="post">
 					<div class="feedback summary-feedback"></div>
@@ -371,9 +350,30 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<ul class="list-group summary-all-users"></ul>
 				</div>
 			</div>
+		</section>
 
-			<div class="col-md-6">
-				<h3 id="create">Create</h3>
+		<hr />
+
+		<section class="row">
+			<div class="col-md-6" id="admin">
+				<h3>Create Vault</h3>
+				<form id="vault-create" class="form-inline ro-admin-create" role="form" action="/create" method="post">
+					<div class="feedback admin-feedback"></div>
+
+					<div class="form-group">
+						<label class="sr-only" for="admin-create-user">User name</label>
+						<input type="text" name="Name" class="form-control" id="admin-create-user" placeholder="User name" required />
+					</div>
+					<div class="form-group">
+						<label class="sr-only" for="admin-create-pass">Password</label>
+						<input type="password" name="Password" class="form-control" id="admin-create-pass" placeholder="Password" required />
+					</div>
+					<button type="submit" class="btn btn-primary">Create Admin</button>
+				</form>
+
+				<hr />
+
+				<h3>Create User</h3>
 
 				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
 					<div class="feedback create-feedback"></div>
@@ -426,9 +426,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					</div>
 					<button type="submit" class="btn btn-primary">Change password</button>
 				</form>
-			</div>
 
-			<div id="modify" class="col-md-6">
 				<h3>Modify User</h3>
 
 				<form id="user-modify" class="ro-user-modify" role="form" action="/modify" method="post">
@@ -464,7 +462,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 		</section>
 		<hr />
 		<section class="row">
-			<div id="encrypt-data" class="col-md-6">
+			<div id="encrypt" class="col-md-6">
 				<h3>Encrypt data</h3>
 
 				<form id="encrypt" class="ro-user-encrypt" role="form" action="/encrypt" method="post">
@@ -503,7 +501,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<button type="submit" class="btn btn-primary">Encrypt!</button>
 				</form>
 			</div>
-			<div id="decrypt-data" class="col-md-6">
+			<div id="decrypt" class="col-md-6">
 				<h3>Decrypt data</h3>
 
 				<form id="decrypt" class="ro-user-decrypt" role="form" action="/decrypt" method="post">
