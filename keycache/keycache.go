@@ -86,6 +86,20 @@ func (cache *Cache) setUser(in ActiveUser, name string) {
 	cache.UserKeys[name] = in
 }
 
+// Valid returns true if matching active user is present.
+func (cache *Cache) Valid(name, user string, labels []string) (present bool) {
+	key, present := cache.UserKeys[name]
+	if present {
+		if key.Usage.matches(user, labels) {
+			return true
+		} else {
+			present = false
+		}
+	}
+
+	return
+}
+
 // matchUser returns the matching active user if present
 // and a boolean to indicate its presence.
 func (cache *Cache) matchUser(name, user string, labels []string) (out ActiveUser, present bool) {

@@ -322,19 +322,25 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 			return nil, nil, err
 		}
 
-		tmpKeyValue := mwKey.Key
-
+		// loop through users to see if they are all delegated
+		fullMatch = true
 		for _, mwName := range mwKey.Name {
-			pubEncrypted := encrypted.KeySetRSA[mwName]
-			// if this is null, it's an AES encrypted key
-			if tmpKeyValue, keyFound = cache.DecryptKey(tmpKeyValue, mwName, user, encrypted.Labels, pubEncrypted.Key); keyFound != nil {
+			if valid := cache.Valid(mwName, user, encrypted.Labels); !valid {
+				fullMatch = false
 				break
 			}
 			nameSet[mwName] = true
 		}
-		if keyFound == nil {
-			fullMatch = true
-			// concatenate all the decrypted bytes
+
+		// if the keys are delegated, decrypt the mwKey with them
+		if fullMatch == true {
+			tmpKeyValue := mwKey.Key
+			for _, mwName := range mwKey.Name {
+				pubEncrypted := encrypted.KeySetRSA[mwName]
+				if tmpKeyValue, keyFound = cache.DecryptKey(tmpKeyValue, mwName, user, encrypted.Labels, pubEncrypted.Key); keyFound != nil {
+					break
+				}
+			}
 			unwrappedKey = tmpKeyValue
 			break
 		}
