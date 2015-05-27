@@ -466,6 +466,11 @@ func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (r
 	if err != nil {
 		return
 	}
+	if len(access.Predicate) > 0 {
+		// The first two bits of the key need to be removed to prevent wrapping
+		// because the modulus is slightly too small.
+		clearKey[0] &= 63
+	}
 
 	err = encrypted.wrapKey(c.records, clearKey, access)
 	if err != nil {
