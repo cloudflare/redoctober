@@ -15,8 +15,8 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/Bren2010/msp"
 	"github.com/cloudflare/redoctober/keycache"
+	"github.com/cloudflare/redoctober/msp"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/passvault"
 	"github.com/cloudflare/redoctober/symcrypt"
@@ -52,11 +52,11 @@ type AccessStructure struct {
 // Implements msp.UserDatabase
 type UserDatabase struct {
 	records *passvault.Records
-	cache *keycache.Cache
+	cache   *keycache.Cache
 
-	user string
-	labels []string
-	keySet map[string]SingleWrappedKey
+	user     string
+	labels   []string
+	keySet   map[string]SingleWrappedKey
 	shareSet map[string][][]byte
 }
 
@@ -433,10 +433,10 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 		}
 
 		db := msp.UserDatabase(UserDatabase{
-			cache: cache,
-			user: user,
-			labels: encrypted.Labels,
-			keySet: encrypted.KeySetRSA,
+			cache:    cache,
+			user:     user,
+			labels:   encrypted.Labels,
+			keySet:   encrypted.KeySetRSA,
 			shareSet: encrypted.ShareSet,
 		})
 		unwrappedKey, err = sss.RecoverSecret(msp.Modulus(127), &db)
