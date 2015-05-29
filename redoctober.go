@@ -501,6 +501,9 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<button type="submit" class="btn btn-primary">Encrypt!</button>
 				</form>
 			</div>
+		</section>
+		<hr />
+		<section class="row">
 			<div id="decrypt" class="col-md-6">
 				<h3>Decrypt data</h3>
 
