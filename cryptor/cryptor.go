@@ -284,6 +284,10 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 
 		for _, leftName := range access.LeftNames {
 			for _, rightName := range access.RightNames {
+				if leftName == rightName {
+					continue
+				}
+
 				keyBytes, err := encryptKey(leftName, rightName, clearKey)
 				if err != nil {
 					return err
