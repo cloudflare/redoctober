@@ -73,6 +73,10 @@ type DecryptRequest struct {
 	Data []byte
 }
 
+type OwnersRequest struct {
+	Data []byte
+}
+
 type ModifyRequest struct {
 	Name     string
 	Password string
@@ -98,6 +102,11 @@ type DecryptWithDelegates struct {
 	Data      []byte
 	Secure    bool
 	Delegates []string
+}
+
+type OwnersData struct {
+	Status string
+	Owners []string
 }
 
 // Helper functions that create JSON responses sent by core
@@ -365,4 +374,22 @@ func Modify(jsonIn []byte) ([]byte, error) {
 	} else {
 		return jsonStatusOk()
 	}
+}
+
+// Owners processes a owners request.
+func Owners(jsonIn []byte) ([]byte, error) {
+	var s OwnersRequest
+	err := json.Unmarshal(jsonIn, &s)
+	if err != nil {
+		log.Println("Error unmarshaling input:", err)
+		return jsonStatusError(err)
+	}
+
+	names, err := crypt.GetOwners(s.Data)
+	if err != nil {
+		log.Println("Error listing owners:", err)
+		return jsonStatusError(err)
+	}
+
+	return json.Marshal(OwnersData{Status: "ok", Owners: names})
 }

@@ -471,3 +471,55 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 	resp, err = padding.RemovePadding(clearData)
 	return
 }
+
+// GetOwners returns the list of users that can delegate their passwords
+// to decrypt the given encrypted secret.
+func (c *Cryptor) GetOwners(in []byte) (names []string, err error) {
+	// unwrap encrypted file
+	var encrypted EncryptedData
+	if err = json.Unmarshal(in, &encrypted); err != nil {
+		return
+	}
+	if encrypted.Version != DEFAULT_VERSION && encrypted.Version != -1 {
+		err = errors.New("Unknown version")
+		return
+	}
+
+	hmacKey, err := c.records.GetHMACKey()
+	if err != nil {
+		return
+	}
+
+	if err = encrypted.unlock(hmacKey); err != nil {
+		return
+	}
+
+	// make sure file was encrypted with the active vault
+	vaultId, err := c.records.GetVaultID()
+	if err != nil {
+		return
+	}
+	if encrypted.VaultId != vaultId {
+		err = errors.New("Wrong vault")
+		return
+	}
+
+	// compute HMAC
+	expectedMAC := encrypted.computeHmac(hmacKey)
+	if !hmac.Equal(encrypted.Signature, expectedMAC) {
+		err = errors.New("Signature mismatch")
+		return
+	}
+
+	addedNames := make(map[string]bool)
+	for _, mwKey := range encrypted.KeySet {
+		for _, mwName := range mwKey.Name {
+			if !addedNames[mwName] {
+				names = append(names, mwName)
+				addedNames[mwName] = true
+			}
+		}
+	}
+
+	return
+}

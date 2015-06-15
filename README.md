@@ -75,6 +75,7 @@ format is POSTed and JSON is returned.
  - `/modify`: Modify permissions
  - `/encrypt`: Encrypt
  - `/decrypt`: Decrypt
+ - `/owners`: List owners of an encrypted secret.
  - `/summary`: Display summary of the delegates
  - `/password`: Change password
  - `/index`: Optionally, the server can host a static HTML file.
@@ -177,6 +178,17 @@ Example query:
 If there aren't enough keys delegated you'll see:
 
     {"Status":"Need more delegated keys"}
+
+### Owners
+
+Owners allows users to determine which delegations are needed to decrypt
+a piece of data.
+
+Example query:
+
+    $ curl --cacert cert/server.crt https://localhost:8080/owners  \
+            -d '{"Data":"eyJWZXJzaW9uIj...NSSllzPSJ9"}'
+    {"Status":"ok","Owners":["Alice","Bill","Cat","Dodo"]}
 
 ### Password
 

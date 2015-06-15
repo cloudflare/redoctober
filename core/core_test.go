@@ -7,7 +7,9 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"reflect"
 	"os"
+	"sort"
 	"testing"
 
 	"github.com/cloudflare/redoctober/passvault"
@@ -450,6 +452,59 @@ func TestEncryptDecrypt(t *testing.T) {
 		if d.Delegates[1] != "Bob" && d.Delegates[0] != "Carol" {
 			t.Fatalf("Error in decrypt, %v", d.Delegates)
 		}
+	}
+}
+
+func TestOwners(t *testing.T) {
+	delegateJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
+	delegateJson2 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
+	delegateJson3 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
+	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
+
+	var s ResponseData
+	var l OwnersData
+
+	Init("memory")
+
+	Create(delegateJson)
+	Delegate(delegateJson2)
+	Delegate(delegateJson3)
+
+	// Encrypt with non-admin
+	respJson, err := Encrypt(encryptJson)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in encrypt, %v", s.Status)
+	}
+
+	// Get owners list
+	ownersJson, err := json.Marshal(OwnersRequest{Data: s.Response})
+	if err != nil {
+		t.Fatalf("Error in owners, %v", err)
+	}
+	respJson, err = Owners(ownersJson)
+	if err != nil {
+		t.Fatalf("Error in owners, %v", err)
+	}
+	err = json.Unmarshal(respJson, &l)
+	if err != nil {
+		t.Fatalf("Error in owners, %v", err)
+	}
+	if l.Status != "ok" {
+		t.Fatalf("Error in owners, %v", l.Status)
+	}
+
+	sort.Strings(l.Owners)
+
+	expectedOwners := []string{"Alice", "Bob", "Carol"}
+	if !reflect.DeepEqual(l.Owners, expectedOwners) {
+		t.Fatalf("Owners list mismatch, %v", l.Owners)
 	}
 }
 
