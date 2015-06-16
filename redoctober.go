@@ -35,6 +35,7 @@ var functions = map[string]func([]byte) ([]byte, error){
 	"/decrypt":  core.Decrypt,
 	"/owners":   core.Owners,
 	"/modify":   core.Modify,
+	"/export":   core.Export,
 }
 
 type userRequest struct {
