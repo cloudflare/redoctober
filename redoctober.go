@@ -724,7 +724,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 			});
 
 			// Decrypt data
-			$('body').on('submit', '#decrypt', function(evt){
+			$('body').on('submit', 'form#decrypt', function(evt){
 				evt.preventDefault();
 				var $form = $(evt.currentTarget),
 					data = serialize($form);
