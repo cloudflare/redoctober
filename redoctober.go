@@ -33,6 +33,7 @@ var functions = map[string]func([]byte) ([]byte, error){
 	"/password": core.Password,
 	"/encrypt":  core.Encrypt,
 	"/decrypt":  core.Decrypt,
+	"/owners":   core.Owners,
 	"/modify":   core.Modify,
 }
 
@@ -273,6 +274,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<li><a href="#admin">Admin</a></li>
 					<li><a href="#encrypt">Encrypt</a></li>
 					<li><a href="#decrypt">Decrypt</a></li>
+					<li><a href="#owners">Owners</a></li>
 				</ul>
 			</div>
 		</div>
@@ -528,6 +530,22 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				</form>
 			</div>
 		</section>
+		<hr />
+		<section class="row">
+			<div id="owners" class="col-md-6">
+				<h3>Get Owners</h3>
+
+				<form id="owners" class="ro-user-owners" role="form" action="/owners" method="post">
+					<div class="feedback owners-feedback"></div>
+
+					<div class="form-group">
+						<label for="owners-data">Data</label>
+						<textarea name="Data" class="form-control" id="owners-data" rows="5" required></textarea>
+					</div>
+					<button type="submit" class="btn btn-primary">Get Owners</button>
+				</form>
+			</div>
+		</section>
 	</div>
 
 	<footer id="footer" class="footer">
@@ -734,6 +752,20 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					success : function(d){
 					d = JSON.parse(window.atob(d.Response));
 					$form.find('.feedback').empty().append( makeAlert({ type: (d.Secure ? 'success' : 'warning'), message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Data)+'</pre><p>Delegates: '+d.Delegates.sort().join(', ')+'</p>' }) );
+					}
+				});
+			});
+
+			// Get owners
+			$('body').on('submit', 'form#owners', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Owners: '+d.Owners.sort().join(', ')+'</p>' }) );
 					}
 				});
 			});
