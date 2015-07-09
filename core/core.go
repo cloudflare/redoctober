@@ -124,9 +124,9 @@ func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
 }
 
-// validateAdmin checks that the username and password passed in are
-// correct and that the user is an admin
-func validateAdmin(name, password string) error {
+// validateUser checks that the username and password passed in are
+// correct. If admin is true, the user must be an admin as well.
+func validateUser(name, password string, admin bool) error {
 	if records.NumRecords() == 0 {
 		return errors.New("Vault is not created yet")
 	}
@@ -135,10 +135,12 @@ func validateAdmin(name, password string) error {
 	if !ok {
 		return errors.New("User not present")
 	}
+
 	if err := pr.ValidatePassword(password); err != nil {
 		return err
 	}
-	if !pr.IsAdmin() {
+
+	if admin && !pr.IsAdmin() {
 		return errors.New("Admin required")
 	}
 
@@ -147,7 +149,7 @@ func validateAdmin(name, password string) error {
 
 // validateName checks that the username and password pass the minimal
 // validation check
-func validateUser(name, password string) error {
+func validateName(name, password string) error {
 	if name == "" {
 		return errors.New("User name must not be blank")
 	}
@@ -182,7 +184,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 	}
 
 	// Validate the Name and Password as valid
-	if err := validateUser(s.Name, s.Password); err != nil {
+	if err := validateName(s.Name, s.Password); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -207,8 +209,8 @@ func Summary(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(errors.New("Vault is not created yet"))
 	}
 
-	if err := validateUser(s.Name, s.Password); err != nil {
-		log.Printf("Error validating admin status of %s: %s", s.Name, err)
+	if err := validateUser(s.Name, s.Password, false); err != nil {
+		log.Printf("failed to validate %s in summary request: %s", s.Name, err)
 		return jsonStatusError(err)
 	}
 
@@ -227,7 +229,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	// Validate the Name and Password as valid
-	if err := validateUser(s.Name, s.Password); err != nil {
+	if err := validateName(s.Name, s.Password); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -283,8 +285,8 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if err := validateUser(s.Name, s.Password); err != nil {
-		log.Println("Error validating admin status", err)
+	if err := validateUser(s.Name, s.Password, false); err != nil {
+		log.Printf("failed to validate user %s in request to encrypt: %v", s.Name, err)
 		return jsonStatusError(err)
 	}
 
@@ -311,7 +313,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	err = validateUser(s.Name, s.Password)
+	err = validateUser(s.Name, s.Password, false)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -344,8 +346,8 @@ func Modify(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if err := validateAdmin(s.Name, s.Password); err != nil {
-		log.Printf("Error validating admin status of %s: %s", s.Name, err)
+	if err := validateUser(s.Name, s.Password, true); err != nil {
+		log.Printf("failed to validate %s in request to modify: %v", s.Name, err)
 		return jsonStatusError(err)
 	}
 
