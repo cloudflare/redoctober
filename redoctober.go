@@ -328,7 +328,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 		<section class="row">
 			<div id="summary" class="col-md-6">
-				<h3>User summary</h3>
+				<h3>User summary / delegation list</h3>
 
 				<form id="vault-summary" class="form-inline ro-summary" role="form" action="/summary" method="post">
 					<div class="feedback summary-feedback"></div>
@@ -358,7 +358,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 		<section class="row">
 			<div class="col-md-6" id="admin">
-				<h3>Create Vault</h3>
+				<h3>Create vault</h3>
 				<form id="vault-create" class="form-inline ro-admin-create" role="form" action="/create" method="post">
 					<div class="feedback admin-feedback"></div>
 
@@ -429,7 +429,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<button type="submit" class="btn btn-primary">Change password</button>
 				</form>
 
-				<h3>Modify User</h3>
+				<h3>Modify user</h3>
 
 				<form id="user-modify" class="ro-user-modify" role="form" action="/modify" method="post">
 					<div class="feedback modify-feedback"></div>
@@ -533,7 +533,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 		<hr />
 		<section class="row">
 			<div id="owners" class="col-md-6">
-				<h3>Get Owners</h3>
+				<h3>Get owners</h3>
 
 				<form id="owners" class="ro-user-owners" role="form" action="/owners" method="post">
 					<div class="feedback owners-feedback"></div>
