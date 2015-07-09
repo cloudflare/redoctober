@@ -281,12 +281,21 @@ func Password(jsonIn []byte) ([]byte, error) {
 // Encrypt processes an encrypt request.
 func Encrypt(jsonIn []byte) ([]byte, error) {
 	var s EncryptRequest
-	if err := json.Unmarshal(jsonIn, &s); err != nil {
+
+	err := json.Unmarshal(jsonIn, &s)
+	if err != nil {
 		return jsonStatusError(err)
 	}
 
-	if err := validateUser(s.Name, s.Password, false); err != nil {
-		log.Printf("failed to validate user %s in request to encrypt: %v", s.Name, err)
+	defer func() {
+		if err != nil {
+			log.Printf("encrypt: request for encryption from %s failed: %v", s.Name, err)
+		} else {
+			log.Printf("encrypt: successful encryption for %s", s.Name)
+		}
+	}()
+
+	if err = validateUser(s.Name, s.Password, false); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -296,8 +305,8 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		RightNames: s.RightOwners,
 	}
 
-	if resp, err := crypt.Encrypt(s.Data, s.Labels, access); err != nil {
-		log.Println("Error encrypting:", err)
+	resp, err := crypt.Encrypt(s.Data, s.Labels, access)
+	if err != nil {
 		return jsonStatusError(err)
 	} else {
 		return jsonResponse(resp)
@@ -309,9 +318,17 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 	var s DecryptRequest
 	err := json.Unmarshal(jsonIn, &s)
 	if err != nil {
-		log.Println("Error unmarshaling input:", err)
+		log.Printf("decrypt: failed to unmarshal input: %v", err)
 		return jsonStatusError(err)
 	}
+
+	defer func() {
+		if err != nil {
+			log.Printf("decrypt: request for decryption from %s failed: %v", s.Name, err)
+		} else {
+			log.Printf("decrypt: successful decryption for %s", s.Name)
+		}
+	}()
 
 	err = validateUser(s.Name, s.Password, false)
 	if err != nil {
@@ -320,7 +337,6 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 
 	data, names, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
-		log.Println("Error decrypting:", err)
 		return jsonStatusError(err)
 	}
 
@@ -342,24 +358,33 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 func Modify(jsonIn []byte) ([]byte, error) {
 	var s ModifyRequest
 
-	if err := json.Unmarshal(jsonIn, &s); err != nil {
+	err := json.Unmarshal(jsonIn, &s)
+	if err != nil {
 		return jsonStatusError(err)
 	}
 
-	if err := validateUser(s.Name, s.Password, true); err != nil {
-		log.Printf("failed to validate %s in request to modify: %v", s.Name, err)
+	defer func() {
+		if err != nil {
+			log.Printf("modify: attempt to modify %s by %s fail: %v", s.ToModify, s.Name, err)
+		} else {
+			log.Printf("modify: attempt to modify %s by %s succeeded", s.ToModify, s.Name)
+		}
+	}()
+
+	if err = validateUser(s.Name, s.Password, true); err != nil {
 		return jsonStatusError(err)
 	}
 
 	if _, ok := records.GetRecord(s.ToModify); !ok {
-		return jsonStatusError(errors.New("Record to modify missing"))
+		err = errors.New("core: record to modify missing")
+		return jsonStatusError(err)
 	}
 
 	if s.Name == s.ToModify {
-		return jsonStatusError(errors.New("Cannot modify own record"))
+		err = errors.New("core: cannot modify own record")
+		return jsonStatusError(err)
 	}
 
-	var err error
 	switch s.Command {
 	case "delete":
 		err = records.DeleteRecord(s.ToModify)
@@ -368,7 +393,8 @@ func Modify(jsonIn []byte) ([]byte, error) {
 	case "admin":
 		err = records.MakeAdmin(s.ToModify)
 	default:
-		return jsonStatusError(errors.New("Unknown command"))
+		err = fmt.Errorf("core: unknown command '%s' passed to modify", s.Command)
+		return jsonStatusError(err)
 	}
 
 	if err != nil {
