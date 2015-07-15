@@ -36,6 +36,11 @@ type SummaryRequest struct {
 	Password string
 }
 
+type PurgeRequest struct {
+	Name     string
+	Password string
+}
+
 type DelegateRequest struct {
 	Name     string
 	Password string
@@ -220,6 +225,32 @@ func Summary(jsonIn []byte) ([]byte, error) {
 	}
 
 	return jsonSummary()
+}
+
+// Purge processes a delegation purge request.
+func Purge(jsonIn []byte) ([]byte, error) {
+	var s PurgeRequest
+	if err := json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if records.NumRecords() == 0 {
+		return jsonStatusError(errors.New("Vault is not created yet"))
+	}
+
+	// Validate the Name and Password as valid and admin
+	if err := validateUser(s.Name, s.Password, true); err != nil {
+		log.Printf("failed to validate %s as admin for purge request: %s", s.Name, err)
+		return jsonStatusError(err)
+	}
+
+	if err := records.DeleteNonAdmin(); err != nil {
+		log.Printf("failed to purge non-admin delegates: %s", err)
+		return jsonStatusError(err)
+	}
+
+	cache.FlushCache()
+	return jsonStatusOk()
 }
 
 // Delegate processes a delegation request.
