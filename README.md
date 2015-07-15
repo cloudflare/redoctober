@@ -216,6 +216,15 @@ Example input JSON format:
            -d '{"Name":"Alice","Password":"Lewis","ToModify":"Bill","Command":"admin"}'
     {"Status":"ok"}
 
+### Purge
+
+Purge deletes all delegates for an encryption key.
+
+Example input JSON format:
+
+    $ curl --cacert cert/server.crt https://localhost:8080/purge \
+           -d '{"Name":"Alice","Password":"Lewis"}'
+    {"Status":"ok"}
 
 ### Web interface
 
