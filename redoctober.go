@@ -134,7 +134,7 @@ func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, 
 		// copy this so reference does not get overwritten
 		requestType := current
 		mux.HandleFunc(requestType, func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("request to %s from %s", current, r.RemoteAddr)
+			log.Printf("request to %s from %s", requestType, r.RemoteAddr)
 			queueRequest(process, requestType, w, r)
 		})
 	}
