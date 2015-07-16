@@ -114,7 +114,7 @@ Example query:
 
 Summary provides a list of the users with keys on the system, and a
 list of users who have currently delegated their key to the
-server. Only Admins are allowed to call summary.
+server.
 
 Example query:
 
@@ -145,7 +145,7 @@ Example query:
 
 ### Encrypt
 
-Encrypt allows an admin to encrypt a piece of data. A list of valid
+Encrypt allows a user to encrypt a piece of data. A list of valid
 users is provided and a minimum number of delegated users required to
 decrypt. The returned data can be decrypted as long as "Minimum"
 number users from the set of "Owners" have delegated their keys to the
@@ -164,7 +164,7 @@ The data expansion is not tied to the size of the input.
 
 ### Decrypt
 
-Decrypt allows an admin to decrypt a piece of data. As long as
+Decrypt allows a user to decrypt a piece of data. As long as
 "Minimum" number users from the set of "Owners" have delegated their
 keys to the server, a base64 encoded object with the clear data and the
 set of "Owners" whose private keys were used is returned.
