@@ -1,5 +1,6 @@
+sudo: false
 language: go
-go: 1.2
+go: 1.4
 script:
   - go get golang.org/x/tools/cmd/vet
   - go get github.com/cloudflare/redoctober
