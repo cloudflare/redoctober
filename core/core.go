@@ -171,14 +171,14 @@ func Init(path string) error {
 
 	defer func() {
 		if err != nil {
-			log.Printf("init failed: %v", err)
+			log.Printf("core.init failed: %v", err)
 		} else {
-			log.Printf("init success: path=%s", path)
+			log.Printf("core.init success: path=%s", path)
 		}
 	}()
 
 	if records, err = passvault.InitFrom(path); err != nil {
-		err = fmt.Errorf("Failed to load password vault %s: %s", path, err)
+		err = fmt.Errorf("failed to load password vault %s: %s", path, err)
 	}
 
 	cache = keycache.Cache{UserKeys: make(map[string]keycache.ActiveUser)}
@@ -194,9 +194,9 @@ func Create(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("create failed: user=%s %v", s.Name, err)
+			log.Printf("core.create failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("create success: user=%s", s.Name)
+			log.Printf("core.create success: user=%s", s.Name)
 		}
 	}()
 
@@ -229,9 +229,9 @@ func Summary(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("summary failed: user=%s %v", s.Name, err)
+			log.Printf("core.summary failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("summary success: user=%s", s.Name)
+			log.Printf("core.summary success: user=%s", s.Name)
 		}
 	}()
 
@@ -258,9 +258,9 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("delegate failed: user=%s %v", s.Name, err)
+			log.Printf("core.delegate failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("delegate success: user=%s uses=%d time=%s users=%v labels=%v", s.Name, s.Uses, s.Time, s.Users, s.Labels)
+			log.Printf("core.delegate success: user=%s uses=%d time=%s users=%v labels=%v", s.Name, s.Uses, s.Time, s.Users, s.Labels)
 		}
 	}()
 
@@ -307,9 +307,9 @@ func Password(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("password failed: user=%s %v", s.Name, err)
+			log.Printf("core.password failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("password success: user=%s", s.Name)
+			log.Printf("core.password success: user=%s", s.Name)
 		}
 	}()
 
@@ -338,9 +338,9 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("encrypt failed: user=%s size=%d %v", s.Name, len(s.Data), err)
+			log.Printf("core.encrypt failed: user=%s size=%d %v", s.Name, len(s.Data), err)
 		} else {
-			log.Printf("encrypt success: user=%s size=%d", s.Name, len(s.Data))
+			log.Printf("core.encrypt success: user=%s size=%d", s.Name, len(s.Data))
 		}
 	}()
 
@@ -373,9 +373,9 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("decrypt failed: user=%s %v", s.Name, err)
+			log.Printf("core.decrypt failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("decrypt success: user=%s", s.Name)
+			log.Printf("core.decrypt success: user=%s", s.Name)
 		}
 	}()
 
@@ -415,9 +415,9 @@ func Modify(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("modify failed: user=%s target=%s command=%s %v", s.Name, s.ToModify, s.Command, err)
+			log.Printf("core.modify failed: user=%s target=%s command=%s %v", s.Name, s.ToModify, s.Command, err)
 		} else {
-			log.Printf("modify success: user=%s target=%s command=%s", s.Name, s.ToModify, s.Command)
+			log.Printf("core.modify success: user=%s target=%s command=%s", s.Name, s.ToModify, s.Command)
 		}
 	}()
 
@@ -466,9 +466,9 @@ func Owners(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("owners failed: size=%d %v", len(s.Data), err)
+			log.Printf("core.owners failed: size=%d %v", len(s.Data), err)
 		} else {
-			log.Printf("owners success: size=%d", len(s.Data))
+			log.Printf("core.owners success: size=%d", len(s.Data))
 		}
 	}()
 
@@ -492,9 +492,9 @@ func Export(jsonIn []byte) ([]byte, error) {
 
 	defer func() {
 		if err != nil {
-			log.Printf("export failed: user=%s %v", s.Name, err)
+			log.Printf("core.export failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("export success: user=%s", s.Name)
+			log.Printf("core.export success: user=%s", s.Name)
 		}
 	}()
 

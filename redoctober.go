@@ -134,7 +134,7 @@ func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, 
 		// copy this so reference does not get overwritten
 		requestType := current
 		mux.HandleFunc(requestType, func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("request to %s from %s", requestType, r.RemoteAddr)
+			log.Printf("http.server: endpoint=%s remote=%s", requestType, r.RemoteAddr)
 			queueRequest(process, requestType, w, r)
 		})
 	}
@@ -226,10 +226,10 @@ func main() {
 				if err == nil {
 					req.resp <- r
 				} else {
-					log.Printf("Error handling %s: %s\n", req.rt, err)
+					log.Printf("http.main failed: %s: %s", req.rt, err)
 				}
 			} else {
-				log.Printf("Unknown user request received: %s\n", req.rt)
+				log.Printf("http.main: request=%s function is not supported", req.rt)
 			}
 
 			// Note that if an error occurs no message is sent down
