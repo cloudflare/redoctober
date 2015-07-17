@@ -11,5 +11,6 @@ notifications:
     recipients:
       - nick@cloudflare.com
       - kyle@cloudflare.com
+      - zi@cloudflare.com
     on_success: never
     on_failure: change
