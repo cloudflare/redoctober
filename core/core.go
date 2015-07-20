@@ -166,35 +166,55 @@ func validateName(name, password string) error {
 }
 
 // Init reads the records from disk from a given path
-func Init(path string) (err error) {
+func Init(path string) error {
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.init failed: %v", err)
+		} else {
+			log.Printf("core.init success: path=%s", path)
+		}
+	}()
+
 	if records, err = passvault.InitFrom(path); err != nil {
-		err = fmt.Errorf("Failed to load password vault %s: %s", path, err)
+		err = fmt.Errorf("failed to load password vault %s: %s", path, err)
 	}
 
 	cache = keycache.Cache{UserKeys: make(map[string]keycache.ActiveUser)}
 	crypt = cryptor.New(&records, &cache)
 
-	return
+	return err
 }
 
 // Create processes a create request.
 func Create(jsonIn []byte) ([]byte, error) {
 	var s CreateRequest
-	if err := json.Unmarshal(jsonIn, &s); err != nil {
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.create failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.create success: user=%s", s.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
 
 	if records.NumRecords() != 0 {
-		return jsonStatusError(errors.New("Vault is already created"))
-	}
-
-	// Validate the Name and Password as valid
-	if err := validateName(s.Name, s.Password); err != nil {
+		err = errors.New("Vault is already created")
 		return jsonStatusError(err)
 	}
 
-	if _, err := records.AddNewRecord(s.Name, s.Password, true, passvault.DefaultRecordType); err != nil {
-		log.Printf("Error adding record for %s: %s\n", s.Name, err)
+	// Validate the Name and Password as valid
+	if err = validateName(s.Name, s.Password); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if _, err = records.AddNewRecord(s.Name, s.Password, true, passvault.DefaultRecordType); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -204,18 +224,27 @@ func Create(jsonIn []byte) ([]byte, error) {
 // Summary processes a summary request.
 func Summary(jsonIn []byte) ([]byte, error) {
 	var s SummaryRequest
+	var err error
 	cache.Refresh()
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.summary failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.summary success: user=%s", s.Name)
+		}
+	}()
 
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
 
 	if records.NumRecords() == 0 {
-		return jsonStatusError(errors.New("Vault is not created yet"))
+		err = errors.New("vault has not been created")
+		return jsonStatusError(err)
 	}
 
 	if err := validateUser(s.Name, s.Password, false); err != nil {
-		log.Printf("failed to validate %s in summary request: %s", s.Name, err)
 		return jsonStatusError(err)
 	}
 
@@ -225,16 +254,27 @@ func Summary(jsonIn []byte) ([]byte, error) {
 // Delegate processes a delegation request.
 func Delegate(jsonIn []byte) ([]byte, error) {
 	var s DelegateRequest
-	if err := json.Unmarshal(jsonIn, &s); err != nil {
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.delegate failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.delegate success: user=%s uses=%d time=%s users=%v labels=%v", s.Name, s.Uses, s.Time, s.Users, s.Labels)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
 
 	if records.NumRecords() == 0 {
-		return jsonStatusError(errors.New("Vault is not created yet"))
+		errors.New("Vault is not created yet")
+		return jsonStatusError(err)
 	}
 
 	// Validate the Name and Password as valid
-	if err := validateName(s.Name, s.Password); err != nil {
+	if err = validateName(s.Name, s.Password); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -243,20 +283,17 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 	pr, found := records.GetRecord(s.Name)
 	if found {
-		if err := pr.ValidatePassword(s.Password); err != nil {
+		if err = pr.ValidatePassword(s.Password); err != nil {
 			return jsonStatusError(err)
 		}
 	} else {
-		var err error
 		if pr, err = records.AddNewRecord(s.Name, s.Password, false, passvault.DefaultRecordType); err != nil {
-			log.Printf("Error adding record for %s: %s\n", s.Name, err)
 			return jsonStatusError(err)
 		}
 	}
 
 	// add signed-in record to active set
-	if err := cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Time); err != nil {
-		log.Printf("Error adding key to cache for %s: %s\n", s.Name, err)
+	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Time); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -265,18 +302,29 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 // Password processes a password change request.
 func Password(jsonIn []byte) ([]byte, error) {
+	var err error
 	var s PasswordRequest
-	if err := json.Unmarshal(jsonIn, &s); err != nil {
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.password failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.password success: user=%s", s.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
 
 	if records.NumRecords() == 0 {
-		return jsonStatusError(errors.New("Vault is not created yet"))
+		err = errors.New("Vault is not created yet")
+		return jsonStatusError(err)
 	}
 
 	// add signed-in record to active set
-	if err := records.ChangePassword(s.Name, s.Password, s.NewPassword); err != nil {
-		log.Println("Error changing password:", err)
+	err = records.ChangePassword(s.Name, s.Password, s.NewPassword)
+	if err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -286,19 +334,20 @@ func Password(jsonIn []byte) ([]byte, error) {
 // Encrypt processes an encrypt request.
 func Encrypt(jsonIn []byte) ([]byte, error) {
 	var s EncryptRequest
-
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return jsonStatusError(err)
-	}
+	var err error
 
 	defer func() {
 		if err != nil {
-			log.Printf("encrypt: request for encryption from %s failed: %v", s.Name, err)
+			log.Printf("core.encrypt failed: user=%s size=%d %v", s.Name, len(s.Data), err)
 		} else {
-			log.Printf("encrypt: successful encryption for %s", s.Name)
+			log.Printf("core.encrypt success: user=%s size=%d", s.Name, len(s.Data))
 		}
 	}()
+
+	err = json.Unmarshal(jsonIn, &s)
+	if err != nil {
+		return jsonStatusError(err)
+	}
 
 	if err = validateUser(s.Name, s.Password, false); err != nil {
 		return jsonStatusError(err)
@@ -313,27 +362,27 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 	resp, err := crypt.Encrypt(s.Data, s.Labels, access)
 	if err != nil {
 		return jsonStatusError(err)
-	} else {
-		return jsonResponse(resp)
 	}
+	return jsonResponse(resp)
 }
 
 // Decrypt processes a decrypt request.
 func Decrypt(jsonIn []byte) ([]byte, error) {
 	var s DecryptRequest
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		log.Printf("decrypt: failed to unmarshal input: %v", err)
-		return jsonStatusError(err)
-	}
+	var err error
 
 	defer func() {
 		if err != nil {
-			log.Printf("decrypt: request for decryption from %s failed: %v", s.Name, err)
+			log.Printf("core.decrypt failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("decrypt: successful decryption for %s", s.Name)
+			log.Printf("core.decrypt success: user=%s", s.Name)
 		}
 	}()
+
+	err = json.Unmarshal(jsonIn, &s)
+	if err != nil {
+		return jsonStatusError(err)
+	}
 
 	err = validateUser(s.Name, s.Password, false)
 	if err != nil {
@@ -362,19 +411,20 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 // Modify processes a modify request.
 func Modify(jsonIn []byte) ([]byte, error) {
 	var s ModifyRequest
-
-	err := json.Unmarshal(jsonIn, &s)
-	if err != nil {
-		return jsonStatusError(err)
-	}
+	var err error
 
 	defer func() {
 		if err != nil {
-			log.Printf("modify: attempt to modify %s by %s fail: %v", s.ToModify, s.Name, err)
+			log.Printf("core.modify failed: user=%s target=%s command=%s %v", s.Name, s.ToModify, s.Command, err)
 		} else {
-			log.Printf("modify: attempt to modify %s by %s succeeded", s.ToModify, s.Name)
+			log.Printf("core.modify success: user=%s target=%s command=%s", s.Name, s.ToModify, s.Command)
 		}
 	}()
+
+	err = json.Unmarshal(jsonIn, &s)
+	if err != nil {
+		return jsonStatusError(err)
+	}
 
 	if err = validateUser(s.Name, s.Password, true); err != nil {
 		return jsonStatusError(err)
@@ -412,15 +462,23 @@ func Modify(jsonIn []byte) ([]byte, error) {
 // Owners processes a owners request.
 func Owners(jsonIn []byte) ([]byte, error) {
 	var s OwnersRequest
-	err := json.Unmarshal(jsonIn, &s)
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.owners failed: size=%d %v", len(s.Data), err)
+		} else {
+			log.Printf("core.owners success: size=%d", len(s.Data))
+		}
+	}()
+
+	err = json.Unmarshal(jsonIn, &s)
 	if err != nil {
-		log.Println("Error unmarshaling input:", err)
 		return jsonStatusError(err)
 	}
 
 	names, err := crypt.GetOwners(s.Data)
 	if err != nil {
-		log.Println("Error listing owners:", err)
 		return jsonStatusError(err)
 	}
 
@@ -429,22 +487,29 @@ func Owners(jsonIn []byte) ([]byte, error) {
 
 // Export returns a backed up vault.
 func Export(jsonIn []byte) ([]byte, error) {
-	var req ExportRequest
-	err := json.Unmarshal(jsonIn, &req)
+	var s ExportRequest
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.export failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.export success: user=%s", s.Name)
+		}
+	}()
+
+	err = json.Unmarshal(jsonIn, &s)
 	if err != nil {
-		log.Println("Error unmarshaling input:", err)
 		return jsonStatusError(err)
 	}
 
-	err = validateUser(req.Name, req.Password, true)
+	err = validateUser(s.Name, s.Password, true)
 	if err != nil {
-		log.Println("Unauthorized attempt to export disk records")
 		return jsonStatusError(err)
 	}
 
 	out, err := json.Marshal(records)
 	if err != nil {
-		log.Println("Error exporting vault:", err)
 		return jsonStatusError(err)
 	}
 
