@@ -269,7 +269,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	if records.NumRecords() == 0 {
-		errors.New("Vault is not created yet")
+		err = errors.New("Vault is not created yet")
 		return jsonStatusError(err)
 	}
 
