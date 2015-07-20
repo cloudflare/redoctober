@@ -144,6 +144,21 @@ func (c *RemoteServer) Delegate(req core.DelegateRequest) (*core.ResponseData, e
 	return unmarshalResponseData(respBytes)
 }
 
+// Purge issues a purge request to the remote server
+func (c *RemoteServer) Purge(req core.DelegateRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("purge", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
+
 // Modify issues a modify request to the remote server
 func (c *RemoteServer) Modify(req core.ModifyRequest) (*core.ResponseData, error) {
 	reqBytes, err := json.Marshal(req)
