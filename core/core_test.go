@@ -7,8 +7,8 @@ package core
 import (
 	"bytes"
 	"encoding/json"
-	"reflect"
 	"os"
+	"reflect"
 	"sort"
 	"testing"
 
@@ -160,6 +160,58 @@ func TestSummary(t *testing.T) {
 	}
 	if dataLive.Type != passvault.DefaultRecordType {
 		t.Fatalf("Error in summary of account, record missing")
+	}
+
+	var s1 SummaryData
+	delegations := cache.GetSummary()
+	if len(delegations) == 0 {
+		t.Fatal("no delegations active")
+	}
+
+	// check for summary of initialized vault without non-admin members after purge
+	respJson, err = Purge(createJson)
+	if err != nil {
+		t.Fatalf("Error in purging, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s1)
+	if err != nil {
+		t.Fatalf("Error in purging, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in purging, %v", s.Status)
+	}
+
+	respJson, err = Summary(createJson)
+	if err != nil {
+		t.Fatalf("Error in summary of account with no vault, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s1)
+	if err != nil {
+		t.Fatalf("Error in summary of account with no vault, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in summary of account with no vault, %v", s.Status)
+	}
+
+	data, ok = s1.All["Alice"]
+	if !ok {
+		t.Fatalf("Error in summary of account, record missing")
+	}
+	if data.Admin != true {
+		t.Fatalf("Error in summary of account, record missing")
+	}
+	if data.Type != passvault.DefaultRecordType {
+		t.Fatalf("Error in summary of account, record missing")
+	}
+
+	_, ok = s1.All["Bob"]
+	if !ok {
+		t.Fatal("Bob was removed from the list of users")
+	}
+
+	delegations = cache.GetSummary()
+	if len(delegations) != 0 {
+		t.Fatalf("purge failed to clear delegations (%d delegations remain)", len(delegations))
 	}
 }
 

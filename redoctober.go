@@ -29,6 +29,7 @@ import (
 var functions = map[string]func([]byte) ([]byte, error){
 	"/create":   core.Create,
 	"/summary":  core.Summary,
+	"/purge":    core.Purge,
 	"/delegate": core.Delegate,
 	"/password": core.Password,
 	"/encrypt":  core.Encrypt,
