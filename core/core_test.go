@@ -163,6 +163,10 @@ func TestSummary(t *testing.T) {
 	}
 
 	var s1 SummaryData
+	delegations := cache.GetSummary()
+	if len(delegations) == 0 {
+		t.Fatal("no delegations active")
+	}
 
 	// check for summary of initialized vault without non-admin members after purge
 	respJson, err = Purge(createJson)
@@ -201,8 +205,13 @@ func TestSummary(t *testing.T) {
 	}
 
 	_, ok = s1.All["Bob"]
-	if ok {
-		t.Fatalf("Error in summary of account, record not purged")
+	if !ok {
+		t.Fatal("Bob was removed from the list of users")
+	}
+
+	delegations = cache.GetSummary()
+	if len(delegations) != 0 {
+		t.Fatalf("purge failed to clear delegations (%d delegations remain)", len(delegations))
 	}
 }
 

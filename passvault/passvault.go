@@ -434,16 +434,6 @@ func (records *Records) DeleteRecord(name string) error {
 	return errors.New("Record missing")
 }
 
-// DeleteNonAdmin removes all record without admin status.
-func (records *Records) DeleteNonAdmin() error {
-	for name, pr := range records.Passwords {
-		if !pr.IsAdmin() {
-			delete(records.Passwords, name)
-		}
-	}
-	return records.WriteRecordsToDisk()
-}
-
 // RevokeRecord removes admin status from a record.
 func (records *Records) RevokeRecord(name string) error {
 	if rec, ok := records.GetRecord(name); ok {

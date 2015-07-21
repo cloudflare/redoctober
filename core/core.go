@@ -259,22 +259,27 @@ func Summary(jsonIn []byte) ([]byte, error) {
 // Purge processes a delegation purge request.
 func Purge(jsonIn []byte) ([]byte, error) {
 	var s PurgeRequest
-	if err := json.Unmarshal(jsonIn, &s); err != nil {
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.purge failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.purge success: user=%s", s.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
 	}
 
 	if records.NumRecords() == 0 {
-		return jsonStatusError(errors.New("Vault is not created yet"))
-	}
-
-	// Validate the Name and Password as valid and admin
-	if err := validateUser(s.Name, s.Password, true); err != nil {
-		log.Printf("failed to validate %s as admin for purge request: %s", s.Name, err)
+		err = errors.New("vault has not been created")
 		return jsonStatusError(err)
 	}
 
-	if err := records.DeleteNonAdmin(); err != nil {
-		log.Printf("failed to purge non-admin delegates: %s", err)
+	// Validate the Name and Password as valid and admin
+	if err = validateUser(s.Name, s.Password, true); err != nil {
 		return jsonStatusError(err)
 	}
 
