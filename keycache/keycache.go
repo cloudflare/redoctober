@@ -40,8 +40,9 @@ type Usage struct {
 // ActiveUser holds the information about an actively delegated key.
 type ActiveUser struct {
 	Usage
-	Admin bool
-	Type  string
+	AltNames map[string]string
+	Admin    bool
+	Type     string
 
 	rsaKey rsa.PrivateKey
 	eccKey *ecdsa.PrivateKey
@@ -299,5 +300,35 @@ func (cache *Cache) DecryptShares(in [][]byte, name, user string, labels []strin
 
 	cache.useKey(name, user, slot, labels)
 
+	return
+}
+
+func (cache *Cache) DelegateStatus(name string, label string, admins []string) (adminsDelegated []string, hasDelegated int) {
+	// Iterate over the admins of the ciphertext to look for users
+	// who have already delegated the label to the delegatee.
+	for _, admin := range admins {
+		for di, use := range cache.UserKeys {
+			if di.Name != admin {
+				continue
+			}
+			labelFound := false
+			nameFound := false
+			for _, user := range use.Users {
+				if user == name {
+					nameFound = true
+				}
+			}
+			for _, l := range use.Labels {
+				if l == label {
+					labelFound = true
+				}
+			}
+			if labelFound && nameFound {
+				adminsDelegated = append(adminsDelegated, admin)
+				hasDelegated++
+			}
+
+		}
+	}
 	return
 }
