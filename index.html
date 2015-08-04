@@ -27,6 +27,7 @@
 					<li><a href="#encrypt">Encrypt</a></li>
 					<li><a href="#decrypt">Decrypt</a></li>
 					<li><a href="#owners">Owners</a></li>
+					<li><a href="#orders">Order</a></li>
 				</ul>
 			</div>
 		</div>
@@ -164,7 +165,7 @@
 
 		<section class="row">
 			<div id="change-password" class="col-md-6">
-				<h3>Change password</h3>
+				<h3>Change account</h3>
 
 				<form id="user-change-password" class="ro-user-change-password" role="form" action="/password" method="post">
 					<div class="feedback change-password-feedback"></div>
@@ -172,16 +173,18 @@
 					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="user-name">User name</label>
-							<input type="text" name="Name" class="form-control" id="user-name" placeholder="User name" required />
+							<input type="text" name="Name" class="form-control" id="user-name" placeholder="User name" required/>
 						</div>
 						<div class="col-md-6">
 							<label for="user-pass">Password</label>
-							<input type="password" name="Password" class="form-control" id="user-pass" placeholder="Password" required />
+							<input type="password" name="Password" class="form-control" id="user-pass" placeholder="Password"/ required>
 						</div>
 					</div>
 					<div class="form-group">
-						<label for="user-pass">New password</label>
-						<input type="password" name="NewPassword" class="form-control" id="user-pass-new" placeholder="New password" required />
+						<label for="user-pass">New password. Blank for no change.</label>
+						<input type="password" name="NewPassword" class="form-control" id="user-pass-new" placeholder="New Password"/>
+						<label for="user-email">Hipchat Name. Blank for no change.</label>
+						<input type="text" name="HipchatName" class="form-control" id="user-hipchatname" placeholder="New Hipchat Name"/>
 					</div>
 					<button type="submit" class="btn btn-primary">Change password</button>
 				</form>
@@ -309,6 +312,120 @@
 				</form>
 			</div>
 		</section>
+		<hr />
+		<section class="row">
+			<div id="orders" class="col-md-6">
+				<h3>Create Order</h3>
+
+				<form id="order" class="ro-user-order" role="form" action="/order" method="post">
+					<div class="feedback order-feedback"></div>
+					<div class="form-group">
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="order-user-admin">User name</label>
+							<input type="text" name="Name" class="form-control" id="order-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="order-user-pass">Password</label>
+							<input type="password" name="Password" class="form-control" id="order-user-pass" placeholder="Password" required />
+						</div>
+						<div class="col-md-6">
+							<label for="order-label">Label</label>
+							<input type="text" name="Label" class="form-control" id="order-user-label" placeholder="Label" required />
+						</div>
+						<div class="col-md-6">
+							<label for="order-duration">Duration</label>
+							<input type="text" name="Duration" class="form-control" id="order-duration" placeholder="Duration (e.g., 2h34m)" required />
+						</div>
+						<div class="col-md-6">
+							<label for="order-uses">Uses</label>
+							<input type="text" name="Uses" class="form-control" id="order-uses" placeholder="Uses" required />
+						</div>
+					</div>
+
+						<label for="owners-data">Data</label>
+						<textarea name="Data" class="form-control" id="owners-data" rows="5" required></textarea>
+					</div>
+					<button type="submit" class="btn btn-primary">Create Order</button>
+				</form>
+			</div>
+		</section>
+		<hr />
+		<section class="row">
+			<div id="ordersinfo" class="col-md-6">
+				<h3>Order Info</h3>
+
+				<form id="orderinfo" class="ro-user-order" role="form" action="/orderinfo" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback orderinfo-feedback"></div>
+					<div class="form-group">
+						<div class="row">
+							<div class="col-md-6">
+								<label for="orderinfo-user-admin">User name</label>
+								<input type="text" name="Name" class="form-control" id="orderinfo-user-admin" placeholder="User name" required />
+							</div>
+							<div class="col-md-6">
+								<label for="orderinfo-user-admin">Password</label>
+								<input type="password" name="Password" class="form-control" id="orderinfo-user-pass" placeholder="Password" required />
+							</div>
+							<div class="col-md-6">
+								<label for="orderinfo-order-num">Order Num</label>
+								<input type="text" name="OrderNum" class="form-control" id="orderinfo-user-label" placeholder="Order Number" required />
+							</div>
+						</div>
+						<button type="submit" class="btn btn-primary">Order Info</button>
+					</div>
+				</form>
+			</div>
+		</section>
+		<hr />
+		<section class="row">
+			<div id="ordersout" class="col-md-6">
+				<h3>Outstanding Orders</h3>
+
+				<form id="orderout" class="ro-user-order" role="form" action="/orderout" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback ordersout-feedback"></div>
+					<div class="form-group">
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="ordersout-user-admin">User name</label>
+							<input type="text" name="Name" class="form-control" id="ordersout-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="ordersout-user-admin">Password</label>
+							<input type="password" name="Password" class="form-control" id="ordersout-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Outstanding Orders</button>
+				</form>
+			</div>
+		</section>
+		<section class="row">
+			<div id="orderscancel" class="col-md-6">
+				<h3>Order Cancel</h3>
+
+				<form id="ordercancel" class="ro-user-order" role="form" action="/ordercancel" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback ordercancel-feedback"></div>
+					<div class="form-group">
+						<div class="row">
+							<div class="col-md-6">
+								<label for="ordercancel-user-admin">User name</label>
+								<input type="text" name="Name" class="form-control" id="ordercancel-user-admin" placeholder="User name" required />
+							</div>
+							<div class="col-md-6">
+								<label for="ordercancel-user-admin">Password</label>
+								<input type="password" name="Password" class="form-control" id="ordercancel-user-pass" placeholder="Password" required />
+							</div>
+							<div class="col-md-6">
+								<label for="ordercancel-order-num">Order Num</label>
+								<input type="text" name="OrderNum" class="form-control" id="ordercancel-user-label" placeholder="Order Number" required />
+							</div>
+						</div>
+						<button type="submit" class="btn btn-primary">Order Cancel</button>
+					</div>
+				</form>
+			</div>
+		</section>
+		<hr />
 	</div>
 
 	<footer id="footer" class="footer">
@@ -327,7 +444,6 @@
 
 			function submit( $form, options ){
 				options || (options = {});
-
 				$.ajax({
 					url: $form.attr('action'),
 					data: JSON.stringify( options.data ),
@@ -364,7 +480,7 @@
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Created user: '+data.Name }) );
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Created user: '+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -425,7 +541,7 @@
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Delegating '+data.Name }) );
+						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Delegating '+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -442,7 +558,7 @@
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Creating '+data.Name }) );
+						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Creating '+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -456,7 +572,7 @@
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Change password for '+data.Name }) );
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Change password for '+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -470,7 +586,7 @@
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Successfully modified '+data.ToModify }) );
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Successfully modified '+htmlspecialchars(data.ToModify) }) );
 					}
 				});
 			});
@@ -532,6 +648,140 @@
 					}
 				});
 			});
+			// Create an order
+			$('body').on('submit', 'form#order', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					d = JSON.parse(window.atob(d.Response));
+					$form.find('.feedback').empty().append(
+						makeAlert({ type: 'success', message: '<p>Order Num: '+d.Num+'</p>' }) );
+					}
+				});
+			});
+			// Get order info
+			$('body').on('submit', 'form#orderinfo', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						d = window.atob(d.Response);
+						try {
+							var respData = JSON.parse(d);
+							var msgText = ""
+							alert(msgText);
+							for (var jj in respData) {
+								if (!jj || jj == "Admins")
+									continue;
+								if (!respData.hasOwnProperty(jj)) {
+									continue;
+								}
+								alert(msgText);
+								msgText += "<p>"+htmlspecialchars(jj)+": "+htmlspecialchars(respData[jj])+"</p>";
+							}
+							$form.find('.feedback').empty().append(makeAlert({ type: 'success', message: msgText }));
+						} catch (e) {
+							makeAlert({ type: 'failure', message: '<p>Invalid JSON returned</p>' });
+						}
+					}
+				});
+			});
+			// Get outstanding order info
+			$('body').on('submit', 'form#orderout', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					d = JSON.parse(window.atob(d.Response));
+					ordout = "";
+					for (var jj in d){
+						if (!d.hasOwnProperty(jj))
+							continue;
+						var o = d[jj];
+						ordout += o.Name + " requesting " + o.Label + " has " + o.Delegated + "\n";
+
+					}
+					$form.find('.feedback').empty().append(
+						makeAlert({ type: 'success', message: '<p>'+ordout+'</p>' }) );
+					}
+				});
+			});
+			$('body').on('submit', 'form#ordercancel', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					d = window.atob(d.Response);
+					$form.find('.feedback').empty().append(
+						makeAlert({ type: 'success', message: '<p>'+d+'</p>' }) );
+					}
+				});
+			});
+			
+			// Init from query string if possible.
+			var queryParams = document.location.search;
+			var queryParts = queryParams.split('&');
+			for (var i=0; i<queryParts.length; i++) {
+				var part = queryParts[i];
+				part = part.replace("?", "");
+				var partPieces = part.split("=");
+				if (partPieces.length != 2) {
+					continue;
+				}
+				var setValue = null;
+				var key = partPieces[0];
+				var value = partPieces[1];
+				switch (key) {
+					case "delegator":
+						setValue = $("#delegate-user");
+						break;
+					case "delegatee":
+						setValue = $("#delegate-users");
+						break;
+					case "uses":
+						setValue = $("#delegate-uses");
+						break;
+					case "label":
+						setValue = $("#delegate-labels");
+						break;
+					case "duration":
+						setValue = $("#delegate-user-time");
+						break;
+					case "ordernum":
+						setValue = $("#delegate-slot");
+						break;
+					default:
+						break;
+				}
+				if (setValue) {
+					setValue.val(value);
+				}
+			}
+			function htmlspecialchars(s) {
+				if (!isNaN(s)) {
+					return s;
+				}
+				s = s.replace('&', '&amp;');
+				s = s.replace('<', '&lt;');
+				s = s.replace('>', '&gt;');
+				s = s.replace('"', '&quot;');
+				s = s.replace("'", '&#x27;');
+				s = s.replace('/', '&#x2F;');
+				return s
+			}
 		});
 	</script>
 </body>

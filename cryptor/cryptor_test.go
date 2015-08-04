@@ -83,7 +83,6 @@ func TestDuplicates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-
 	c := Cryptor{&records, &cache}
 
 	for _, name := range names {
@@ -113,7 +112,7 @@ func TestDuplicates(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 
-		_, _, _, err := c.Decrypt(resp, name)
+		_, _, _, _, err := c.Decrypt(resp, name)
 		if err == nil {
 			t.Fatalf("That shouldn't have worked!")
 		}

@@ -98,7 +98,7 @@ func TestChangePassword(t *testing.T) {
 	}
 
 	// Check changing the password for a non-existent user
-	err = records.ChangePassword("user", "weakpassword", "newpassword")
+	err = records.ChangePassword("user", "weakpassword", "newpassword", "")
 	if err == nil {
 		t.Fatalf("%v", err)
 	}
@@ -108,7 +108,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	err = records.ChangePassword("user", "weakpassword", "newpassword")
+	err = records.ChangePassword("user", "weakpassword", "newpassword", "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -118,7 +118,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	err = records.ChangePassword("user2", "weakpassword", "newpassword")
+	err = records.ChangePassword("user2", "weakpassword", "newpassword", "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}

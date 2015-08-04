@@ -9,9 +9,13 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
+	"time"
 
 	"github.com/cloudflare/redoctober/cryptor"
+	"github.com/cloudflare/redoctober/hipchat"
 	"github.com/cloudflare/redoctober/keycache"
+	"github.com/cloudflare/redoctober/order"
 	"github.com/cloudflare/redoctober/passvault"
 )
 
@@ -19,6 +23,7 @@ var (
 	crypt   cryptor.Cryptor
 	records passvault.Records
 	cache   keycache.Cache
+	orders  order.Orderer
 )
 
 // Each of these structures corresponds to the JSON expected on the
@@ -63,6 +68,7 @@ type PasswordRequest struct {
 	Password string
 
 	NewPassword string
+	HipchatName string
 }
 
 type EncryptRequest struct {
@@ -104,6 +110,33 @@ type ModifyRequest struct {
 type ExportRequest struct {
 	Name     string
 	Password string
+}
+
+type OrderRequest struct {
+	Name     string
+	Password string
+	Duration string
+	Uses     string
+	Data     []byte
+	Label    string
+}
+
+type OrderInfoRequest struct {
+	Name     string
+	Password string
+
+	OrderNum string
+}
+type OrderOutstandingRequest struct {
+	Name     string
+	Password string
+}
+
+type OrderCancelRequest struct {
+	Name     string
+	Password string
+
+	OrderNum string
 }
 
 // These structures map the JSON responses that will be sent from the API
@@ -169,8 +202,7 @@ func validateUser(name, password string, admin bool) error {
 	return nil
 }
 
-// validateName checks that the username and password pass the minimal
-// validation check
+// validateName checks that the username and password pass a validation test.
 func validateName(name, password string) error {
 	if name == "" {
 		return errors.New("User name must not be blank")
@@ -183,21 +215,35 @@ func validateName(name, password string) error {
 }
 
 // Init reads the records from disk from a given path
-func Init(path string) error {
+func Init(ca, hcKey, hcRoom, hcHost, roHost string) error {
 	var err error
 
 	defer func() {
 		if err != nil {
 			log.Printf("core.init failed: %v", err)
 		} else {
-			log.Printf("core.init success: path=%s", path)
+			log.Printf("core.init success: ca=%s", ca)
 		}
 	}()
 
-	if records, err = passvault.InitFrom(path); err != nil {
-		err = fmt.Errorf("failed to load password vault %s: %s", path, err)
+	if records, err = passvault.InitFrom(ca); err != nil {
+		err = fmt.Errorf("failed to load password vault %s: %s", ca, err)
 	}
 
+	var hipchatClient hipchat.HipchatClient
+	if hcKey != "" && hcRoom != "" && hcHost != "" {
+		roomId, err := strconv.Atoi(hcRoom)
+		if err != nil {
+			return errors.New("core.init unable to use hipchat roomId provided")
+		}
+		hipchatClient = hipchat.HipchatClient{
+			ApiKey: hcKey,
+			RoomId: roomId,
+			HcHost: hcHost,
+			RoHost: roHost,
+		}
+	}
+	orders = order.NewOrderer(hipchatClient)
 	cache = keycache.Cache{UserKeys: make(map[keycache.DelegateIndex]keycache.ActiveUser)}
 	crypt = cryptor.New(&records, &cache)
 
@@ -352,6 +398,22 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
+	// Make sure we capture the number who have already delegated.
+	for _, delegatedUser := range s.Users {
+		for _, delegatedLabel := range s.Labels {
+			if orderKey, found := orders.FindOrder(delegatedUser, delegatedLabel); found {
+				order := orders.Orders[orderKey]
+				order.AdminsDelegated = append(order.AdminsDelegated, s.Name)
+				order.Delegated++
+				orders.Orders[orderKey] = order
+
+				// Notify the hipchat room that there was a new delegator
+				orders.NotifyDelegation(s.Name, delegatedLabel, delegatedUser, orderKey, s.Time)
+
+			}
+		}
+	}
+
 	return jsonStatusOk()
 }
 
@@ -423,7 +485,7 @@ func Password(jsonIn []byte) ([]byte, error) {
 	}
 
 	// add signed-in record to active set
-	err = records.ChangePassword(s.Name, s.Password, s.NewPassword)
+	err = records.ChangePassword(s.Name, s.Password, s.NewPassword, s.HipchatName)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -490,7 +552,7 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, _, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, _, _, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -535,7 +597,7 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, names, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, allLabels, names, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -551,6 +613,13 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
+	// Cleanup any orders that have been fulfilled and notify the room.
+	for _, label := range allLabels {
+		if orderKey, found := orders.FindOrder(s.Name, label); found {
+			delete(orders.Orders, orderKey)
+			orders.NotifyOrderFulfilled(s.Name, orderKey)
+		}
+	}
 	return jsonResponse(out)
 }
 
@@ -660,4 +729,159 @@ func Export(jsonIn []byte) ([]byte, error) {
 	}
 
 	return jsonResponse(out)
+}
+
+// Order will request delegations from other users.
+func Order(jsonIn []byte) (out []byte, err error) {
+	var o OrderRequest
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.order failed: user=%s %v", o.Name, err)
+		} else {
+			log.Printf("core.order success: user=%s", o.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &o); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if err := validateUser(o.Name, o.Password, false); err != nil {
+		return jsonStatusError(err)
+	}
+
+	// Get the owners of the ciphertext.
+	owners, _, err := crypt.GetOwners(o.Data)
+	if err != nil {
+		jsonStatusError(err)
+	}
+	if o.Duration == "" {
+		err = errors.New("Duration required when placing an order.")
+		jsonStatusError(err)
+	}
+	if o.Uses == "" || o.Uses == "0" {
+		err = errors.New("Number of required uses necessary when placing an order.")
+		jsonStatusError(err)
+	}
+	cache.Refresh()
+	orderNum := order.GenerateNum()
+
+	adminsDelegated, numDelegated := cache.DelegateStatus(o.Name, o.Label, owners)
+	duration, err := time.ParseDuration(o.Duration)
+	if err != nil {
+		jsonStatusError(err)
+	}
+	currentTime := time.Now()
+	expiryTime := currentTime.Add(duration)
+	ord := order.CreateOrder(o.Name,
+		o.Label,
+		orderNum,
+		currentTime,
+		expiryTime,
+		duration,
+		adminsDelegated,
+		owners,
+		numDelegated)
+	orders.Orders[orderNum] = ord
+	out, err = json.Marshal(ord)
+
+	// Get a map to any alternative name we want to notify
+	altOwners := records.GetAltNamesFromName(orders.AlternateName, owners)
+
+	// Let everyone on hipchat know there is a new order.
+	orders.NotifyNewOrder(o.Name, o.Duration, o.Label, o.Uses, orderNum, altOwners)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	return jsonResponse(out)
+}
+
+// OrdersOutstanding will return a list of currently outstanding orders.
+func OrdersOutstanding(jsonIn []byte) (out []byte, err error) {
+	var o OrderOutstandingRequest
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.ordersout failed: user=%s %v", o.Name, err)
+		} else {
+			log.Printf("core.ordersout success: user=%s", o.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &o); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if err := validateUser(o.Name, o.Password, false); err != nil {
+		return jsonStatusError(err)
+	}
+
+	out, err = json.Marshal(orders.Orders)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	return jsonResponse(out)
+}
+
+// OrderInfo will return a list of currently outstanding order numbers.
+func OrderInfo(jsonIn []byte) (out []byte, err error) {
+	var o OrderInfoRequest
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.order failed: user=%s %v", o.Name, err)
+		} else {
+			log.Printf("core.order success: user=%s", o.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &o); err != nil {
+		return jsonStatusError(err)
+	}
+	if err := validateUser(o.Name, o.Password, false); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if ord, ok := orders.Orders[o.OrderNum]; ok {
+		if out, err = json.Marshal(ord); err != nil {
+			return jsonStatusError(err)
+		} else if len(out) == 0 {
+			return jsonStatusError(errors.New("No order with that number"))
+		}
+
+		return jsonResponse(out)
+	}
+	return
+}
+
+// OrderCancel will cancel an order given an order num
+func OrderCancel(jsonIn []byte) (out []byte, err error) {
+	var o OrderCancelRequest
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.order failed: user=%s %v", o.Name, err)
+		} else {
+			log.Printf("core.order success: user=%s", o.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &o); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if err := validateUser(o.Name, o.Password, false); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if ord, ok := orders.Orders[o.OrderNum]; ok {
+		if o.Name == ord.Name {
+			delete(orders.Orders, o.OrderNum)
+			out = []byte("Successfully removed order")
+			return jsonResponse(out)
+		}
+	}
+	err = errors.New("Invalid Order Number")
+	return jsonStatusError(err)
 }
