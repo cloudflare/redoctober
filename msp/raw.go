@@ -97,7 +97,7 @@ func StringToRaw(r string) (out Raw, err error) {
 		case ")":
 			top := staging.Remove(staging.Front()).([2]*list.List)
 			if top[0].Len() != (top[1].Len() + 1) {
-				return out, errors.New("Stacks are invalid size.")
+				return out, errors.New("Invalid string: There needs to be an operator (& or |) for every pair of operands.")
 			}
 
 			for typ := NodeAnd; typ <= NodeOr; typ++ {
@@ -128,14 +128,14 @@ func StringToRaw(r string) (out Raw, err error) {
 			}
 
 			if top[0].Len() != 1 || top[1].Len() != 0 {
-				return out, errors.New("Invalid expression--couldn't evaluate.")
+				return out, errors.New("Invalid string: Couldn't evaluate all of the operators.")
 			}
 
 			if staging.Len() == 0 {
 				if len(r) == 0 {
 					return top[0].Front().Value.(Raw), nil
 				}
-				return out, errors.New("Invalid string--terminated early.")
+				return out, errors.New("Invalid string: Can't parse anymore, but there's still data. Too many closing parentheses or too few opening parentheses?")
 			}
 			staging.Front().Value.([2]*list.List)[0].PushBack(top[0].Front().Value)
 
@@ -153,7 +153,7 @@ func StringToRaw(r string) (out Raw, err error) {
 		}
 	}
 
-	return out, errors.New("Invalid string--never terminated.")
+	return out, errors.New("Invalid string: Not finished parsing, but out of data. Too many opening parentheses or too few closing parentheses?")
 }
 
 func (r Raw) String() string {

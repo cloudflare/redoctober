@@ -26,7 +26,7 @@ func StringToFormatted(f string) (out Formatted, err error) {
 	// Staging stack is empty on initialization and should have exactly 1 built
 	// threshold gate at the end of the string.
 	if f[0] != '(' || f[len(f)-1] != ')' {
-		return out, errors.New("Invalid string--wrong format.")
+		return out, errors.New("Invalid string: Needs to begin and end with parentheses.")
 	}
 
 	getNext := func(f string) (string, string) { // f -> (next, rest)
@@ -87,7 +87,7 @@ func StringToFormatted(f string) (out Formatted, err error) {
 				if len(f) == 0 {
 					return built, nil
 				}
-				return built, errors.New("Invalid string--terminated early.")
+				return built, errors.New("Invalid string: Can't parse anymore, but there's still data. Too many closing parentheses or too few opening parentheses?")
 			}
 
 			staging.Front().Value.(*list.List).PushBack(built)
@@ -102,7 +102,7 @@ func StringToFormatted(f string) (out Formatted, err error) {
 		}
 	}
 
-	return out, errors.New("Invalid string--never terminated.")
+	return out, errors.New("Invalid string: Not finished parsing, but out of data. Too many opening parentheses or too few closing parentheses?")
 }
 
 func (f Formatted) String() string {
