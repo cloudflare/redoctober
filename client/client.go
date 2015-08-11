@@ -189,6 +189,21 @@ func (c *RemoteServer) Encrypt(req core.EncryptRequest) (*core.ResponseData, err
 	return unmarshalResponseData(respBytes)
 }
 
+// ReEncrypt issues an re-encrypt request to the remote server
+func (c *RemoteServer) ReEncrypt(req core.ReEncryptRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("re-encrypt", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
+
 // Decrypt issues an decrypt request to the remote server
 func (c *RemoteServer) Decrypt(req core.DecryptRequest) (*core.ResponseData, error) {
 	reqBytes, err := json.Marshal(req)

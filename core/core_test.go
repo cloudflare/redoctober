@@ -507,6 +507,186 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 }
 
+func TestReEncrypt(t *testing.T) {
+	delegateJson := []byte(`{"Name":"Alice","Password":"Hello","Time":"0s","Uses":0}`)
+	delegateJson2 := []byte(`{"Name":"Bob","Password":"Hello","Time":"0s","Uses":0}`)
+	delegateJson3 := []byte(`{"Name":"Carol","Password":"Hello","Time":"0s","Uses":0}`)
+	delegateJson4 := []byte(`{"Name":"Bob","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["blue"]}`)
+	delegateJson5 := []byte(`{"Name":"Carol","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["blue"]}`)
+	delegateJson6 := []byte(`{"Name":"Bob","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["red"]}`)
+	delegateJson7 := []byte(`{"Name":"Carol","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["red"]}`)
+	encryptJson := []byte(`{"Name":"Carol","Password":"Hello","Minumum":2,"Owners":["Alice","Bob","Carol"],"Data":"SGVsbG8gSmVsbG8=","Labels":["blue"]}`)
+
+	Init("memory")
+
+	// check for summary of initialized vault with new member
+	var s ResponseData
+	respJson, err := Create(delegateJson)
+	if err != nil {
+		t.Fatalf("Error in creating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in creating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in creating account, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson2)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson3)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	// delegate two valid decryptors for label blue
+	respJson, err = Delegate(delegateJson4)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson5)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	// Encrypt
+	respJson, err = Encrypt(encryptJson)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in encrypt, %v", s.Status)
+	}
+
+	// Prepare ReEncryptRequest
+	reEncryptJson, err := json.Marshal(
+		ReEncryptRequest{
+			Name:     "Alice",
+			Password: "Hello",
+			Data:     s.Response,
+			Owners:   []string{"Alice", "Bob", "Carol"},
+			Labels:   []string{"red"},
+		})
+	if err != nil {
+		t.Fatalf("Error in re-encrypt, %v", err)
+	}
+
+	// Re-Encrypt
+	respJson, err = ReEncrypt(reEncryptJson)
+	if err != nil {
+		t.Fatalf("Error in re-encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in re-encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in re-encrypt, %v", s.Status)
+	}
+
+	// Prepare DecryptRequest
+	decryptJson, err := json.Marshal(
+		DecryptRequest{
+			Name:     "Alice",
+			Password: "Hello",
+			Data:     s.Response,
+		})
+	if err != nil {
+		t.Fatalf("Error in dencrypt, %v", err)
+	}
+
+	// delegate two valid decryptors for label red
+	respJson, err = Delegate(delegateJson6)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson7)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	// Decrypt
+	respJson, err = Decrypt(decryptJson)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in decrypt, %v", s.Status)
+	}
+
+	var d DecryptWithDelegates
+	err = json.Unmarshal(s.Response, &d)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+
+	if string(d.Data) != "Hello Jello" {
+		t.Fatalf("Error in decrypt, %v", string(d.Data))
+	}
+
+	if d.Delegates[0] != "Bob" && d.Delegates[1] != "Carol" {
+		if d.Delegates[1] != "Bob" && d.Delegates[0] != "Carol" {
+			t.Fatalf("Error in decrypt, %v", d.Delegates)
+		}
+	}
+}
+
 func TestOwners(t *testing.T) {
 	delegateJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
 	delegateJson2 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")

@@ -71,6 +71,8 @@ type EncryptRequest struct {
 	Labels []string
 }
 
+type ReEncryptRequest EncryptRequest
+
 type DecryptRequest struct {
 	Name     string
 	Password string
@@ -396,6 +398,49 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 	}
 
 	resp, err := crypt.Encrypt(s.Data, s.Labels, access)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	return jsonResponse(resp)
+}
+
+// ReEncrypt processes an Re-encrypt request.
+func ReEncrypt(jsonIn []byte) ([]byte, error) {
+	var s ReEncryptRequest
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.re-encrypt failed: user=%s size=%d %v", s.Name, len(s.Data), err)
+		} else {
+			log.Printf("core.re-encrypt success: user=%s size=%d", s.Name, len(s.Data))
+		}
+	}()
+
+	err = json.Unmarshal(jsonIn, &s)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	if err = validateUser(s.Name, s.Password, false); err != nil {
+		return jsonStatusError(err)
+	}
+
+	data, _, secure, err := crypt.Decrypt(s.Data, s.Name)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if !secure {
+		return jsonStatusError(errors.New("decryption's secure bit is false"))
+	}
+
+	access := cryptor.AccessStructure{
+		Names:      s.Owners,
+		LeftNames:  s.LeftOwners,
+		RightNames: s.RightOwners,
+	}
+
+	resp, err := crypt.Encrypt(data, s.Labels, access)
 	if err != nil {
 		return jsonStatusError(err)
 	}
