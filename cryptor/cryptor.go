@@ -308,6 +308,10 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 	}
 }
 
+// ErrNeedDelegations is returned when there aren't enough delegations
+// to decrypt data.
+var ErrNeedDelegations = errors.New("cryptor: not enough delegations")
+
 // unwrapKey decrypts first key in keys whose encryption keys are in keycache
 func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (unwrappedKey []byte, names []string, err error) {
 	var (
@@ -351,7 +355,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 	}
 
 	if !fullMatch {
-		err = errors.New("Need more delegated keys")
+		err = ErrNeedDelegations
 		names = nil
 	}
 

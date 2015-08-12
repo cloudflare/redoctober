@@ -471,6 +471,40 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 	}
 
 	data, names, secure, err := crypt.Decrypt(s.Data, s.Name)
+	if err == cryptor.ErrNeedDelegations {
+		log.Printf("core.decrypt notice: user=%s implicit=true", s.Name)
+		pr, found := records.GetRecord(s.Name)
+		if found {
+			err = pr.ValidatePassword(s.Password)
+			if err != nil {
+				return jsonStatusError(err)
+			}
+		} else {
+			// The user isn't one of the users
+			// that can delegate for this data if they
+			// don't exist.
+			err = errors.New("core: user not found")
+		}
+		// add signed-in record to active set
+		err = cache.AddKeyFromRecord(pr, s.Name, s.Password, []string{s.Name}, nil, 1, "1m")
+		if err != nil {
+			return jsonStatusError(err)
+		}
+
+		// If the server performs an implicit delegation for the user, and decryption
+		// still fails, the user's delegation must be manually removed.
+		defer func() {
+			err = cache.AddKeyFromRecord(pr, s.Name, s.Password, nil, nil, 0, "0m")
+			if err != nil {
+				log.Printf("core.decrypt warning: action=undelegate user=%s message='%v'",
+					s.Name, err)
+			}
+
+		}()
+
+		data, names, secure, err = crypt.Decrypt(s.Data, s.Name)
+	}
+
 	if err != nil {
 		return jsonStatusError(err)
 	}
