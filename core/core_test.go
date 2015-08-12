@@ -474,8 +474,9 @@ func TestEncryptDecrypt(t *testing.T) {
 	if sum2.Status != "ok" {
 		t.Fatalf("Error in summary, %v", sum2.Status)
 	}
+
 	if len(sum2.Live) != 2 {
-		t.Fatalf("Error in summary, %v", sum2.Live)
+		t.Fatalf("Error in summary, expected 2 but have %d\n%v", len(sum2.Live), sum2.Live)
 	}
 
 	respJson2, err = Decrypt(decryptJson)
