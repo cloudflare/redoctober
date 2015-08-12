@@ -31,11 +31,12 @@ type command struct {
 var roServer *client.RemoteServer
 
 var commandSet = map[string]command{
-	"create":   command{Run: runCreate, Desc: "create a user account"},
-	"summary":  command{Run: runSummary, Desc: "list the user and delegation summary"},
-	"delegate": command{Run: runDelegate, Desc: "do decryption delegation"},
-	"encrypt":  command{Run: runEncrypt, Desc: "encrypt a file"},
-	"decrypt":  command{Run: runDecrypt, Desc: "decrypt a file"},
+	"create":     command{Run: runCreate, Desc: "create a user account"},
+	"summary":    command{Run: runSummary, Desc: "list the user and delegation summary"},
+	"delegate":   command{Run: runDelegate, Desc: "do decryption delegation"},
+	"encrypt":    command{Run: runEncrypt, Desc: "encrypt a file"},
+	"decrypt":    command{Run: runDecrypt, Desc: "decrypt a file"},
+	"re-encrypt": command{Run: runReEncrypt, Desc: "re-encrypt a file"},
 }
 
 func registerFlags() {
@@ -131,6 +132,34 @@ func runEncrypt() {
 	}
 
 	resp, err := roServer.Encrypt(req)
+	processError(err)
+	fmt.Println("Response Status:", resp.Status)
+	outBytes := []byte(base64.StdEncoding.EncodeToString(resp.Response))
+	ioutil.WriteFile(outPath, outBytes, 0644)
+}
+
+func runReEncrypt() {
+	inBytes, err := ioutil.ReadFile(inPath)
+	processError(err)
+
+	// base64 decode the input
+	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
+	if err != nil {
+		log.Println("fail to base64 decode the data, proceed with raw data")
+		encBytes = inBytes
+	}
+
+	req := core.ReEncryptRequest{
+		Name:        user,
+		Password:    pswd,
+		Owners:      processCSL(owners),
+		LeftOwners:  processCSL(lefters),
+		RightOwners: processCSL(righters),
+		Labels:      processCSL(labels),
+		Data:        encBytes,
+	}
+
+	resp, err := roServer.ReEncrypt(req)
 	processError(err)
 	fmt.Println("Response Status:", resp.Status)
 	outBytes := []byte(base64.StdEncoding.EncodeToString(resp.Response))
