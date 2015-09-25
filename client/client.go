@@ -70,6 +70,11 @@ func (c *RemoteServer) doAction(action string, req []byte) ([]byte, error) {
 	}
 	resp.Body.Close()
 
+	// Return response body as error if status code != 200
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(string(body))
+	}
+
 	return body, nil
 
 }
