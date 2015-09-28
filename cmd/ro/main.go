@@ -108,6 +108,7 @@ func runDelegate() {
 	fmt.Println(resp.Status)
 }
 
+// TODO: summary response needs better formatting
 func runSummary() {
 	req := core.SummaryRequest{
 		Name:     user,
@@ -133,6 +134,10 @@ func runEncrypt() {
 
 	resp, err := roServer.Encrypt(req)
 	processError(err)
+	if resp.Status != "ok" {
+		log.Fatal("response status error:", resp.Status)
+		return
+	}
 	fmt.Println("Response Status:", resp.Status)
 	outBytes := []byte(base64.StdEncoding.EncodeToString(resp.Response))
 	ioutil.WriteFile(outPath, outBytes, 0644)
@@ -161,6 +166,10 @@ func runReEncrypt() {
 
 	resp, err := roServer.ReEncrypt(req)
 	processError(err)
+	if resp.Status != "ok" {
+		log.Fatal("response status error:", resp.Status)
+		return
+	}
 	fmt.Println("Response Status:", resp.Status)
 	outBytes := []byte(base64.StdEncoding.EncodeToString(resp.Response))
 	ioutil.WriteFile(outPath, outBytes, 0644)
@@ -185,10 +194,14 @@ func runDecrypt() {
 
 	resp, err := roServer.Decrypt(req)
 	processError(err)
+	if resp.Status != "ok" {
+		log.Fatal("response status error:", resp.Status)
+		return
+	}
+	fmt.Println("Response Status:", resp.Status)
 	var msg core.DecryptWithDelegates
 	err = json.Unmarshal(resp.Response, &msg)
 	processError(err)
-	fmt.Println("Response Status:", resp.Status)
 	fmt.Println("Secure:", msg.Secure)
 	fmt.Println("Delegates:", msg.Delegates)
 	ioutil.WriteFile(outPath, msg.Data, 0644)
