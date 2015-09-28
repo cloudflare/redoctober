@@ -108,6 +108,7 @@ func runDelegate() {
 	fmt.Println(resp.Status)
 }
 
+// TODO: summary response needs better formatting
 func runSummary() {
 	req := core.SummaryRequest{
 		Name:     user,
