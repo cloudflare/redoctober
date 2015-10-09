@@ -106,4 +106,71 @@ func TestChangePassword(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
+
+	_, err = records.AddNewRecord("user2", "weakpassword", true, RSARecord)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = records.ChangePassword("user2", "weakpassword", "newpassword")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+}
+
+func TestDeleteRecord(t *testing.T) {
+	records, err := InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	_, err = records.AddNewRecord("user", "weakpassword", true, ECCRecord)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = records.DeleteRecord("user")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	_, retVal := records.GetRecord("user")
+	if retVal == true {
+		t.Fatalf("Record not deleting properly")
+	}
+}
+
+func TestMakeRevokeAdmin(t *testing.T) {
+	records, err := InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	myRec, err := records.AddNewRecord("user", "weakpassword", false, ECCRecord)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = records.MakeAdmin("user")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	myRec, _ = records.GetRecord("user")
+	retval := myRec.IsAdmin()
+	if retval != true {
+		t.Fatalf("Incorrect Admin value")
+	}
+
+	err = records.RevokeRecord("user")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	myRec, _ = records.GetRecord("user")
+	retval = myRec.IsAdmin()
+	if retval != false {
+		t.Fatalf("Incorrect Admin value")
+	}
+
 }
