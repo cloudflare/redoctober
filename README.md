@@ -72,6 +72,7 @@ format is POSTed and JSON is returned.
 
  - `/create`: Create the first admin account.
  - `/delegate`: Delegate a password to Red October
+ - `/create-user`: Create a user
  - `/modify`: Modify permissions
  - `/encrypt`: Encrypt
  - `/decrypt`: Decrypt
@@ -108,6 +109,16 @@ Example query:
     {"Status":"ok"}
     $ curl --cacert cert/server.crt https://localhost:8080/delegate \
            -d '{"Name":"Dodo","Password":"Dodgson","Time":"2h34m","Uses":3}'
+    {"Status":"ok"}
+    
+### Create User
+
+Create Users creates a new user account.
+
+Example query:
+
+    $ curl --cacert cert/server.crt https://localhost:8080/create-user \
+           -d '{"Name":"Bill","Password":"Lizard"}'
     {"Status":"ok"}
 
 ### Summary
