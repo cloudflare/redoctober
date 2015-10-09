@@ -3,9 +3,14 @@ language: go
 go: 1.4
 script:
   - go get golang.org/x/tools/cmd/vet
+  - go get github.com/modocache/gover
   - go get github.com/cloudflare/redoctober
   - go test github.com/cloudflare/redoctober...
   - go vet github.com/cloudflare/redoctober...
+  - go list -f '{{if len .TestGoFiles}}"go test -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -i sh -c {}
+  - gover . coverprofile.txt
+after_success:
+  - bash <(curl -s https://codecov.io/bash) -f coverprofile.txt
 notifications:
   email:
     recipients:
