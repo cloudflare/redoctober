@@ -998,3 +998,20 @@ func TestStatic(t *testing.T) {
 
 	os.Remove("/tmp/db1.json")
 }
+
+func TestValidateName(t *testing.T) {
+	err := validateName("", "password")
+	if err == nil {
+		t.Fatal("Error expected when no name is provided")
+	}
+
+	err = validateName("username", "")
+	if err == nil {
+		t.Fatal("Error expected when no password is provided")
+	}
+
+	err = validateName("username", "password")
+	if err != nil {
+		t.Fatalf("No error expected when username and password provided, %v", err)
+	}
+}
