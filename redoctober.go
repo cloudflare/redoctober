@@ -382,7 +382,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 				<h3>Create User</h3>
 
-				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
+				<form id="user-create" class="ro-user-create" role="form" action="/create-user" method="post">
 					<div class="feedback create-feedback"></div>
 
 					<div class="form-group row">
@@ -396,11 +396,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 						</div>
 					</div>
 					<div class="form-group row">
-						<div class="col-md-6">
-							<input type="hidden" name="Time" class="form-control" id="create-user-time" value="0h" required />
-						</div>
-						<div class="col-md-6">
-							<input type="hidden" name="Uses" class="form-control" id="create-uses" value="0" required />
+						<div class="col-md-12">
+							<label for="create-user-type">User Type</label>
+							<select name="UserType" class="form-control" id="create-user-type">
+								<option value="RSA">RSA</option>
+								<option value="ECC">ECC</option>
+							</select>
 						</div>
 					</div>
 					<button type="submit" class="btn btn-primary">Create</button>
