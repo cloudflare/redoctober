@@ -149,6 +149,21 @@ func (c *RemoteServer) Delegate(req core.DelegateRequest) (*core.ResponseData, e
 	return unmarshalResponseData(respBytes)
 }
 
+// CreateUser issues a create-user request to the remote server
+func (c *RemoteServer) CreateUser(req core.CreateUserRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("create-user", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
+
 // Purge issues a purge request to the remote server
 func (c *RemoteServer) Purge(req core.DelegateRequest) (*core.ResponseData, error) {
 	reqBytes, err := json.Marshal(req)

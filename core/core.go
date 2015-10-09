@@ -51,6 +51,12 @@ type DelegateRequest struct {
 	Labels []string
 }
 
+type CreateUserRequest struct {
+	Name     string
+	Password string
+	UserType string
+}
+
 type PasswordRequest struct {
 	Name     string
 	Password string
@@ -332,6 +338,51 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 	// add signed-in record to active set
 	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Time); err != nil {
+		return jsonStatusError(err)
+	}
+
+	return jsonStatusOk()
+}
+
+// Create User processes a create-user request.
+func CreateUser(jsonIn []byte) ([]byte, error) {
+	var s CreateUserRequest
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.create-user failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.create-user success: user=%s", s.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
+	}
+
+	// If no UserType if provided use the default one
+	if s.UserType == "" {
+		s.UserType = passvault.DefaultRecordType
+	}
+
+	if records.NumRecords() == 0 {
+		err = errors.New("Vault is not created yet")
+		return jsonStatusError(err)
+	}
+
+	// Validate the Name and Password as valid
+	if err = validateName(s.Name, s.Password); err != nil {
+		return jsonStatusError(err)
+	}
+
+	_, found := records.GetRecord(s.Name)
+	if found {
+		err = errors.New("User with that name already exists")
+		return jsonStatusError(err)
+	}
+
+	if _, err = records.AddNewRecord(s.Name, s.Password, false, s.UserType); err != nil {
 		return jsonStatusError(err)
 	}
 
