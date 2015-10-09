@@ -215,6 +215,76 @@ func TestSummary(t *testing.T) {
 	}
 }
 
+func TestCreateUser(t *testing.T) {
+	createUserJson := []byte("{\"Name\":\"Bill\",\"Password\":\"Lizard\"}")
+	createUserECCJson := []byte("{\"Name\":\"Cat\",\"Password\":\"Cheshire\",\"UserType\":\"ECC\"}")
+	createVaultJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
+
+	Init("memory")
+
+	// Check that users cannot be created before a vault is
+	respJson, err := CreateUser(createUserJson)
+	if err != nil {
+		t.Fatalf("Error in creating user before vault is created, %v", err)
+	}
+
+	var s ResponseData
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in creating user before vault is created, %v", err)
+	}
+	if s.Status == "ok" {
+		t.Fatalf("Error in creating user before vault is created, %v", s.Status)
+	}
+
+	// Check that a user can be created after a vault has been created
+	respJson, err = Create(createVaultJson)
+	if err != nil {
+		t.Fatalf("Error in creating account, %v", err)
+	}
+
+	respJson, err = CreateUser(createUserJson)
+	if err != nil {
+		t.Fatalf("Error in creating user, %v", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in creating user, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in creating user, %v", s.Status)
+	}
+
+	// Check that user creation can't happen twice with the same name
+	respJson, err = CreateUser(createUserJson)
+	if err != nil {
+		t.Fatalf("Error in creating user when one exists, %v", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in creating user when one exists, %v", err)
+	}
+	if s.Status == "ok" {
+		t.Fatalf("Error in creating user when one exists, %v", s.Status)
+	}
+
+	// Check that a UserType can be specified for a user
+	respJson, err = CreateUser(createUserECCJson)
+	if err != nil {
+		t.Fatalf("Error in creating user with ECC UserType, %v", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in creating user with ECC UserType, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in creating user with ECC UserType, %v", s.Status)
+	}
+}
+
 func TestPassword(t *testing.T) {
 	createJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
 	delegateJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"2h\",\"Uses\":1}")
