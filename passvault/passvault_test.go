@@ -174,3 +174,33 @@ func TestMakeRevokeAdmin(t *testing.T) {
 	}
 
 }
+
+func TestDeleteRecord(t *testing.T) {
+	records, err := InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	// Check deleting non-existent record gives error
+	err = records.DeleteRecord("user")
+	if err == nil {
+		t.Fatalf("Error deleting non-existent record, %v", err)
+	}
+
+	// Check deleting a record
+	_, err = records.AddNewRecord("user", "password", true, ECCRecord)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = records.DeleteRecord("user")
+	if err != nil {
+		t.Fatalf("Error deleting record, %v", err)
+	}
+
+	// Make sure the record was actually deleted
+	_, found := records.GetRecord("user")
+	if found {
+		t.Fatal("Error deleting record")
+	}
+}
