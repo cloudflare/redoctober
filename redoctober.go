@@ -27,17 +27,18 @@ import (
 // List of URLs to register and their related functions
 
 var functions = map[string]func([]byte) ([]byte, error){
-	"/create":     core.Create,
-	"/summary":    core.Summary,
-	"/purge":      core.Purge,
-	"/delegate":   core.Delegate,
-	"/password":   core.Password,
-	"/encrypt":    core.Encrypt,
-	"/re-encrypt": core.ReEncrypt,
-	"/decrypt":    core.Decrypt,
-	"/owners":     core.Owners,
-	"/modify":     core.Modify,
-	"/export":     core.Export,
+	"/create":      core.Create,
+	"/summary":     core.Summary,
+	"/purge":       core.Purge,
+	"/delegate":    core.Delegate,
+	"/create-user": core.CreateUser,
+	"/password":    core.Password,
+	"/encrypt":     core.Encrypt,
+	"/re-encrypt":  core.ReEncrypt,
+	"/decrypt":     core.Decrypt,
+	"/owners":      core.Owners,
+	"/modify":      core.Modify,
+	"/export":      core.Export,
 }
 
 type userRequest struct {
@@ -381,7 +382,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 				<h3>Create User</h3>
 
-				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
+				<form id="user-create" class="ro-user-create" role="form" action="/create-user" method="post">
 					<div class="feedback create-feedback"></div>
 
 					<div class="form-group row">
@@ -395,11 +396,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 						</div>
 					</div>
 					<div class="form-group row">
-						<div class="col-md-6">
-							<input type="hidden" name="Time" class="form-control" id="create-user-time" value="0h" required />
-						</div>
-						<div class="col-md-6">
-							<input type="hidden" name="Uses" class="form-control" id="create-uses" value="0" required />
+						<div class="col-md-12">
+							<label for="create-user-type">User Type</label>
+							<select name="UserType" class="form-control" id="create-user-type">
+								<option value="RSA">RSA</option>
+								<option value="ECC">ECC</option>
+							</select>
 						</div>
 					</div>
 					<button type="submit" class="btn btn-primary">Create</button>
