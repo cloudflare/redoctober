@@ -90,3 +90,20 @@ func TestECCEncryptDecrypt(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 }
+
+func TestChangePassword(t *testing.T) {
+	records, err := InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	_, err = records.AddNewRecord("user", "weakpassword", true, ECCRecord)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	err = records.ChangePassword("user", "weakpassword", "newpassword")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+}
