@@ -113,12 +113,15 @@ Example query:
     
 ### Create User
 
-Create Users creates a new user account.
+Create Users creates a new user account. Allows an optional "UserType"
+to be specified which controls how the record is ecrypted. This can have
+a value of either "RSA" or "ECC" and if none is provided will default to
+"RSA".
 
 Example query:
 
     $ curl --cacert cert/server.crt https://localhost:8080/create-user \
-           -d '{"Name":"Bill","Password":"Lizard"}'
+           -d '{"Name":"Bill","Password":"Lizard","UserType":"ECC"}'
     {"Status":"ok"}
 
 ### Summary
