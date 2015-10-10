@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/redoctober/core"
+	"github.com/coreos/go-systemd/activation"
 )
 
 // List of URLs to register and their related functions
@@ -83,7 +84,7 @@ func queueRequest(process chan<- userRequest, requestType string, w http.Respons
 //
 // Returns a valid http.Server handling redoctober JSON requests (and
 // its associated listener) or an error
-func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, caPath string) (*http.Server, *net.Listener, error) {
+func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, caPath string, useSystemdSocket bool) (*http.Server, *net.Listener, error) {
 	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error loading certificate (%s, %s): %s", certPath, keyPath, err)
@@ -123,13 +124,25 @@ func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, 
 		config.ClientCAs = rootPool
 	}
 
-	conn, err := net.Listen("tcp", addr)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error starting TCP listener on %s: %s\n", addr, err)
+	var lstnr net.Listener
+	if useSystemdSocket {
+		listenFDs, err := activation.Listeners(true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if len(listenFDs) != 1 {
+			log.Fatal("Unexpected number of socket activation FDs!")
+		}
+		lstnr = listenFDs[0]
+	} else {
+		conn, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error starting TCP listener on %s: %s\n", addr, err)
+		}
+
+		lstnr = tls.NewListener(conn, &config)
+
 	}
-
-	lstnr := tls.NewListener(conn, &config)
-
 	mux := http.NewServeMux()
 
 	// queue up post URIs
@@ -199,12 +212,13 @@ func main() {
 	var staticPath = flag.String("static", "", "Path to override built-in index.html")
 	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
 	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
+	var useSystemdSocket = flag.Bool("systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
 	var certPath = flag.String("cert", "", "Path of TLS certificate in PEM format")
 	var keyPath = flag.String("key", "", "Path of TLS private key in PEM format")
 	var caPath = flag.String("ca", "", "Path of TLS CA for client authentication (optional)")
 	flag.Parse()
 
-	if *vaultPath == "" || *addr == "" || *certPath == "" || *keyPath == "" {
+	if *vaultPath == "" || (*addr == "" && *useSystemdSocket == false) || *certPath == "" || *keyPath == "" {
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 		os.Exit(2)
@@ -244,7 +258,7 @@ func main() {
 		}
 	}()
 
-	s, l, err := NewServer(process, *staticPath, *addr, *certPath, *keyPath, *caPath)
+	s, l, err := NewServer(process, *staticPath, *addr, *certPath, *keyPath, *caPath, *useSystemdSocket)
 	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}

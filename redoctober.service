@@ -1,0 +1,26 @@
+# An example service file for systemd-managed Red October, for use
+# with the accompanying socket file. Useful for running as an
+# unprivileged user while binding to a privileged port, for example.
+
+[Unit]
+Description='Red October'
+
+Requires=network.target
+After=multi-user.target
+
+[Exec]
+User=redoctober
+Group=redoctober
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/redoctober -vaultpath=/etc/redoctober/diskrecord.json -cert=/etc/redoctober/cert/server.crt -key=/etc/redoctober/cert/server.pem -systemdfds
+User=redoctober
+Group=redoctober
+SyslogIdentifier=redoctober
+StandardOutput=syslog
+StandardError=inherit
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

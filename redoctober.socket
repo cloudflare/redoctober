@@ -1,0 +1,10 @@
+# Example socket file, instructing systemd to bind 443. Used by the
+# corresponding redoctober.service target to launch a socket-activated
+# Red October instance that can run unprivileged but bind to a
+# privileged port.
+
+[Socket]
+ListenStream=127.0.0.1:443
+
+[Install]
+WantedBy=sockets.target
