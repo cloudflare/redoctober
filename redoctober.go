@@ -19,6 +19,7 @@ import (
 	"net/http"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 
 	"github.com/cloudflare/redoctober/core"
@@ -84,18 +85,20 @@ func queueRequest(process chan<- userRequest, requestType string, w http.Respons
 //
 // Returns a valid http.Server handling redoctober JSON requests (and
 // its associated listener) or an error
-func NewServer(process chan<- userRequest, staticPath, addr, certPath, keyPath, caPath string, useSystemdSocket bool) (*http.Server, *net.Listener, error) {
-	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
-	if err != nil {
-		return nil, nil, fmt.Errorf("Error loading certificate (%s, %s): %s", certPath, keyPath, err)
-	}
-
+func NewServer(process chan<- userRequest, staticPath, addr, caPath string, certPaths, keyPaths []string, useSystemdSocket bool) (*http.Server, *net.Listener, error) {
 	config := tls.Config{
-		Certificates: []tls.Certificate{cert},
+		Certificates: []tls.Certificate{},
 		Rand:         rand.Reader,
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
 		MinVersion:               tls.VersionTLS10,
+	}
+	for i, certPath := range certPaths {
+		cert, err := tls.LoadX509KeyPair(certPath, keyPaths[i])
+		if err != nil {
+			return nil, nil, fmt.Errorf("Error loading certificate (%s, %s): %s", certPath, keyPaths[i], err)
+		}
+		config.Certificates = append(config.Certificates, cert)
 	}
 
 	// If a caPath has been specified then a local CA is being used
@@ -196,14 +199,17 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 
 const usage = `Usage:
 
-	redoctober -static <path> -vaultpath <path> -addr <addr> -cert <path> -key <path> [-ca <path>]
+	redoctober -static <path> -vaultpath <path> -addr <addr> [-cert <path> -key <path> | -multicert <certpaths> -multikey <keypaths>] [-ca <path>]
 
 example:
 redoctober -vaultpath diskrecord.json -addr localhost:8080 -cert cert.pem -key cert.key
+multi-cert example:
+redoctober -vaultpath diskerecord.json -addr localhost:8080 -multicert cert1.pem,cert2.pem -multikey cert1.key,cert2.key
 `
 
 func main() {
 	flag.Usage = func() {
+		fmt.Fprint(os.Stderr, "main usage dump\n")
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 		os.Exit(2)
@@ -214,14 +220,36 @@ func main() {
 	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
 	var useSystemdSocket = flag.Bool("systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
 	var certPath = flag.String("cert", "", "Path of TLS certificate in PEM format")
+	var multiCertPathString = flag.String("multicert", "", "Comma-separated list of paths to TLS certificates in PEM format, for listening with more than one cert")
 	var keyPath = flag.String("key", "", "Path of TLS private key in PEM format")
+	var multiKeyPathString = flag.String("multikey", "", "Comma-separated list of keys corresponding to certs in -multicert. Must be in same order")
 	var caPath = flag.String("ca", "", "Path of TLS CA for client authentication (optional)")
 	flag.Parse()
 
-	if *vaultPath == "" || (*addr == "" && *useSystemdSocket == false) || *certPath == "" || *keyPath == "" {
+	if *vaultPath == "" || (*addr == "" && *useSystemdSocket == false) {
+		fmt.Fprint(os.Stderr, "empty flag usage dump\n")
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 		os.Exit(2)
+	}
+
+	var certPaths, keyPaths []string
+	if *multiCertPathString != "" {
+		if *multiKeyPathString == "" {
+			fmt.Fprint(os.Stderr, "Must specify -multikey with -multicert")
+			fmt.Fprint(os.Stderr, usage)
+			flag.PrintDefaults()
+			os.Exit(2)
+		}
+		certPaths = strings.Split(*multiCertPathString, ",")
+		keyPaths = strings.Split(*multiKeyPathString, ",")
+	} else {
+		if *certPath == "" || *keyPath == "" {
+			fmt.Fprint(os.Stderr, "Must specify either single cert & key or -multicert and -multikey")
+			fmt.Fprint(os.Stderr, usage)
+			flag.PrintDefaults()
+			os.Exit(2)
+		}
 	}
 
 	if err := core.Init(*vaultPath); err != nil {
@@ -258,7 +286,7 @@ func main() {
 		}
 	}()
 
-	s, l, err := NewServer(process, *staticPath, *addr, *certPath, *keyPath, *caPath, *useSystemdSocket)
+	s, l, err := NewServer(process, *staticPath, *addr, *caPath, certPaths, keyPaths, *useSystemdSocket)
 	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
