@@ -56,8 +56,8 @@ You're ready to run the server:
 
     $ ./bin/redoctober -addr=localhost:8080 \
                        -vaultpath=diskrecord.json \
-                       -cert=cert/server.crt \
-                       -key=cert/server.pem
+                       -certs=cert/server.crt \
+                       -keys=cert/server.pem
 
 ## Quick start: example webapp
 

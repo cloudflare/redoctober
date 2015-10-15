@@ -14,7 +14,7 @@ Group=redoctober
 
 [Service]
 Type=simple
-ExecStart=/usr/local/sbin/redoctober -vaultpath=/etc/redoctober/diskrecord.json -cert=/etc/redoctober/cert/server.crt -key=/etc/redoctober/cert/server.pem -systemdfds
+ExecStart=/usr/local/sbin/redoctober -vaultpath=/etc/redoctober/diskrecord.json -certs=/etc/redoctober/cert/server.crt -keys=/etc/redoctober/cert/server.pem -systemdfds
 User=redoctober
 Group=redoctober
 SyslogIdentifier=redoctober

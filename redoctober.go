@@ -199,12 +199,12 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 
 const usage = `Usage:
 
-	redoctober -static <path> -vaultpath <path> -addr <addr> [-cert <path> -key <path> | -multicert <certpaths> -multikey <keypaths>] [-ca <path>]
+	redoctober -static <path> -vaultpath <path> -addr <addr> -certs <path1>[,<path2>,...] -keys <path1>[,<path2>,...] [-ca <path>]
 
-example:
-redoctober -vaultpath diskrecord.json -addr localhost:8080 -cert cert.pem -key cert.key
+single-cert example:
+redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert.pem -keys cert.key
 multi-cert example:
-redoctober -vaultpath diskerecord.json -addr localhost:8080 -multicert cert1.pem,cert2.pem -multikey cert1.key,cert2.key
+redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
 `
 
 func main() {
@@ -219,38 +219,19 @@ func main() {
 	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
 	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
 	var useSystemdSocket = flag.Bool("systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
-	var certPath = flag.String("cert", "", "Path of TLS certificate in PEM format")
-	var multiCertPathString = flag.String("multicert", "", "Comma-separated list of paths to TLS certificates in PEM format, for listening with more than one cert")
-	var keyPath = flag.String("key", "", "Path of TLS private key in PEM format")
-	var multiKeyPathString = flag.String("multikey", "", "Comma-separated list of keys corresponding to certs in -multicert. Must be in same order")
+	var certsPathString = flag.String("certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
+	var keysPathString = flag.String("keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
 	var caPath = flag.String("ca", "", "Path of TLS CA for client authentication (optional)")
 	flag.Parse()
 
-	if *vaultPath == "" || (*addr == "" && *useSystemdSocket == false) {
-		fmt.Fprint(os.Stderr, "empty flag usage dump\n")
+	if *vaultPath == "" || *certsPathString == "" || *keysPathString == "" || (*addr == "" && *useSystemdSocket == false) {
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
 
-	var certPaths, keyPaths []string
-	if *multiCertPathString != "" {
-		if *multiKeyPathString == "" {
-			fmt.Fprint(os.Stderr, "Must specify -multikey with -multicert")
-			fmt.Fprint(os.Stderr, usage)
-			flag.PrintDefaults()
-			os.Exit(2)
-		}
-		certPaths = strings.Split(*multiCertPathString, ",")
-		keyPaths = strings.Split(*multiKeyPathString, ",")
-	} else {
-		if *certPath == "" || *keyPath == "" {
-			fmt.Fprint(os.Stderr, "Must specify either single cert & key or -multicert and -multikey")
-			fmt.Fprint(os.Stderr, usage)
-			flag.PrintDefaults()
-			os.Exit(2)
-		}
-	}
+	certPaths := strings.Split(*certsPathString, ",")
+	keyPaths := strings.Split(*keysPathString, ",")
 
 	if err := core.Init(*vaultPath); err != nil {
 		log.Fatalf(err.Error())
