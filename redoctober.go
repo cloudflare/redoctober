@@ -199,12 +199,12 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 
 const usage = `Usage:
 
-	redoctober -static <path> -vaultpath <path> -addr <addr> [-cert <path> -key <path> | -multicert <certpaths> -multikey <keypaths>] [-ca <path>]
+	redoctober -static <path> -vaultpath <path> -addr <addr> -certs <path1>[,<path2>,...] -keys <path1>[,<path2>,...] [-ca <path>]
 
-example:
-redoctober -vaultpath diskrecord.json -addr localhost:8080 -cert cert.pem -key cert.key
+single-cert example:
+redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert.pem -keys cert.key
 multi-cert example:
-redoctober -vaultpath diskerecord.json -addr localhost:8080 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
+redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
 `
 
 func main() {
