@@ -316,6 +316,13 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
+	// Make sure the user we are delegating to exists
+	for _, user := range s.Users {
+		if _, ok := records.GetRecord(user); !ok {
+			err = errors.New("User not present")
+			return jsonStatusError(err)
+		}
+	}
 	// Find password record for user and verify that their password
 	// matches. If not found then add a new entry for this user.
 
