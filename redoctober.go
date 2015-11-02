@@ -134,9 +134,9 @@ func NewServer(process chan<- userRequest, staticPath, addr, caPath string, cert
 			log.Fatal(err)
 		}
 		if len(listenFDs) != 1 {
-			log.Fatal("Unexpected number of socket activation FDs!")
+			log.Fatalf("Unexpected number of socket activation FDs! (%v)", len(listenFDs))
 		}
-		lstnr = listenFDs[0]
+		lstnr = tls.NewListener(listenFDs[0], &config)
 	} else {
 		conn, err := net.Listen("tcp", addr)
 		if err != nil {
