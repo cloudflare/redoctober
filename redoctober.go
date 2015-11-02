@@ -6,7 +6,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
@@ -86,12 +85,8 @@ func queueRequest(process chan<- userRequest, requestType string, w http.Respons
 // Returns a valid http.Server handling redoctober JSON requests (and
 // its associated listener) or an error
 func NewServer(process chan<- userRequest, staticPath, addr, caPath string, certPaths, keyPaths []string, useSystemdSocket bool) (*http.Server, *net.Listener, error) {
-	config := tls.Config{
-		Certificates: []tls.Certificate{},
-		Rand:         rand.Reader,
+	config := &tls.Config{
 		PreferServerCipherSuites: true,
-		SessionTicketsDisabled:   true,
-		MinVersion:               tls.VersionTLS10,
 	}
 	for i, certPath := range certPaths {
 		cert, err := tls.LoadX509KeyPair(certPath, keyPaths[i])
@@ -134,16 +129,16 @@ func NewServer(process chan<- userRequest, staticPath, addr, caPath string, cert
 			log.Fatal(err)
 		}
 		if len(listenFDs) != 1 {
-			log.Fatalf("Unexpected number of socket activation FDs! (%v)", len(listenFDs))
+			log.Fatalf("Unexpected number of socket activation FDs! (%d)", len(listenFDs))
 		}
-		lstnr = tls.NewListener(listenFDs[0], &config)
+		lstnr = tls.NewListener(listenFDs[0], config)
 	} else {
 		conn, err := net.Listen("tcp", addr)
 		if err != nil {
 			return nil, nil, fmt.Errorf("Error starting TCP listener on %s: %s\n", addr, err)
 		}
 
-		lstnr = tls.NewListener(conn, &config)
+		lstnr = tls.NewListener(conn, config)
 
 	}
 	mux := http.NewServeMux()
