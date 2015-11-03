@@ -87,6 +87,7 @@ func queueRequest(process chan<- userRequest, requestType string, w http.Respons
 func NewServer(process chan<- userRequest, staticPath, addr, caPath string, certPaths, keyPaths []string, useSystemdSocket bool) (*http.Server, *net.Listener, error) {
 	config := &tls.Config{
 		PreferServerCipherSuites: true,
+		SessionTicketsDisabled:   true,
 	}
 	for i, certPath := range certPaths {
 		cert, err := tls.LoadX509KeyPair(certPath, keyPaths[i])
@@ -95,6 +96,7 @@ func NewServer(process chan<- userRequest, staticPath, addr, caPath string, cert
 		}
 		config.Certificates = append(config.Certificates, cert)
 	}
+	config.BuildNameToCertificate()
 
 	// If a caPath has been specified then a local CA is being used
 	// and not the system configuration.
