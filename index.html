@@ -22,13 +22,11 @@
 			<div class="collapse navbar-collapse">
 				<ul class="nav navbar-nav">
 					<li><a href="#delegate">Delegate</a></li>
-					<li><a href="#admin">Admin</a></li>
-					<li><a href="#create">Create</a></li>
 					<li><a href="#summary">Summary</a></li>
-					<li><a href="#change-password">Change Password</a></li>
-					<li><a href="#modify-user">Modify User</a></li>
+					<li><a href="#admin">Admin</a></li>
 					<li><a href="#encrypt">Encrypt</a></li>
 					<li><a href="#decrypt">Decrypt</a></li>
+					<li><a href="#owners">Owners</a></li>
 				</ul>
 			</div>
 		</div>
@@ -80,31 +78,13 @@
 					<button type="submit" class="btn btn-primary">Delegate</button>
 				</form>
 			</div>
-
 		</section>
 
 		<hr />
 
 		<section class="row">
-			<div class="col-md-6">
-				<h3 id="admin">Create vault/admin</h3>
-				<form id="vault-create" class="form-inline ro-admin-create" role="form" action="/create" method="post">
-					<div class="feedback admin-feedback"></div>
-
-					<div class="form-group">
-						<label class="sr-only" for="admin-create-user">User name</label>
-						<input type="text" name="Name" class="form-control" id="admin-create-user" placeholder="User name" required />
-					</div>
-					<div class="form-group">
-						<label class="sr-only" for="admin-create-pass">Password</label>
-						<input type="password" name="Password" class="form-control" id="admin-create-pass" placeholder="Password" required />
-					</div>
-					<button type="submit" class="btn btn-primary">Create Admin</button>
-				</form>
-
-				<hr />
-
-				<h3 id="summary">User summary / delegation list</h3> 
+			<div id="summary" class="col-md-6">
+				<h3>User summary / delegation list</h3>
 
 				<form id="vault-summary" class="form-inline ro-summary" role="form" action="/summary" method="post">
 					<div class="feedback summary-feedback"></div>
@@ -128,11 +108,32 @@
 					<ul class="list-group summary-all-users"></ul>
 				</div>
 			</div>
+		</section>
 
-			<div class="col-md-6">
-				<h3 id="create">Create</h3>
+		<hr />
 
-				<form id="user-create" class="ro-user-create" role="form" action="/delegate" method="post">
+		<section class="row">
+			<div class="col-md-6" id="admin">
+				<h3>Create vault</h3>
+				<form id="vault-create" class="form-inline ro-admin-create" role="form" action="/create" method="post">
+					<div class="feedback admin-feedback"></div>
+
+					<div class="form-group">
+						<label class="sr-only" for="admin-create-user">User name</label>
+						<input type="text" name="Name" class="form-control" id="admin-create-user" placeholder="User name" required />
+					</div>
+					<div class="form-group">
+						<label class="sr-only" for="admin-create-pass">Password</label>
+						<input type="password" name="Password" class="form-control" id="admin-create-pass" placeholder="Password" required />
+					</div>
+					<button type="submit" class="btn btn-primary">Create Admin</button>
+				</form>
+
+				<hr />
+
+				<h3>Create User</h3>
+
+				<form id="user-create" class="ro-user-create" role="form" action="/create-user" method="post">
 					<div class="feedback create-feedback"></div>
 
 					<div class="form-group row">
@@ -146,11 +147,12 @@
 						</div>
 					</div>
 					<div class="form-group row">
-						<div class="col-md-6">
-							<input type="hidden" name="Time" class="form-control" id="create-user-time" value="0h" required />
-						</div>
-						<div class="col-md-6">
-							<input type="hidden" name="Uses" class="form-control" id="create-uses" value="0" required />
+						<div class="col-md-12">
+							<label for="create-user-type">User Type</label>
+							<select name="UserType" class="form-control" id="create-user-type">
+								<option value="RSA">RSA</option>
+								<option value="ECC">ECC</option>
+							</select>
 						</div>
 					</div>
 					<button type="submit" class="btn btn-primary">Create</button>
@@ -183,9 +185,7 @@
 					</div>
 					<button type="submit" class="btn btn-primary">Change password</button>
 				</form>
-			</div>
 
-			<div id="modify" class="col-md-6">
 				<h3>Modify user</h3>
 
 				<form id="user-modify" class="ro-user-modify" role="form" action="/modify" method="post">
@@ -221,7 +221,7 @@
 		</section>
 		<hr />
 		<section class="row">
-			<div id="encrypt-data" class="col-md-6">
+			<div id="encrypt" class="col-md-6">
 				<h3>Encrypt data</h3>
 
 				<form id="encrypt" class="ro-user-encrypt" role="form" action="/encrypt" method="post">
@@ -240,11 +240,17 @@
 					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="encrypt-minimum">Minimum number of users for access</label>
-							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" required />
+							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" />
 						</div>
 						<div class="col-md-6">
 							<label for="encrypt-owners">Owners <small>(comma separated users)</small></label>
-							<input type="text" name="Owners" class="form-control" id="encrypt-owners" placeholder="e.g., Carol, Bob" required />
+							<input type="text" name="Owners" class="form-control" id="encrypt-owners" placeholder="e.g., Carol, Bob" />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-12">
+							<label for="encrypt-predicate">(OR) Predicate for decryption</label>
+							<input type="text" name="Predicate" class="form-control" id="encrypt-predicate" placeholder="(Alice | Bob) & Carol" />
 						</div>
 					</div>
 					<div class="form-group row">
@@ -260,7 +266,10 @@
 					<button type="submit" class="btn btn-primary">Encrypt!</button>
 				</form>
 			</div>
-			<div id="decrypt-data" class="col-md-6">
+		</section>
+		<hr />
+		<section class="row">
+			<div id="decrypt" class="col-md-6">
 				<h3>Decrypt data</h3>
 
 				<form id="decrypt" class="ro-user-decrypt" role="form" action="/decrypt" method="post">
@@ -281,6 +290,22 @@
 						<textarea name="Data" class="form-control" id="decrypt-data" rows="5" required></textarea>
 					</div>
 					<button type="submit" class="btn btn-primary">Decrypt!</button>
+				</form>
+			</div>
+		</section>
+		<hr />
+		<section class="row">
+			<div id="owners" class="col-md-6">
+				<h3>Get owners</h3>
+
+				<form id="owners" class="ro-user-owners" role="form" action="/owners" method="post">
+					<div class="feedback owners-feedback"></div>
+
+					<div class="form-group">
+						<label for="owners-data">Data</label>
+						<textarea name="Data" class="form-control" id="owners-data" rows="5" required></textarea>
+					</div>
+					<button type="submit" class="btn btn-primary">Get Owners</button>
 				</form>
 			</div>
 		</section>
@@ -480,7 +505,7 @@
 			});
 
 			// Decrypt data
-			$('body').on('submit', '#decrypt', function(evt){
+			$('body').on('submit', 'form#decrypt', function(evt){
 				evt.preventDefault();
 				var $form = $(evt.currentTarget),
 					data = serialize($form);
@@ -490,6 +515,20 @@
 					success : function(d){
 					d = JSON.parse(window.atob(d.Response));
 					$form.find('.feedback').empty().append( makeAlert({ type: (d.Secure ? 'success' : 'warning'), message: '<p>Successfully decrypted data:</p><pre>'+ window.atob(d.Data)+'</pre><p>Delegates: '+d.Delegates.sort().join(', ')+'</p>' }) );
+					}
+				});
+			});
+
+			// Get owners
+			$('body').on('submit', 'form#owners', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Owners: '+d.Owners.sort().join(', ')+'</p>' }) );
 					}
 				});
 			});

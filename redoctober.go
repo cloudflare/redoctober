@@ -513,11 +513,17 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="encrypt-minimum">Minimum number of users for access</label>
-							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" required />
+							<input type="number" name="Minimum" class="form-control" id="encrypt-minimum" placeholder="2" />
 						</div>
 						<div class="col-md-6">
 							<label for="encrypt-owners">Owners <small>(comma separated users)</small></label>
-							<input type="text" name="Owners" class="form-control" id="encrypt-owners" placeholder="e.g., Carol, Bob" required />
+							<input type="text" name="Owners" class="form-control" id="encrypt-owners" placeholder="e.g., Carol, Bob" />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-12">
+							<label for="encrypt-predicate">(OR) Predicate for decryption</label>
+							<input type="text" name="Predicate" class="form-control" id="encrypt-predicate" placeholder="(Alice | Bob) & Carol" />
 						</div>
 					</div>
 					<div class="form-group row">
