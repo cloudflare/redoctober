@@ -51,6 +51,8 @@ type AccessStructure struct {
 
 // Implements msp.UserDatabase
 type UserDatabase struct {
+	names *[]string
+
 	records *passvault.Records
 	cache   *keycache.Cache
 
@@ -71,6 +73,8 @@ func (u UserDatabase) CanGetShare(name string) bool {
 }
 
 func (u UserDatabase) GetShare(name string) ([][]byte, error) {
+	*u.names = append(*u.names, name)
+
 	return u.cache.DecryptShares(
 		u.shareSet[name],
 		name,
@@ -433,6 +437,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 		}
 
 		db := msp.UserDatabase(UserDatabase{
+			names:    &names,
 			cache:    cache,
 			user:     user,
 			labels:   encrypted.Labels,
@@ -440,7 +445,6 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 			shareSet: encrypted.ShareSet,
 		})
 		unwrappedKey, err = sss.RecoverSecret(msp.Modulus(127), &db)
-		names = []string{"Shares"}
 
 		return
 	}
