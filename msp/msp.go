@@ -198,16 +198,16 @@ func (m MSP) DistributeShares(sec []byte, modulus *big.Int, db *UserDatabase) (m
 		case String:
 			name := cond.(String).string
 			if _, ok := out[name]; ok {
-				out[name] = append(out[name], share.Bytes())
+				out[name] = append(out[name], m.encode(share, modulus))
 			} else if (*db).ValidUser(name) {
-				out[name] = [][]byte{share.Bytes()}
+				out[name] = [][]byte{m.encode(share, modulus)}
 			} else {
 				return out, errors.New("Unknown user in predicate.")
 			}
 
 		default:
 			below := MSP(cond.(Formatted))
-			subOut, err := below.DistributeShares(share.Bytes(), modulus, db)
+			subOut, err := below.DistributeShares(m.encode(share, modulus), modulus, db)
 			if err != nil {
 				return out, err
 			}
@@ -343,8 +343,6 @@ func (m MSP) recoverSecret(modulus *big.Int, db *UserDatabase, cache map[string]
 
 	// Compute dot product of the shares vector and the reconstruction vector to
 	// reconstruct the secret.
-	size := len(modulus.Bytes())
-	out := make([]byte, size)
 	secInt := big.NewInt(0)
 
 	for i, share := range shares {
@@ -364,6 +362,19 @@ func (m MSP) recoverSecret(modulus *big.Int, db *UserDatabase, cache map[string]
 		secInt.Add(secInt, shareInt).Mod(secInt, modulus)
 	}
 
-	out = append(out, secInt.Bytes()...)
-	return out[len(out)-size:], nil
+	return m.encode(secInt, modulus), nil
+}
+
+func (m MSP) encode(x *big.Int, modulus *big.Int) (out []byte) {
+	tmp := x.Bytes()
+	tmpSize := len(tmp)
+
+	modSize := len(modulus.Bytes())
+	out = make([]byte, modSize)
+
+	for pos := 0; pos < tmpSize; pos++ {
+		out[modSize-pos-1] = tmp[tmpSize-pos-1]
+	}
+
+	return out
 }

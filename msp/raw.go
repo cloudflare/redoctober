@@ -133,7 +133,14 @@ func StringToRaw(r string) (out Raw, err error) {
 
 			if staging.Len() == 0 {
 				if len(r) == 0 {
-					return top[0].Front().Value.(Raw), nil
+					res := top[0].Front().Value
+
+					switch res.(type) {
+					case Raw:
+						return res.(Raw), nil
+					default:
+						return out, errors.New("Invalid string: Only one condition was found.")
+					}
 				}
 				return out, errors.New("Invalid string: Can't parse anymore, but there's still data. Too many closing parentheses or too few opening parentheses?")
 			}

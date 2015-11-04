@@ -72,3 +72,11 @@ func TestRaw(t *testing.T) {
 		t.Fatalf("Query #2 formatted wrong: %v", query2.Formatted().String())
 	}
 }
+
+func TestOneCondition(t *testing.T) {
+	_, err := StringToRaw("(Alice or Bob)")
+
+	if err == nil {
+		t.Fatalf("A predicate with only one condition should fail to parse!")
+	}
+}
