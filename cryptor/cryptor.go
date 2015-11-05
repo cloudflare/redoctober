@@ -567,7 +567,7 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 
 // GetOwners returns the list of users that can delegate their passwords
 // to decrypt the given encrypted secret.
-func (c *Cryptor) GetOwners(in []byte) (names []string, err error) {
+func (c *Cryptor) GetOwners(in []byte) (names []string, predicate string, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
@@ -605,7 +605,7 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, err error) {
 	}
 
 	addedNames := make(map[string]bool)
-	for _, mwKey := range encrypted.KeySet {
+	for _, mwKey := range encrypted.KeySet { // names from the combinatorial method
 		for _, mwName := range mwKey.Name {
 			if !addedNames[mwName] {
 				names = append(names, mwName)
@@ -613,6 +613,15 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, err error) {
 			}
 		}
 	}
+
+	for name, _ := range encrypted.ShareSet { // names from the secret splitting method
+		if !addedNames[name] {
+			names = append(names, name)
+			addedNames[name] = true
+		}
+	}
+
+	predicate = encrypted.Predicate
 
 	return
 }

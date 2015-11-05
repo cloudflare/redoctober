@@ -801,7 +801,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-					$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Owners: '+d.Owners.sort().join(', ')+'</p>' }) );
+					$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: '<p>Owners: '+d.Owners.sort().join(', ')+(d.Predicate == '' ? '' : '<br />Predicate: '+d.Predicate)+'</p>' }) );
 					}
 				});
 			});
