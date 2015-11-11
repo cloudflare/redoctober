@@ -47,6 +47,7 @@ type DelegateRequest struct {
 
 	Uses   int
 	Time   string
+	Slot   string
 	Users  []string
 	Labels []string
 }
@@ -194,7 +195,7 @@ func Init(path string) error {
 		err = fmt.Errorf("failed to load password vault %s: %s", path, err)
 	}
 
-	cache = keycache.Cache{UserKeys: make(map[string]keycache.ActiveUser)}
+	cache = keycache.Cache{UserKeys: make(map[keycache.DelegateIndex]keycache.ActiveUser)}
 	crypt = cryptor.New(&records, &cache)
 
 	return err
@@ -344,7 +345,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	// add signed-in record to active set
-	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Time); err != nil {
+	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Slot, s.Time); err != nil {
 		return jsonStatusError(err)
 	}
 

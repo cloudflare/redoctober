@@ -108,7 +108,7 @@ func TestDuplicates(t *testing.T) {
 
 	// Delegate one key at a time and check that decryption fails.
 	for name, pr := range recs {
-		err = cache.AddKeyFromRecord(pr, name, "weakpassword", nil, nil, 2, "1h")
+		err = cache.AddKeyFromRecord(pr, name, "weakpassword", nil, nil, 2, "", "1h")
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
