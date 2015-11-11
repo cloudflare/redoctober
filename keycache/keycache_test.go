@@ -27,7 +27,7 @@ func TestUsesFlush(t *testing.T) {
 	// Initialize keycache and delegate the user's key to it.
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 2, "1h")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 2, "", "1h")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -91,7 +91,7 @@ func TestTimeFlush(t *testing.T) {
 
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 10, "1s")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 10, "", "1s")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -130,7 +130,7 @@ func TestGoodLabel(t *testing.T) {
 
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "1h")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "", "1h")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -172,7 +172,7 @@ func TestBadLabel(t *testing.T) {
 
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "1h")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "", "1h")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -218,7 +218,7 @@ func TestGoodUser(t *testing.T) {
 		pr, "user", "weakpassword",
 		[]string{"ci", "buildeng", "user"},
 		[]string{"red", "blue"},
-		1, "1h",
+		1, "", "1h",
 	)
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -265,7 +265,7 @@ func TestBadUser(t *testing.T) {
 		pr, "user", "weakpassword",
 		[]string{"ci", "buildeng", "user"},
 		[]string{"red", "blue"},
-		1, "1h",
+		1, "", "1h",
 	)
 	if err != nil {
 		t.Fatalf("%v", err)

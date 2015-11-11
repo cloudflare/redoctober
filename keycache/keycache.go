@@ -12,12 +12,22 @@ import (
 	"crypto/rsa"
 	"crypto/sha1"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/cloudflare/redoctober/ecdh"
 	"github.com/cloudflare/redoctober/passvault"
 )
+
+// DelegateIndex is used to index the map of currently delegated keys.
+// This is necessary to provide a way for a delegator to provide multiple
+// delegations. It is also used to avoid the complexity of string parsing
+// and enforcement of username and slot character requirements.
+type DelegateIndex struct {
+	Name string
+	Slot string
+}
 
 // Usage holds the permissions of a delegated permission
 type Usage struct {
@@ -37,8 +47,9 @@ type ActiveUser struct {
 	eccKey *ecdsa.PrivateKey
 }
 
+// Cache represents the current list of delegated keys in memory
 type Cache struct {
-	UserKeys map[string]ActiveUser // Decrypted keys in memory, indexed by name.
+	UserKeys map[DelegateIndex]ActiveUser
 }
 
 // matchesLabel returns true if this usage applies the user and label
@@ -77,77 +88,87 @@ func (usage Usage) matches(user string, labels []string) bool {
 	return false
 }
 
+// NewCache initalizes a new cache.
 func NewCache() Cache {
-	return Cache{make(map[string]ActiveUser)}
+	return Cache{make(map[DelegateIndex]ActiveUser)}
 }
 
 // setUser takes an ActiveUser and adds it to the cache.
-func (cache *Cache) setUser(in ActiveUser, name string) {
-	cache.UserKeys[name] = in
+func (cache *Cache) setUser(in ActiveUser, name, slot string) {
+	cache.UserKeys[DelegateIndex{Name: name, Slot: slot}] = in
 }
 
 // Valid returns true if matching active user is present.
 func (cache *Cache) Valid(name, user string, labels []string) (present bool) {
-	key, present := cache.UserKeys[name]
-	if present {
+	for d, key := range cache.UserKeys {
+		if d.Name != name {
+			continue
+		}
 		if key.Usage.matches(user, labels) {
 			return true
-		} else {
-			present = false
 		}
 	}
 
-	return
+	return false
 }
 
 // matchUser returns the matching active user if present
 // and a boolean to indicate its presence.
-func (cache *Cache) matchUser(name, user string, labels []string) (out ActiveUser, present bool) {
-	key, present := cache.UserKeys[name]
-	if present {
+func (cache *Cache) matchUser(name, user string, labels []string) (ActiveUser, string, bool) {
+	var key ActiveUser
+	for d, key := range cache.UserKeys {
+		if d.Name != name {
+			continue
+		}
 		if key.Usage.matches(user, labels) {
-			return key, true
-		} else {
-			present = false
+			return key, d.Slot, true
 		}
 	}
 
-	return
+	return key, "", false
 }
 
 // useKey decrements the counter on an active key
 // for decryption or symmetric encryption
-func (cache *Cache) useKey(name, user string, labels []string) {
-	if val, present := cache.matchUser(name, user, labels); present {
+func (cache *Cache) useKey(name, user, slot string, labels []string) {
+	if val, slot, present := cache.matchUser(name, user, labels); present {
 		val.Usage.Uses -= 1
-		cache.setUser(val, name)
+		cache.setUser(val, name, slot)
 	}
 }
 
 // GetSummary returns the list of active user keys.
 func (cache *Cache) GetSummary() map[string]ActiveUser {
-	return cache.UserKeys
+	summaryData := make(map[string]ActiveUser)
+	for d, activeUser := range cache.UserKeys {
+		summaryInfo := d.Name
+		if d.Slot != "" {
+			summaryInfo = fmt.Sprintf("%s-%s", d.Name, d.Slot)
+		}
+		summaryData[summaryInfo] = activeUser
+	}
+	return summaryData
 }
 
 // FlushCache removes all delegated keys.
 func (cache *Cache) FlushCache() {
-	for name := range cache.UserKeys {
-		delete(cache.UserKeys, name)
+	for d := range cache.UserKeys {
+		delete(cache.UserKeys, d)
 	}
 }
 
 // Refresh purges all expired or used up keys.
 func (cache *Cache) Refresh() {
-	for name, active := range cache.UserKeys {
+	for d, active := range cache.UserKeys {
 		if active.Usage.Expiry.Before(time.Now()) || active.Usage.Uses <= 0 {
-			log.Println("Record expired", name, active.Usage.Users, active.Usage.Labels, active.Usage.Expiry)
-			delete(cache.UserKeys, name)
+			log.Println("Record expired", d.Name, d.Slot, active.Usage.Users, active.Usage.Labels, active.Usage.Expiry)
+			delete(cache.UserKeys, d)
 		}
 	}
 }
 
 // AddKeyFromRecord decrypts a key for a given record and adds it to the cache.
-func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, password string, users, labels []string, uses int, durationString string) (err error) {
+func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, password string, users, labels []string, uses int, slot, durationString string) (err error) {
 	var current ActiveUser
 
 	cache.Refresh()
@@ -181,7 +202,7 @@ func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, pass
 	current.Admin = record.Admin
 
 	// add current to map (overwriting previous for this name)
-	cache.setUser(current, name)
+	cache.setUser(current, name, slot)
 
 	return
 }
@@ -193,7 +214,7 @@ func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, pass
 func (cache *Cache) DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey []byte) (out []byte, err error) {
 	cache.Refresh()
 
-	decryptKey, ok := cache.matchUser(name, user, labels)
+	decryptKey, slot, ok := cache.matchUser(name, user, labels)
 	if !ok {
 		return nil, errors.New("Key not delegated")
 	}
@@ -227,7 +248,7 @@ func (cache *Cache) DecryptKey(in []byte, name, user string, labels []string, pu
 	out = make([]byte, 16)
 	aesSession.Decrypt(out, in)
 
-	cache.useKey(name, user, labels)
+	cache.useKey(name, user, slot, labels)
 
 	return
 }
