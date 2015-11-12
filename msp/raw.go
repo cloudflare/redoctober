@@ -155,7 +155,7 @@ func StringToRaw(r string) (out Raw, err error) {
 				indices[nxt] = 0
 			}
 
-			staging.Front().Value.([2]*list.List)[0].PushBack(String{nxt, indices[nxt]})
+			staging.Front().Value.([2]*list.List)[0].PushBack(Name{nxt, indices[nxt]})
 			indices[nxt]++
 		}
 	}
@@ -167,8 +167,8 @@ func (r Raw) String() string {
 	out := ""
 
 	switch (*r.Left).(type) {
-	case String:
-		out += (*r.Left).(String).string
+	case Name:
+		out += (*r.Left).(Name).string
 	default:
 		out += "(" + (*r.Left).(Raw).String() + ")"
 	}
@@ -180,8 +180,8 @@ func (r Raw) String() string {
 	}
 
 	switch (*r.Right).(type) {
-	case String:
-		out += (*r.Right).(String).string
+	case Name:
+		out += (*r.Right).(Name).string
 	default:
 		out += "(" + (*r.Right).(Raw).String() + ")"
 	}
@@ -199,15 +199,15 @@ func (r Raw) Formatted() (out Formatted) {
 	}
 
 	switch (*r.Left).(type) {
-	case String:
-		out.Conds = []Condition{(*r.Left).(String)}
+	case Name:
+		out.Conds = []Condition{(*r.Left).(Name)}
 	default:
 		out.Conds = []Condition{(*r.Left).(Raw).Formatted()}
 	}
 
 	switch (*r.Right).(type) {
-	case String:
-		out.Conds = append(out.Conds, (*r.Right).(String))
+	case Name:
+		out.Conds = append(out.Conds, (*r.Right).(Name))
 	default:
 		out.Conds = append(out.Conds, (*r.Right).(Raw).Formatted())
 	}

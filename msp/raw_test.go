@@ -5,9 +5,9 @@ import (
 )
 
 func TestRaw(t *testing.T) {
-	alice := Condition(String{"Alice", 0})
-	bob := Condition(String{"Bob", 0})
-	carl := Condition(String{"Carl", 0})
+	alice := Condition(Name{"Alice", 0})
+	bob := Condition(Name{"Bob", 0})
+	carl := Condition(Name{"Carl", 0})
 
 	query1 := Raw{
 		NodeType: NodeAnd,

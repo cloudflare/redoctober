@@ -8,14 +8,14 @@ func TestFormatted(t *testing.T) {
 	query1 := Formatted{
 		Min: 2,
 		Conds: []Condition{
-			String{"Alice", 0}, String{"Bob", 0}, String{"Carl", 0},
+			Name{"Alice", 0}, Name{"Bob", 0}, Name{"Carl", 0},
 		},
 	}
 
 	query2 := Formatted{
 		Min: 3,
 		Conds: []Condition{
-			String{"Alice", 0}, String{"Bob", 0}, String{"Carl", 0},
+			Name{"Alice", 0}, Name{"Bob", 0}, Name{"Carl", 0},
 		},
 	}
 
@@ -25,10 +25,10 @@ func TestFormatted(t *testing.T) {
 			Formatted{
 				Min: 1,
 				Conds: []Condition{
-					String{"Alice", 0}, String{"Bob", 0},
+					Name{"Alice", 0}, Name{"Bob", 0},
 				},
 			},
-			String{"Carl", 0},
+			Name{"Carl", 0},
 		},
 	}
 
@@ -38,10 +38,10 @@ func TestFormatted(t *testing.T) {
 			Formatted{
 				Min: 1,
 				Conds: []Condition{
-					String{"Alice", 0}, String{"Carl", 0},
+					Name{"Alice", 0}, Name{"Carl", 0},
 				},
 			},
-			String{"Bob", 0},
+			Name{"Bob", 0},
 		},
 	}
 

@@ -69,7 +69,7 @@ func StringToFormatted(f string) (out Formatted, err error) {
 
 			var min int
 			minStr := top.Front()
-			min, err = strconv.Atoi(minStr.Value.(String).string)
+			min, err = strconv.Atoi(minStr.Value.(Name).string)
 			if err != nil {
 				return
 			}
@@ -97,7 +97,7 @@ func StringToFormatted(f string) (out Formatted, err error) {
 				indices[nxt] = 0
 			}
 
-			staging.Front().Value.(*list.List).PushBack(String{nxt, indices[nxt]})
+			staging.Front().Value.(*list.List).PushBack(Name{nxt, indices[nxt]})
 			indices[nxt]++
 		}
 	}
@@ -110,8 +110,8 @@ func (f Formatted) String() string {
 
 	for _, cond := range f.Conds {
 		switch cond.(type) {
-		case String:
-			out += fmt.Sprintf(", %v", cond.(String).string)
+		case Name:
+			out += fmt.Sprintf(", %v", cond.(Name).string)
 		case Formatted:
 			out += fmt.Sprintf(", %v", (cond.(Formatted)).String())
 		}

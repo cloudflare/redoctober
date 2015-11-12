@@ -13,21 +13,21 @@ import (
 // when needed, rather than re-build a partial map of known data.
 type UserDatabase interface {
 	ValidUser(name string) bool
-	CanGetShare(string) bool
-	GetShare(string) ([][]byte, error)
+	CanGetShare(name string) bool
+	GetShare(name string) ([][]byte, error)
 }
 
 type Condition interface { // Represents one condition in a predicate
 	Ok(*UserDatabase) bool
 }
 
-type String struct { // Type of condition
+type Name struct { // Type of condition
 	string
 	index int
 }
 
-func (s String) Ok(db *UserDatabase) bool {
-	return (*db).CanGetShare(s.string)
+func (n Name) Ok(db *UserDatabase) bool {
+	return (*db).CanGetShare(n.string)
 }
 
 type TraceElem struct {
@@ -98,10 +98,13 @@ func Modulus(n int) (modulus *big.Int) {
 		modulus.Sub(modulus, big.NewInt(0).Lsh(big.NewInt(1), 96))
 		modulus.Add(modulus, big.NewInt(1))
 
-	default: // Silent fail.
+	case 127:
 		modulus = big.NewInt(1) // 2^127 - 1
 		modulus.Lsh(modulus, 127)
 		modulus.Sub(modulus, big.NewInt(1))
+
+	default:
+		panic("Invalid modulus size chosen!")
 	}
 
 	return
@@ -133,12 +136,12 @@ func (m MSP) DerivePath(db *UserDatabase) (ok bool, names []string, locs []int, 
 
 	for i, cond := range m.Conds {
 		switch cond.(type) {
-		case String:
-			if (*db).CanGetShare(cond.(String).string) {
+		case Name:
+			if (*db).CanGetShare(cond.(Name).string) {
 				heap.Push(ts, TraceElem{
 					i,
-					[]string{cond.(String).string},
-					[]string{cond.(String).string},
+					[]string{cond.(Name).string},
+					[]string{cond.(Name).string},
 				})
 			}
 
@@ -195,8 +198,8 @@ func (m MSP) DistributeShares(sec []byte, modulus *big.Int, db *UserDatabase) (m
 		}
 
 		switch cond.(type) {
-		case String:
-			name := cond.(String).string
+		case Name:
+			name := cond.(Name).string
 			if _, ok := out[name]; ok {
 				out[name] = append(out[name], m.encode(share, modulus))
 			} else if (*db).ValidUser(name) {
@@ -258,12 +261,12 @@ func (m MSP) recoverSecret(modulus *big.Int, db *UserDatabase, cache map[string]
 		index = append(index, loc+1)
 
 		switch gate.(type) {
-		case String:
-			if len(cache[gate.(String).string]) <= gate.(String).index {
+		case Name:
+			if len(cache[gate.(Name).string]) <= gate.(Name).index {
 				return nil, errors.New("Predicate / database mismatch!")
 			}
 
-			shares = append(shares, cache[gate.(String).string][gate.(String).index])
+			shares = append(shares, cache[gate.(Name).string][gate.(Name).index])
 
 		case Formatted:
 			share, err := MSP(gate.(Formatted)).recoverSecret(modulus, db, cache)
