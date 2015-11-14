@@ -68,8 +68,11 @@ func (u UserDatabase) ValidUser(name string) bool {
 }
 
 func (u UserDatabase) CanGetShare(name string) bool {
-	_, _, ok := u.cache.MatchUser(name, u.user, u.labels)
-	return ok
+	_, _, ok1 := u.cache.MatchUser(name, u.user, u.labels)
+	_, ok2 := u.shareSet[name]
+	_, ok3 := u.keySet[name]
+
+	return ok1 && ok2 && ok3
 }
 
 func (u UserDatabase) GetShare(name string) ([][]byte, error) {
@@ -355,6 +358,9 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 
 		for name, _ := range shareSet {
 			encrypted.KeySetRSA[name], err = generateRandomKey(name)
+			if err != nil {
+				return err
+			}
 			crypt, err := aes.NewCipher(encrypted.KeySetRSA[name].aesKey)
 			if err != nil {
 				return err
