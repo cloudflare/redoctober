@@ -39,7 +39,8 @@ func New(records *passvault.Records, cache *keycache.Cache) Cryptor {
 // encrypted data.  If len(Names) > 0, then at least 2 of the users in the list
 // must be delegated to decrypt.  If len(LeftNames) > 0 & len(RightNames) > 0,
 // then at least one from each list must be delegated (if the same user is in
-// both, then he can decrypt it alone).
+// both, then he can decrypt it alone).  If a predicate is present, it must be
+// satisfied to decrypt.
 type AccessStructure struct {
 	Names []string
 
@@ -232,8 +233,7 @@ func (encrypted *EncryptedData) unlock(key []byte) (err error) {
 	return json.Unmarshal(encrypted.Data, encrypted)
 }
 
-// wrapKey encrypts the clear key such that a minimum number of delegated keys
-// are required to decrypt.  NOTE:  Currently the max value for min is 2.
+// wrapKey encrypts the clear key according to an access structure.
 func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []byte, access AccessStructure) (err error) {
 	generateRandomKey := func(name string) (singleWrappedKey SingleWrappedKey, err error) {
 		rec, ok := records.GetRecord(name)
