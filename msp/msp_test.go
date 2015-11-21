@@ -42,8 +42,8 @@ func TestMSP(t *testing.T) {
 
 	predicate, _ := StringToMSP("(2, (1, Alice, Bob), Carl)")
 
-	shares1, _ := predicate.DistributeShares(sec, Modulus(127), &db)
-	shares2, _ := predicate.DistributeShares(sec, Modulus(127), &db)
+	shares1, _ := predicate.DistributeShares(sec, &db)
+	shares2, _ := predicate.DistributeShares(sec, &db)
 
 	alice := bytes.Compare(shares1["Alice"][0], shares2["Alice"][0])
 	bob := bytes.Compare(shares1["Bob"][0], shares2["Bob"][0])
@@ -56,12 +56,12 @@ func TestMSP(t *testing.T) {
 	db1 := UserDatabase(Database(shares1))
 	db2 := UserDatabase(Database(shares2))
 
-	sec1, err := predicate.RecoverSecret(Modulus(127), &db1)
+	sec1, err := predicate.RecoverSecret(&db1)
 	if err != nil {
 		t.Fatalf("#1: %v", err)
 	}
 
-	sec2, err := predicate.RecoverSecret(Modulus(127), &db2)
+	sec2, err := predicate.RecoverSecret(&db2)
 	if err != nil {
 		t.Fatalf("#2: %v", err)
 	}

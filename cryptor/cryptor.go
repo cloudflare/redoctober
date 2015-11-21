@@ -351,7 +351,7 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 		}
 
 		db := msp.UserDatabase(UserDatabase{records: records})
-		shareSet, err := sss.DistributeShares(clearKey, msp.Modulus(127), &db)
+		shareSet, err := sss.DistributeShares(clearKey, &db)
 		if err != nil {
 			return err
 		}
@@ -450,7 +450,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 			keySet:   encrypted.KeySetRSA,
 			shareSet: encrypted.ShareSet,
 		})
-		unwrappedKey, err = sss.RecoverSecret(msp.Modulus(127), &db)
+		unwrappedKey, err = sss.RecoverSecret(&db)
 
 		return
 	}
@@ -475,11 +475,6 @@ func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (r
 	clearKey, err := symcrypt.MakeRandom(16)
 	if err != nil {
 		return
-	}
-	if len(access.Predicate) > 0 {
-		// The first two bits of the key need to be removed to prevent wrapping
-		// because the modulus is slightly too small.
-		clearKey[0] &= 63
 	}
 
 	err = encrypted.wrapKey(c.records, clearKey, access)

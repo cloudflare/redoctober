@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"crypto/rand"
 	"errors"
-	"math/big"
 	"strings"
 )
 
@@ -82,34 +81,6 @@ TopLoop:
 
 type MSP Formatted
 
-func Modulus(n int) (modulus *big.Int) {
-	switch n {
-	case 256:
-		modulus = big.NewInt(1) // 2^256 - 2^224 + 2^192 + 2^96 - 1
-		modulus.Lsh(modulus, 256)
-		modulus.Sub(modulus, big.NewInt(0).Lsh(big.NewInt(1), 224))
-		modulus.Add(modulus, big.NewInt(0).Lsh(big.NewInt(1), 192))
-		modulus.Add(modulus, big.NewInt(0).Lsh(big.NewInt(1), 96))
-		modulus.Sub(modulus, big.NewInt(1))
-
-	case 224:
-		modulus = big.NewInt(1) // 2^224 - 2^96 + 1
-		modulus.Lsh(modulus, 224)
-		modulus.Sub(modulus, big.NewInt(0).Lsh(big.NewInt(1), 96))
-		modulus.Add(modulus, big.NewInt(1))
-
-	case 127:
-		modulus = big.NewInt(1) // 2^127 - 1
-		modulus.Lsh(modulus, 127)
-		modulus.Sub(modulus, big.NewInt(1))
-
-	default:
-		panic("Invalid modulus size chosen!")
-	}
-
-	return
-}
-
 func StringToMSP(pred string) (m MSP, err error) {
 	var f Formatted
 
@@ -164,53 +135,56 @@ func (m MSP) DerivePath(db *UserDatabase) (ok bool, names []string, locs []int, 
 	return
 }
 
-func (m MSP) DistributeShares(sec []byte, modulus *big.Int, db *UserDatabase) (map[string][][]byte, error) {
+// DistributeShares takes as input a secret and a user database and returns secret shares according to access structure
+// described by the MSP.
+func (m MSP) DistributeShares(sec []byte, db *UserDatabase) (map[string][][]byte, error) {
 	out := make(map[string][][]byte)
 
-	// Math to distribute shares.
-	secInt := big.NewInt(0).SetBytes(sec) // Convert secret to number.
-	secInt.Mod(secInt, modulus)
+	// Generate a Vandermonde matrix.
+	height, width := len(m.Conds), m.Min
+	M := Matrix(make([]Row, height))
 
-	var junk []*big.Int // Generate junk numbers.
-	for i := 1; i < m.Min; i++ {
-		r := make([]byte, (modulus.BitLen()/8)+1)
-		_, err := rand.Read(r)
-		if err != nil {
-			return out, err
+	for i := 0; i < height; i++ {
+		M[i] = NewRow(width)
+
+		for j := 0; j < width; j++ {
+			M[i][j][0] = byte(i + 1)
+			M[i][j] = M[i][j].Exp(j)
 		}
-
-		s := big.NewInt(0).SetBytes(r)
-		s.Mod(s, modulus)
-
-		junk = append(junk, s)
 	}
 
-	for i, cond := range m.Conds { // Calculate shares.
-		share := big.NewInt(1)
-		share.Mul(share, secInt)
+	// Convert secret vector.
+	s := NewRow(width)
+	s[0] = FieldElem(sec)
 
-		for j := 2; j <= m.Min; j++ {
-			cell := big.NewInt(int64(i + 1))
-			cell.Exp(cell, big.NewInt(int64(j-1)), modulus)
-			// CELL SHOULD ALWAYS BE LESS THAN MODULUS
+	for i := 1; i < width; i++ {
+		r := NewFieldElem()
+		rand.Read(r)
 
-			share.Add(share, cell.Mul(cell, junk[j-2])).Mod(share, modulus)
-		}
+		s[i] = FieldElem(r)
+	}
+
+	// Calculate shares.
+	shares := M.Mul(s)
+
+	// Distribute the shares.
+	for i, cond := range m.Conds {
+		share := shares[i]
 
 		switch cond.(type) {
 		case Name:
 			name := cond.(Name).string
 			if _, ok := out[name]; ok {
-				out[name] = append(out[name], m.encode(share, modulus))
+				out[name] = append(out[name], share)
 			} else if (*db).ValidUser(name) {
-				out[name] = [][]byte{m.encode(share, modulus)}
+				out[name] = [][]byte{share}
 			} else {
 				return out, errors.New("Unknown user in predicate.")
 			}
 
 		default:
 			below := MSP(cond.(Formatted))
-			subOut, err := below.DistributeShares(m.encode(share, modulus), modulus, db)
+			subOut, err := below.DistributeShares(share, db)
 			if err != nil {
 				return out, err
 			}
@@ -229,15 +203,16 @@ func (m MSP) DistributeShares(sec []byte, modulus *big.Int, db *UserDatabase) (m
 	return out, nil
 }
 
-func (m MSP) RecoverSecret(modulus *big.Int, db *UserDatabase) ([]byte, error) {
+// RecoverSecret takes a user database storing secret shares as input and returns the original secret.
+func (m MSP) RecoverSecret(db *UserDatabase) ([]byte, error) {
 	cache := make(map[string][][]byte, 0) // Caches un-used shares for a user.
-	return m.recoverSecret(modulus, db, cache)
+	return m.recoverSecret(db, cache)
 }
 
-func (m MSP) recoverSecret(modulus *big.Int, db *UserDatabase, cache map[string][][]byte) ([]byte, error) {
+func (m MSP) recoverSecret(db *UserDatabase, cache map[string][][]byte) ([]byte, error) {
 	var (
-		index  = []int{}    // Indexes where given shares were in the matrix.
-		shares = [][]byte{} // Contains shares that will be used in reconstruction.
+		index  = []int{}       // Indexes where given shares were in the matrix.
+		shares = []FieldElem{} // Contains shares that will be used in reconstruction.
 	)
 
 	ok, names, locs, _ := m.DerivePath(db)
@@ -266,118 +241,39 @@ func (m MSP) recoverSecret(modulus *big.Int, db *UserDatabase, cache map[string]
 				return nil, errors.New("Predicate / database mismatch!")
 			}
 
-			shares = append(shares, cache[gate.(Name).string][gate.(Name).index])
+			shares = append(shares, FieldElem(cache[gate.(Name).string][gate.(Name).index]))
 
 		case Formatted:
-			share, err := MSP(gate.(Formatted)).recoverSecret(modulus, db, cache)
+			share, err := MSP(gate.(Formatted)).recoverSecret(db, cache)
 			if err != nil {
 				return nil, err
 			}
 
-			shares = append(shares, share)
+			shares = append(shares, FieldElem(share))
 		}
 	}
 
-	// Calculate the reconstruction vector.  We only need the top row of the
-	// matrix's inverse, so we augment M transposed with u1 transposed and
-	// eliminate Gauss-Jordan style.
-	matrix := [][][2]int{}              // 2d grid of (numerator, denominator)
-	matrix = append(matrix, [][2]int{}) // Create first row of all 1s
+	// Generate the Vandermonde matrix specific to whichever users' shares we're using.
+	MSub := Matrix(make([]Row, m.Min))
 
-	for j := 0; j < m.Min; j++ {
-		matrix[0] = append(matrix[0], [2]int{1, 1})
+	for i := 0; i < m.Min; i++ {
+		MSub[i] = NewRow(m.Min)
+
+		for j := 0; j < m.Min; j++ {
+			MSub[i][j][0] = byte(index[i])
+			MSub[i][j] = MSub[i][j].Exp(j)
+		}
 	}
 
-	for j := 1; j < m.Min; j++ { // Fill in rest of matrix.
-		row := [][2]int{}
-
-		for k, idx := range index {
-			row = append(row, [2]int{int(idx) * matrix[j-1][k][0], matrix[j-1][k][1]})
-		}
-
-		matrix = append(matrix, row)
-	}
-
-	matrix[0] = append(matrix[0], [2]int{1, 1}) // Stick on last column.
-	for j := 1; j < m.Min; j++ {
-		matrix[j] = append(matrix[j], [2]int{0, 1})
-	}
-
-	// Reduce matrix.
-	for i := 0; i < len(matrix); i++ {
-		for j := 0; j < len(matrix[i]); j++ { // Make row unary.
-			if i == j {
-				continue
-			}
-
-			matrix[i][j][0] *= matrix[i][i][1]
-			matrix[i][j][1] *= matrix[i][i][0]
-		}
-		matrix[i][i] = [2]int{1, 1}
-
-		for j := 0; j < len(matrix); j++ { // Remove this row from the others.
-			if i == j {
-				continue
-			}
-
-			top := matrix[j][i][0]
-			bot := matrix[j][i][1]
-
-			for k := 0; k < len(matrix[j]); k++ {
-				// matrix[j][k] = matrix[j][k] - matrix[j][i] * matrix[i][k]
-				temp := [2]int{0, 0}
-				temp[0] = top * matrix[i][k][0]
-				temp[1] = bot * matrix[i][k][1]
-
-				if matrix[j][k][0] == 0 {
-					matrix[j][k][0] = -temp[0]
-					matrix[j][k][1] = temp[1]
-				} else {
-					matrix[j][k][0] = (matrix[j][k][0] * temp[1]) - (temp[0] * matrix[j][k][1])
-					matrix[j][k][1] *= temp[1]
-				}
-
-				if matrix[j][k][0] == 0 {
-					matrix[j][k][1] = 1
-				}
-			}
-		}
+	// Calculate the reconstruction vector and use it to recover the secret.
+	r, ok := MSub.Recovery()
+	if !ok {
+		return nil, errors.New("Unable to find a reconstruction vector!")
 	}
 
 	// Compute dot product of the shares vector and the reconstruction vector to
-	// reconstruct the secret.
-	secInt := big.NewInt(0)
+	// recover the secret.
+	s := Row(shares).DotProduct(r)
 
-	for i, share := range shares {
-		lst := len(matrix[i]) - 1
-
-		num := big.NewInt(int64(matrix[i][lst][0]))
-		den := big.NewInt(int64(matrix[i][lst][1]))
-		num.Mod(num, modulus)
-		den.Mod(den, modulus)
-
-		coeff := big.NewInt(0).ModInverse(den, modulus)
-		coeff.Mul(coeff, num).Mod(coeff, modulus)
-
-		shareInt := big.NewInt(0).SetBytes(share)
-		shareInt.Mul(shareInt, coeff).Mod(shareInt, modulus)
-
-		secInt.Add(secInt, shareInt).Mod(secInt, modulus)
-	}
-
-	return m.encode(secInt, modulus), nil
-}
-
-func (m MSP) encode(x *big.Int, modulus *big.Int) (out []byte) {
-	tmp := x.Bytes()
-	tmpSize := len(tmp)
-
-	modSize := len(modulus.Bytes())
-	out = make([]byte, modSize)
-
-	for pos := 0; pos < tmpSize; pos++ {
-		out[modSize-pos-1] = tmp[tmpSize-pos-1]
-	}
-
-	return out
+	return []byte(s), nil
 }

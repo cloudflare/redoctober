@@ -116,9 +116,8 @@ fmt.Printf("%v\n", r2.Formatted()) // (3, Alice, Bob, Carl)
 ```go
 type MSP Formatted
 
-func Modulus(n int) *big.Int {}
-func (m MSP) DistributeShares(sec []byte, modulus *big.Int, db *UserDatabase) (map[string][][]byte, error) {}
-func (m MSP) RecoverSecret(modulus *big.Int, db *UserDatabase) ([]byte, error) {}
+func (m MSP) DistributeShares(sec []byte, db *UserDatabase) (map[string][][]byte, error) {}
+func (m MSP) RecoverSecret(db *UserDatabase) ([]byte, error) {}
 ```
 
 To switch from predicate-mode to secret-sharing-mode, just cast your formatted
@@ -133,21 +132,3 @@ of shares which should be given to that party and integrated into the
 `UserDatabase` somehow.  When you're ready to reconstruct the secret, you call
 `RecoverSecret`, which does some prodding about and hopefully gives you back
 what you put in.
-
-The modulus determines the size of the secret shares.  It must be prime, larger
-than the secret, and larger than n<sup>k</sup> where `n` is the number of
-parties and `k` is the depth of the circuit.  (For each path from the root to a
-gate with only leaf nodes, sum the thresholds of all the gates along that path.
-`k` is the maximum of these values--a safe overestimation is to sum the
-thresholds of all gates in the circuit)  Because this form of secret sharing
-is *information-theoretically secure*, as long as the modulus satisfies those
-requirements, it can be as small or as large as you'd like (there's no
-bonus/reduction in security).  An excessively small modulus is restrictive, but
-saves a *lot* of bandwidth.  However, there's no sensible reason for a modulus
-over about 256 bits--by that point, it's easier to generate a random AES key,
-encrypt your secret with *that*, and distribute shares of the decryption key
-instead.
-
-For convenience, the `Modulus` function has some hard coded moduli that are
-useful.  The choices are currently: `127`, `224`, and `256` for a 127-bit,
-224-bit, or 256-bit modulus, respectively.
