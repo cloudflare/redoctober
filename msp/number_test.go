@@ -45,6 +45,6 @@ func TestFieldElemInvert(t *testing.T) {
 	xy, yx := x.Mul(xInv), xInv.Mul(x)
 
 	if !xy.IsOne() || !yx.IsOne() {
-		t.Fatalf("Multiplication by inverse failed!\nx = %x\nxInv = %x\nxInv*x = %x\nx*xInv = %x", x, yx, xy)
+		t.Fatalf("Multiplication by inverse failed!\nx = %x\nxInv = %x\nxInv*x = %x\nx*xInv = %x", x, xInv, yx, xy)
 	}
 }
