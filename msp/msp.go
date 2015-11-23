@@ -41,17 +41,25 @@ func (ts TraceSlice) Len() int      { return len(ts) }
 func (ts TraceSlice) Swap(i, j int) { ts[i], ts[j] = ts[j], ts[i] }
 
 func (ts TraceSlice) Less(i, j int) bool {
-	return len(ts[i].trace) < len(ts[j].trace)
+	return len(ts[i].trace) > len(ts[j].trace)
 }
 
 func (ts *TraceSlice) Push(te interface{}) { *ts = append(*ts, te.(TraceElem)) }
 func (ts *TraceSlice) Pop() interface{} {
-	out := (*ts)[0]
-	*ts = (*ts)[1 : len(*ts)-1]
+	old := *ts
+	n := len(old)
+
+	*ts = old[0 : n-1]
+	out := old[n-1]
 
 	return out
 }
 
+// Compact takes a trace slice and merges all of its fields.
+//
+// index: Union of all locations in the slice.
+// names: Union of all names in the slice.
+// trace: Union of all the traces in the slice.
 func (ts TraceSlice) Compact() (index []int, names []string, trace []string) {
 	for _, te := range ts {
 		index = append(index, te.loc)
@@ -59,20 +67,24 @@ func (ts TraceSlice) Compact() (index []int, names []string, trace []string) {
 		trace = append(trace, te.trace...)
 	}
 
+	// This is a QuickSort related algorithm.  It makes all the names in the trace unique so we don't double-count people.
+	//
+	// Invariant:  There are no duplicates in trace[0:ptr]
+	// Algorithm:  Advance ptr by 1 and enforce the invariant.
 	ptr, cutoff := 0, len(trace)
 
 TopLoop:
-	for ptr < cutoff {
-		for i := 0; i < ptr; i++ {
-			if trace[i] == trace[ptr] {
-				trace[ptr], trace[cutoff-1] = trace[cutoff-1], trace[ptr]
-				cutoff--
+	for ptr < cutoff { // Choose the next un-checked element of the slice.
+		for i := 0; i < ptr; i++ { // Compare it to all elements before it.
+			if trace[i] == trace[ptr] { // If we find a duplicate...
+				trace[ptr], trace[cutoff-1] = trace[cutoff-1], trace[ptr] // Push the dup to the end of the surviving slice.
+				cutoff--                                                  // Mark it for removal.
 
-				continue TopLoop
+				continue TopLoop // Because trace[ptr] has been mutated, try to verify the invariant again w/o advancing ptr.
 			}
 		}
 
-		ptr++
+		ptr++ // There are no duplicates; move the ptr forward and start again.
 	}
 	trace = trace[0:cutoff]
 
@@ -102,6 +114,12 @@ func StringToMSP(pred string) (m MSP, err error) {
 	return MSP(f), nil
 }
 
+// DerivePath returns the cheapest way to satisfy the MSP (the one with the minimal number of delegations).
+//
+// ok:    True if the MSP can be satisfied with current delegations; false if not.
+// names: The names in the top-level threshold gate that need to be delegated.
+// locs:  The index in the treshold gate for each name.
+// trace: All names that must be delegated for for this gate to be satisfied.
 func (m MSP) DerivePath(db *UserDatabase) (ok bool, names []string, locs []int, trace []string) {
 	ts := &TraceSlice{}
 
@@ -118,15 +136,13 @@ func (m MSP) DerivePath(db *UserDatabase) (ok bool, names []string, locs []int, 
 
 		case Formatted:
 			sok, _, _, strace := MSP(cond.(Formatted)).DerivePath(db)
-			if !sok {
-				continue
+			if sok {
+				heap.Push(ts, TraceElem{i, []string{}, strace})
 			}
-
-			heap.Push(ts, TraceElem{i, []string{}, strace})
 		}
 
-		if (*ts).Len() > m.Min {
-			*ts = (*ts)[0:m.Min]
+		if (*ts).Len() > m.Min { // If we can otherwise satisfy the threshold gate
+			heap.Pop(ts) // Drop the TraceElem with the heaviest trace (the one that requires the most delegations).
 		}
 	}
 
