@@ -110,7 +110,7 @@ Example query:
     $ curl --cacert cert/server.crt https://localhost:8080/delegate \
            -d '{"Name":"Dodo","Password":"Dodgson","Time":"2h34m","Uses":3}'
     {"Status":"ok"}
-    
+
 ### Create User
 
 Create Users creates a new user account. Allows an optional "UserType"
@@ -172,6 +172,13 @@ Example query:
 
     $ curl --cacert cert/server.crt https://localhost:8080/encrypt  \
             -d '{"Name":"Alice","Password":"Lewis","Minimum":2, "Owners":["Alice","Bill","Cat","Dodo"],"Data":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8K"}'
+    {"Status":"ok","Response":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
+
+Example query with a predicate:
+
+    $ curl --cacert cert/server.crt https://localhost:8080/encrypt  \
+            -d '{"Name":"Alice","Password":"Lewis","Predicate":"Alice & (Bob | Carl)",
+            Data":"V2h5IGlzIGEgcmF2ZW4gbGlrZSBhIHdyaXRpbmcgZGVzaz8K"}'
     {"Status":"ok","Response":"eyJWZXJzaW9uIj...NSSllzPSJ9"}
 
 The data expansion is not tied to the size of the input.

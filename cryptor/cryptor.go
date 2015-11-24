@@ -16,6 +16,7 @@ import (
 	"strconv"
 
 	"github.com/cloudflare/redoctober/keycache"
+	"github.com/cloudflare/redoctober/msp"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/passvault"
 	"github.com/cloudflare/redoctober/symcrypt"
@@ -38,12 +39,53 @@ func New(records *passvault.Records, cache *keycache.Cache) Cryptor {
 // encrypted data.  If len(Names) > 0, then at least 2 of the users in the list
 // must be delegated to decrypt.  If len(LeftNames) > 0 & len(RightNames) > 0,
 // then at least one from each list must be delegated (if the same user is in
-// both, then he can decrypt it alone).
+// both, then he can decrypt it alone).  If a predicate is present, it must be
+// satisfied to decrypt.
 type AccessStructure struct {
 	Names []string
 
 	LeftNames  []string
 	RightNames []string
+
+	Predicate string
+}
+
+// Implements msp.UserDatabase
+type UserDatabase struct {
+	names *[]string
+
+	records *passvault.Records
+	cache   *keycache.Cache
+
+	user     string
+	labels   []string
+	keySet   map[string]SingleWrappedKey
+	shareSet map[string][][]byte
+}
+
+func (u UserDatabase) ValidUser(name string) bool {
+	_, ok := u.records.GetRecord(name)
+	return ok
+}
+
+func (u UserDatabase) CanGetShare(name string) bool {
+	_, _, ok1 := u.cache.MatchUser(name, u.user, u.labels)
+	_, ok2 := u.shareSet[name]
+	_, ok3 := u.keySet[name]
+
+	return ok1 && ok2 && ok3
+}
+
+func (u UserDatabase) GetShare(name string) ([][]byte, error) {
+	*u.names = append(*u.names, name)
+
+	return u.cache.DecryptShares(
+		u.shareSet[name],
+		name,
+		u.user,
+		u.labels,
+		u.keySet[name].Key,
+	)
 }
 
 // MultiWrappedKey is a structure containing a 16-byte key encrypted
@@ -67,8 +109,10 @@ type EncryptedData struct {
 	Version   int
 	VaultId   int                         `json:",omitempty"`
 	Labels    []string                    `json:",omitempty"`
+	Predicate string                      `json:",omitempty"`
 	KeySet    []MultiWrappedKey           `json:",omitempty"`
 	KeySetRSA map[string]SingleWrappedKey `json:",omitempty"`
+	ShareSet  map[string][][]byte         `json:",omitempty"`
 	IV        []byte                      `json:",omitempty"`
 	Data      []byte
 	Signature []byte
@@ -189,8 +233,7 @@ func (encrypted *EncryptedData) unlock(key []byte) (err error) {
 	return json.Unmarshal(encrypted.Data, encrypted)
 }
 
-// wrapKey encrypts the clear key such that a minimum number of delegated keys
-// are required to decrypt.  NOTE:  Currently the max value for min is 2.
+// wrapKey encrypts the clear key according to an access structure.
 func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []byte, access AccessStructure) (err error) {
 	generateRandomKey := func(name string) (singleWrappedKey SingleWrappedKey, err error) {
 		rec, ok := records.GetRecord(name)
@@ -259,8 +302,6 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 				encrypted.KeySet = append(encrypted.KeySet, out)
 			}
 		}
-
-		return nil
 	} else if len(access.LeftNames) > 0 && len(access.RightNames) > 0 {
 		// Generate a random AES key for each user and RSA/ECIES encrypt it
 		encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
@@ -301,11 +342,44 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 				encrypted.KeySet = append(encrypted.KeySet, out)
 			}
 		}
+	} else if len(access.Predicate) > 0 {
+		encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
 
-		return nil
+		sss, err := msp.StringToMSP(access.Predicate)
+		if err != nil {
+			return err
+		}
+
+		db := msp.UserDatabase(UserDatabase{records: records})
+		shareSet, err := sss.DistributeShares(clearKey, &db)
+		if err != nil {
+			return err
+		}
+
+		for name, _ := range shareSet {
+			encrypted.KeySetRSA[name], err = generateRandomKey(name)
+			if err != nil {
+				return err
+			}
+			crypt, err := aes.NewCipher(encrypted.KeySetRSA[name].aesKey)
+			if err != nil {
+				return err
+			}
+
+			for i, _ := range shareSet[name] {
+				tmp := make([]byte, 16)
+				crypt.Encrypt(tmp, shareSet[name][i])
+				shareSet[name][i] = tmp
+			}
+		}
+
+		encrypted.ShareSet = shareSet
+		encrypted.Predicate = access.Predicate
 	} else {
 		return errors.New("Invalid access structure.")
 	}
+
+	return nil
 }
 
 // unwrapKey decrypts first key in keys whose encryption keys are in keycache
@@ -316,50 +390,70 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 		nameSet        = map[string]bool{}
 	)
 
-	for _, mwKey := range encrypted.KeySet {
-		// validate the size of the keys
-		if len(mwKey.Key) != 16 {
-			err = errors.New("Invalid Input")
+	if len(encrypted.Predicate) == 0 {
+		for _, mwKey := range encrypted.KeySet {
+			// validate the size of the keys
+			if len(mwKey.Key) != 16 {
+				err = errors.New("Invalid Input")
+			}
+
+			if err != nil {
+				return nil, nil, err
+			}
+
+			// loop through users to see if they are all delegated
+			fullMatch = true
+			for _, mwName := range mwKey.Name {
+				if valid := cache.Valid(mwName, user, encrypted.Labels); !valid {
+					fullMatch = false
+					break
+				}
+				nameSet[mwName] = true
+			}
+
+			// if the keys are delegated, decrypt the mwKey with them
+			if fullMatch == true {
+				tmpKeyValue := mwKey.Key
+				for _, mwName := range mwKey.Name {
+					pubEncrypted := encrypted.KeySetRSA[mwName]
+					if tmpKeyValue, keyFound = cache.DecryptKey(tmpKeyValue, mwName, user, encrypted.Labels, pubEncrypted.Key); keyFound != nil {
+						break
+					}
+				}
+				unwrappedKey = tmpKeyValue
+				break
+			}
 		}
 
+		if !fullMatch {
+			err = errors.New("Need more delegated keys")
+			names = nil
+		}
+
+		names = make([]string, 0, len(nameSet))
+		for name := range nameSet {
+			names = append(names, name)
+		}
+		return
+	} else {
+		var sss msp.MSP
+		sss, err = msp.StringToMSP(encrypted.Predicate)
 		if err != nil {
 			return nil, nil, err
 		}
 
-		// loop through users to see if they are all delegated
-		fullMatch = true
-		for _, mwName := range mwKey.Name {
-			if valid := cache.Valid(mwName, user, encrypted.Labels); !valid {
-				fullMatch = false
-				break
-			}
-			nameSet[mwName] = true
-		}
+		db := msp.UserDatabase(UserDatabase{
+			names:    &names,
+			cache:    cache,
+			user:     user,
+			labels:   encrypted.Labels,
+			keySet:   encrypted.KeySetRSA,
+			shareSet: encrypted.ShareSet,
+		})
+		unwrappedKey, err = sss.RecoverSecret(&db)
 
-		// if the keys are delegated, decrypt the mwKey with them
-		if fullMatch == true {
-			tmpKeyValue := mwKey.Key
-			for _, mwName := range mwKey.Name {
-				pubEncrypted := encrypted.KeySetRSA[mwName]
-				if tmpKeyValue, keyFound = cache.DecryptKey(tmpKeyValue, mwName, user, encrypted.Labels, pubEncrypted.Key); keyFound != nil {
-					break
-				}
-			}
-			unwrappedKey = tmpKeyValue
-			break
-		}
+		return
 	}
-
-	if !fullMatch {
-		err = errors.New("Need more delegated keys")
-		names = nil
-	}
-
-	names = make([]string, 0, len(nameSet))
-	for name := range nameSet {
-		names = append(names, name)
-	}
-	return
 }
 
 // Encrypt encrypts data with the keys associated with names. This
@@ -474,7 +568,7 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 
 // GetOwners returns the list of users that can delegate their passwords
 // to decrypt the given encrypted secret.
-func (c *Cryptor) GetOwners(in []byte) (names []string, err error) {
+func (c *Cryptor) GetOwners(in []byte) (names []string, predicate string, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
@@ -512,7 +606,7 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, err error) {
 	}
 
 	addedNames := make(map[string]bool)
-	for _, mwKey := range encrypted.KeySet {
+	for _, mwKey := range encrypted.KeySet { // names from the combinatorial method
 		for _, mwName := range mwKey.Name {
 			if !addedNames[mwName] {
 				names = append(names, mwName)
@@ -520,6 +614,15 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, err error) {
 			}
 		}
 	}
+
+	for name, _ := range encrypted.ShareSet { // names from the secret splitting method
+		if !addedNames[name] {
+			names = append(names, name)
+			addedNames[name] = true
+		}
+	}
+
+	predicate = encrypted.Predicate
 
 	return
 }

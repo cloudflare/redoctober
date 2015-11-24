@@ -112,9 +112,9 @@ func (cache *Cache) Valid(name, user string, labels []string) (present bool) {
 	return false
 }
 
-// matchUser returns the matching active user if present
+// MatchUser returns the matching active user if present
 // and a boolean to indicate its presence.
-func (cache *Cache) matchUser(name, user string, labels []string) (ActiveUser, string, bool) {
+func (cache *Cache) MatchUser(name, user string, labels []string) (ActiveUser, string, bool) {
 	var key ActiveUser
 	for d, key := range cache.UserKeys {
 		if d.Name != name {
@@ -131,7 +131,7 @@ func (cache *Cache) matchUser(name, user string, labels []string) (ActiveUser, s
 // useKey decrements the counter on an active key
 // for decryption or symmetric encryption
 func (cache *Cache) useKey(name, user, slot string, labels []string) {
-	if val, slot, present := cache.matchUser(name, user, labels); present {
+	if val, slot, present := cache.MatchUser(name, user, labels); present {
 		val.Usage.Uses -= 1
 		cache.setUser(val, name, slot)
 	}
@@ -214,7 +214,7 @@ func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, pass
 func (cache *Cache) DecryptKey(in []byte, name, user string, labels []string, pubEncryptedKey []byte) (out []byte, err error) {
 	cache.Refresh()
 
-	decryptKey, slot, ok := cache.matchUser(name, user, labels)
+	decryptKey, slot, ok := cache.MatchUser(name, user, labels)
 	if !ok {
 		return nil, errors.New("Key not delegated")
 	}
@@ -247,6 +247,55 @@ func (cache *Cache) DecryptKey(in []byte, name, user string, labels []string, pu
 	}
 	out = make([]byte, 16)
 	aesSession.Decrypt(out, in)
+
+	cache.useKey(name, user, slot, labels)
+
+	return
+}
+
+// DecryptShares decrypts an array of 16 byte shares using the key corresponding
+// to the name parameter.
+func (cache *Cache) DecryptShares(in [][]byte, name, user string, labels []string, pubEncryptedKey []byte) (out [][]byte, err error) {
+	cache.Refresh()
+
+	decryptKey, slot, ok := cache.MatchUser(name, user, labels)
+	if !ok {
+		return nil, errors.New("Key not delegated")
+	}
+
+	var aesKey []byte
+
+	// pick the aesKey to use for decryption
+	switch decryptKey.Type {
+	case passvault.RSARecord:
+		// extract the aes key from the pubEncryptedKey
+		aesKey, err = rsa.DecryptOAEP(sha1.New(), rand.Reader, &decryptKey.rsaKey, pubEncryptedKey, nil)
+		if err != nil {
+			return
+		}
+	case passvault.ECCRecord:
+		// extract the aes key from the pubEncryptedKey
+		aesKey, err = ecdh.Decrypt(decryptKey.eccKey, pubEncryptedKey)
+
+		if err != nil {
+			return
+		}
+	default:
+		return nil, errors.New("unknown type")
+	}
+
+	// decrypt
+	aesSession, err := aes.NewCipher(aesKey)
+	if err != nil {
+		return
+	}
+
+	for _, encShare := range in {
+		tmp := make([]byte, 16)
+		aesSession.Decrypt(tmp, encShare)
+
+		out = append(out, tmp)
+	}
 
 	cache.useKey(name, user, slot, labels)
 

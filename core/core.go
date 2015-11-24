@@ -72,6 +72,7 @@ type EncryptRequest struct {
 	Owners      []string
 	LeftOwners  []string
 	RightOwners []string
+	Predicate   string
 
 	Data []byte
 
@@ -124,8 +125,9 @@ type DecryptWithDelegates struct {
 }
 
 type OwnersData struct {
-	Status string
-	Owners []string
+	Status    string
+	Owners    []string
+	Predicate string
 }
 
 // Helper functions that create JSON responses sent by core
@@ -454,6 +456,7 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		Names:      s.Owners,
 		LeftNames:  s.LeftOwners,
 		RightNames: s.RightOwners,
+		Predicate:  s.Predicate,
 	}
 
 	resp, err := crypt.Encrypt(s.Data, s.Labels, access)
@@ -617,12 +620,12 @@ func Owners(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	names, err := crypt.GetOwners(s.Data)
+	names, predicate, err := crypt.GetOwners(s.Data)
 	if err != nil {
 		return jsonStatusError(err)
 	}
 
-	return json.Marshal(OwnersData{Status: "ok", Owners: names})
+	return json.Marshal(OwnersData{Status: "ok", Owners: names, Predicate: predicate})
 }
 
 // Export returns a backed up vault.
