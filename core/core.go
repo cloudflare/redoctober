@@ -12,11 +12,14 @@ import (
 	"strconv"
 	"time"
 
+	"crypto/rand"
+
 	"github.com/cloudflare/redoctober/cryptor"
 	"github.com/cloudflare/redoctober/hipchat"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/order"
 	"github.com/cloudflare/redoctober/passvault"
+	"golang.org/x/crypto/ssh"
 )
 
 var (
@@ -96,6 +99,14 @@ type DecryptRequest struct {
 	Data []byte
 }
 
+type DecryptSignRequest struct {
+	Name     string
+	Password string
+
+	Data    []byte
+	TBSData []byte
+}
+
 type OwnersRequest struct {
 	Data []byte
 }
@@ -158,6 +169,13 @@ type DecryptWithDelegates struct {
 	Data      []byte
 	Secure    bool
 	Delegates []string
+}
+
+type DecryptSignWithDelegates struct {
+	SignatureFormat string
+	Signature       []byte
+	Secure          bool
+	Delegates       []string
 }
 
 type OwnersData struct {
@@ -633,6 +651,58 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		delete(orders.Orders, orderKey)
 		orders.NotifyOrderFulfilled(s.Name, orderKey)
 	}
+	return jsonResponse(out)
+}
+
+// DecryptSign processes a decrypt-sign request.
+func DecryptSign(jsonIn []byte) ([]byte, error) {
+	var s DecryptSignRequest
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.decrypt-sign failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.decrypt-sign success: user=%s", s.Name)
+		}
+	}()
+
+	err = json.Unmarshal(jsonIn, &s)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	err = validateUser(s.Name, s.Password, false)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	data, names, secure, err := crypt.Decrypt(s.Data, s.Name)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	var signer ssh.Signer
+	signer, err = ssh.ParsePrivateKey(data)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	var signature *ssh.Signature
+	signature, err = signer.Sign(rand.Reader, s.TBSData)
+
+	resp := &DecryptSignWithDelegates{
+		SignatureFormat: signature.Format,
+		Signature:       signature.Blob,
+		Secure:          secure,
+		Delegates:       names,
+	}
+
+	out, err := json.Marshal(resp)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
 	return jsonResponse(out)
 }
 

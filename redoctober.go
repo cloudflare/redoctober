@@ -28,32 +28,33 @@ import (
 // List of URLs to register and their related functions
 
 var functions = map[string]func([]byte) ([]byte, error){
-	"/create":      core.Create,
-	"/create-user": core.CreateUser,
-	"/summary":     core.Summary,
-	"/purge":       core.Purge,
-	"/delegate":    core.Delegate,
-	"/password":    core.Password,
-	"/encrypt":     core.Encrypt,
-	"/re-encrypt":  core.ReEncrypt,
-	"/decrypt":     core.Decrypt,
-	"/owners":      core.Owners,
-	"/modify":      core.Modify,
-	"/export":      core.Export,
-	"/order":       core.Order,
-	"/orderout":    core.OrdersOutstanding,
-	"/orderinfo":   core.OrderInfo,
-	"/ordercancel": core.OrderCancel,
+	"/create":       core.Create,
+	"/create-user":  core.CreateUser,
+	"/summary":      core.Summary,
+	"/purge":        core.Purge,
+	"/delegate":     core.Delegate,
+	"/password":     core.Password,
+	"/encrypt":      core.Encrypt,
+	"/re-encrypt":   core.ReEncrypt,
+	"/decrypt":      core.Decrypt,
+	"/decrypt-sign": core.DecryptSign,
+	"/owners":       core.Owners,
+	"/modify":       core.Modify,
+	"/export":       core.Export,
+	"/order":        core.Order,
+	"/orderout":     core.OrdersOutstanding,
+	"/orderinfo":    core.OrderInfo,
+	"/ordercancel":  core.OrderCancel,
 }
 
 type userRequest struct {
-	rt string // The request type (which will be one of the
-	// keys of the functions map above
-	in []byte // Arbitrary input data (depends on the core.*
-	// function called)
-	resp chan<- []byte // Channel down which a response is sent (the
-	// data sent will depend on the core.* function
-	// called to handle this request)
+	rt   string         // The request type (which will be one of the
+						// keys of the functions map above
+	in   []byte         // Arbitrary input data (depends on the core.*
+						// function called)
+	resp chan <- []byte // Channel down which a response is sent (the
+						// data sent will depend on the core.* function
+						// called to handle this request)
 }
 
 // queueRequest handles a single request receive on the JSON API for
