@@ -254,6 +254,22 @@ func (c *RemoteServer) Decrypt(req core.DecryptRequest) (*core.ResponseData, err
 
 }
 
+// Decrypt issues an decrypt request to the remote server
+func (c *RemoteServer) DecryptSign(req core.DecryptSignRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("decrypt-sign", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+
+}
+
 // DecryptIntoData issues an decrypt request to the remote server and extract
 // the decrypted data from the response
 func (c *RemoteServer) DecryptIntoData(req core.DecryptRequest) ([]byte, error) {
