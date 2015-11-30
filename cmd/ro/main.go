@@ -7,17 +7,21 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/cmd/ro/gopass"
+	"github.com/cloudflare/redoctober/cmd/ro/roagent"
 	"github.com/cloudflare/redoctober/core"
 	"github.com/cloudflare/redoctober/order"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
-var action, user, pswd, userEnv, pswdEnv, server, caPath string
+var action, user, pswd, userEnv, pswdEnv, server, caPath, pubKeyPath string
 
 var owners, lefters, righters, inPath, labels, outPath, outEnv string
 
@@ -40,6 +44,7 @@ var commandSet = map[string]command{
 	"delegate":   command{Run: runDelegate, Desc: "do decryption delegation"},
 	"encrypt":    command{Run: runEncrypt, Desc: "encrypt a file"},
 	"decrypt":    command{Run: runDecrypt, Desc: "decrypt a file"},
+	"ssh-agent":  command{Run: runSSHAgent, Desc: "act as an SSH agent"},
 	"re-encrypt": command{Run: runReEncrypt, Desc: "re-encrypt a file"},
 	"order":      command{Run: runOrder, Desc: "place an order for delegations"},
 }
@@ -62,17 +67,25 @@ func registerFlags() {
 	flag.StringVar(&userEnv, "userenv", "RO_USER", "env variable for user name")
 	flag.StringVar(&pswdEnv, "pswdenv", "RO_PASS", "env variable for user password")
 	flag.DurationVar(&pollInterval, "poll-interval", time.Second, "interval for polling an outstanding order (set 0 to disable polling)")
+	flag.StringVar(&pubKeyPath, "pubkey", "id_rsa.pub", "path to SSH public key")
 }
 
 func getUserCredentials() {
-	user = os.Getenv(userEnv)
-	pswd = os.Getenv(pswdEnv)
-	if user == "" || pswd == "" {
-		fmt.Print("Username:")
-		fmt.Scan(&user)
-		var err error
-		pswd, err = gopass.GetPass("Password:")
-		processError(err)
+	if user == "" {
+		user = os.Getenv(userEnv)
+		if user == "" {
+			fmt.Print("Username:")
+			fmt.Scan(&user)
+		}
+	}
+
+	if pswd == "" {
+		pswd = os.Getenv(pswdEnv)
+		if pswd == "" {
+			var err error
+			pswd, err = gopass.GetPass("Password:")
+			processError(err)
+		}
 	}
 }
 
@@ -239,6 +252,46 @@ func runOrder() {
 		}
 	}
 	fmt.Println(resp.Status)
+}
+
+func runSSHAgent() {
+	inBytes, err := ioutil.ReadFile(inPath)
+	processError(err)
+
+	// base64 decode the input
+	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
+	if err != nil {
+		log.Println("failed to base64 decode the data, proceeding with raw data")
+		encBytes = inBytes
+	}
+
+	inBytes, err = ioutil.ReadFile(pubKeyPath)
+	processError(err)
+
+	log.Print(string(inBytes))
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(inBytes)
+
+	if err != nil {
+		log.Fatal("failed to parse SSH public key", err)
+	}
+
+	roagent := roagent.NewROAgent(roServer, pubKey, encBytes, user, pswd)
+	authSockPath := os.Getenv("SSH_AUTH_SOCK")
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: authSockPath, Net: "unix"})
+	if err != nil {
+		log.Fatal("error listening on $SSH_AUTH_SOCK", err)
+	}
+	defer os.Remove(authSockPath)
+
+	conn, err := listener.AcceptUnix()
+	if err != nil {
+		log.Fatal("error accepting socket connection", err)
+	}
+
+	err = agent.ServeAgent(roagent, conn)
+	if err != nil {
+		log.Fatal("error serving socket protocol", err)
+	}
 }
 
 func main() {
