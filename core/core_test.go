@@ -400,8 +400,10 @@ func TestEncryptDecrypt(t *testing.T) {
 	delegateJson3 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
 	delegateJson4 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":2,\"Users\":[\"Alice\"],\"Labels\":[\"blue\"]}")
 	delegateJson5 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":2,\"Users\":[\"Alice\"],\"Labels\":[\"blue\"]}")
-	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
-	encryptJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Labels\":[\"blue\",\"red\"]}")
+	delegateJson6 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":1}")
+	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minimum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
+	encryptJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Labels\":[\"blue\",\"red\"]}")
+	encryptJson3 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":1,\"Owners\":[\"Alice\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
 
 	Init("memory")
 
@@ -575,6 +577,49 @@ func TestEncryptDecrypt(t *testing.T) {
 			t.Fatalf("Error in decrypt, %v", d.Delegates)
 		}
 	}
+
+	// Encrypt with only a single owner
+	respJson, err = Encrypt(encryptJson3)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in encrypt, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson6)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	// decrypt file
+	decryptJson2, err := json.Marshal(DecryptRequest{Name: "Alice", Password: "Hello", Data: s.Response})
+	if err != nil {
+		t.Fatalf("Error in marshalling decryption, %v", err)
+	}
+
+	respJson2, err = Decrypt(decryptJson2)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson2, &s)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in decrypt, %v", s.Status)
+	}
 }
 
 func TestReEncrypt(t *testing.T) {
@@ -585,7 +630,7 @@ func TestReEncrypt(t *testing.T) {
 	delegateJson5 := []byte(`{"Name":"Carol","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["blue"]}`)
 	delegateJson6 := []byte(`{"Name":"Bob","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["red"]}`)
 	delegateJson7 := []byte(`{"Name":"Carol","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["red"]}`)
-	encryptJson := []byte(`{"Name":"Carol","Password":"Hello","Minumum":2,"Owners":["Alice","Bob","Carol"],"Data":"SGVsbG8gSmVsbG8=","Labels":["blue"]}`)
+	encryptJson := []byte(`{"Name":"Carol","Password":"Hello","Minimum":2,"Owners":["Alice","Bob","Carol"],"Data":"SGVsbG8gSmVsbG8=","Labels":["blue"]}`)
 
 	Init("memory")
 
@@ -671,6 +716,7 @@ func TestReEncrypt(t *testing.T) {
 			Name:     "Alice",
 			Password: "Hello",
 			Data:     s.Response,
+			Minimum:  2,
 			Owners:   []string{"Alice", "Bob", "Carol"},
 			Labels:   []string{"red"},
 		})
@@ -761,7 +807,7 @@ func TestOwners(t *testing.T) {
 	delegateJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
 	delegateJson2 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
 	delegateJson3 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Time\":\"0s\",\"Uses\":0}")
-	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minumum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
+	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minimum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
 
 	var s ResponseData
 	var l OwnersData
