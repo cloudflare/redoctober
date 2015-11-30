@@ -64,7 +64,7 @@ func init() {
 	cfg = config.New()
 
 	// customized the default index html with auto generated content
-	server.DefaultIndexHtml = indexHtml
+	server.DefaultIndexHTML = indexHTML
 
 	cli.Server.Addr = defaultAddr
 	cli.Metrics.Host = defaultMetricsHost
