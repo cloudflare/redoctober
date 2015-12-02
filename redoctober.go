@@ -230,7 +230,7 @@ func main() {
 	certPaths := strings.Split(*certsPathString, ",")
 	keyPaths := strings.Split(*keysPathString, ",")
 
-	if err := core.Init(*vaultPath); err != nil {
+	if err := core.Init(false); err != nil {
 		log.Fatalf(err.Error())
 	}
 

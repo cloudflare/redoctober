@@ -11,7 +11,7 @@ import (
 // secret splitter that allows an application to only decrypt or request shares
 // when needed, rather than re-build a partial map of known data.
 type UserDatabase interface {
-	ValidUser(name string) bool
+	ValidUser(name string) (bool, error)
 	CanGetShare(name string) bool
 	GetShare(name string) ([][]byte, error)
 }
@@ -192,10 +192,16 @@ func (m MSP) DistributeShares(sec []byte, db *UserDatabase) (map[string][][]byte
 			name := cond.(Name).string
 			if _, ok := out[name]; ok {
 				out[name] = append(out[name], share)
-			} else if (*db).ValidUser(name) {
-				out[name] = [][]byte{share}
 			} else {
-				return out, errors.New("Unknown user in predicate.")
+				ok, err := (*db).ValidUser(name)
+				if err != nil {
+					return nil, err
+				}
+				if ok {
+					out[name] = [][]byte{share}
+				} else {
+					return out, errors.New("Unknown user in predicate.")
+				}
 			}
 
 		default:

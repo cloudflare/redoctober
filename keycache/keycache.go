@@ -138,7 +138,7 @@ func (cache *Cache) useKey(name, user, slot string, labels []string) {
 }
 
 // GetSummary returns the list of active user keys.
-func (cache *Cache) GetSummary() map[string]ActiveUser {
+func (cache *Cache) GetSummary() (map[string]ActiveUser, error) {
 	summaryData := make(map[string]ActiveUser)
 	for d, activeUser := range cache.UserKeys {
 		summaryInfo := d.Name
@@ -147,7 +147,7 @@ func (cache *Cache) GetSummary() map[string]ActiveUser {
 		}
 		summaryData[summaryInfo] = activeUser
 	}
-	return summaryData
+	return summaryData, nil
 }
 
 // FlushCache removes all delegated keys.
