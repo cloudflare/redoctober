@@ -1,3 +1,5 @@
+// Package roagent provides ROAgent, which implements the SSH agent interface,
+// forwarding sign requests to a Red October server
 package roagent
 
 import (
@@ -5,7 +7,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 
@@ -43,7 +44,6 @@ func (signer ROSigner) Sign(rand io.Reader, msg []byte) (signature *ssh.Signatur
 		log.Fatal("response status error:", resp.Status)
 		return nil, errors.New("response status error")
 	}
-	fmt.Println("Response Status:", resp.Status)
 
 	var respMsg core.DecryptSignWithDelegates
 	err = json.Unmarshal(resp.Response, &respMsg)
@@ -51,12 +51,7 @@ func (signer ROSigner) Sign(rand io.Reader, msg []byte) (signature *ssh.Signatur
 		return nil, err
 	}
 
-	var respSignature ssh.Signature
-	err = json.Unmarshal(resp.Response, &respSignature)
-	if err != nil {
-		return nil, err
-	}
-
+	respSignature := ssh.Signature{Format: respMsg.SignatureFormat, Blob: respMsg.Signature}
 	return &respSignature, nil
 }
 
@@ -64,6 +59,8 @@ type ROAgent struct {
 	signer ROSigner
 }
 
+// NewROAgent creates a new SSH agent which forwards signature requests to the
+// provided remote server
 func NewROAgent(server *client.RemoteServer, pubKey ssh.PublicKey, encryptedPrivKey []byte, user, pswd string) agent.Agent {
 	return &ROAgent{
 		ROSigner{
@@ -76,21 +73,22 @@ func NewROAgent(server *client.RemoteServer, pubKey ssh.PublicKey, encryptedPriv
 	}
 }
 
+// RemoveAll has no effect for the ROAgent
 func (r *ROAgent) RemoveAll() error {
 	return nil
 }
 
-// Remove removes all identities with the given public key.
+// Remove has no effect for the ROAgent
 func (r *ROAgent) Remove(key ssh.PublicKey) error {
 	return nil
 }
 
-// Lock locks the agent. Sign and Remove will fail, and List will empty an empty list.
+// Lock has no effect for the ROAgent
 func (r *ROAgent) Lock(passphrase []byte) error {
 	return nil
 }
 
-// Unlock undoes the effect of Lock
+// Unlock has no effect for the ROAgent
 func (r *ROAgent) Unlock(passphrase []byte) error {
 	return nil
 }
@@ -101,14 +99,12 @@ func (r *ROAgent) List() ([]*agent.Key, error) {
 		{
 			Format:  r.signer.PublicKey().Type(),
 			Blob:    r.signer.PublicKey().Marshal(),
-			Comment: "",
+			Comment: "Red October encrypted SSH key",
 		},
 	}, nil
 }
 
-// Insert adds a private key to the ROAgent. If a certificate
-// is given, that certificate is added as public key. Note that
-// any constraints given are ignored.
+// Add has no effect for the ROAgent
 func (r *ROAgent) Add(key agent.AddedKey) error {
 	return nil
 }
