@@ -251,7 +251,7 @@ func (c *RemoteServer) Decrypt(req core.DecryptRequest) (*core.ResponseData, err
 
 }
 
-// Decrypt issues an decrypt request to the remote server
+// DecryptSign issues an decrypt-sign request to the remote server
 func (c *RemoteServer) DecryptSign(req core.DecryptSignRequest) (*core.ResponseData, error) {
 	reqBytes, err := json.Marshal(req)
 	if err != nil {

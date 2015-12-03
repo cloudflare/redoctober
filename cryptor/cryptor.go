@@ -110,6 +110,7 @@ type EncryptedData struct {
 	Version   int
 	VaultId   int                         `json:",omitempty"`
 	Labels    []string                    `json:",omitempty"`
+	Usages    []string                    `json:",omitempty"`
 	Predicate string                      `json:",omitempty"`
 	KeySet    []MultiWrappedKey           `json:",omitempty"`
 	KeySetRSA map[string]SingleWrappedKey `json:",omitempty"`
@@ -271,6 +272,10 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 	}
 
 	if len(access.Names) > 0 {
+		if len(access.Names) < access.Minimum {
+			return errors.New("cannot encrypt with fewer owners than minimum")
+		}
+
 		// Generate a random AES key for each user and RSA/ECIES encrypt it
 		encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
 
@@ -475,7 +480,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 // Encrypt encrypts data with the keys associated with names. This
 // requires a minimum of min keys to decrypt.  NOTE: as currently
 // implemented, the maximum value for min is 2.
-func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (resp []byte, err error) {
+func (c *Cryptor) Encrypt(in []byte, labels []string, usages []string, access AccessStructure) (resp []byte, err error) {
 	var encrypted EncryptedData
 	encrypted.Version = DEFAULT_VERSION
 	if encrypted.VaultId, err = c.records.GetVaultID(); err != nil {
@@ -512,6 +517,7 @@ func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (r
 
 	encrypted.Data = encryptedFile
 	encrypted.Labels = labels
+	encrypted.Usages = usages
 
 	hmacKey, err := c.records.GetHMACKey()
 	if err != nil {
@@ -524,7 +530,7 @@ func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (r
 }
 
 // Decrypt decrypts a file using the keys in the key cache.
-func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, labels, names []string, secure bool, err error) {
+func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, labels, names []string, usages []string, secure bool, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
@@ -579,7 +585,9 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, labels, names []
 	aesCBC.CryptBlocks(clearData, encrypted.Data)
 
 	resp, err = padding.RemovePadding(clearData)
+
 	labels = encrypted.Labels
+	usages = encrypted.Usages
 	return
 }
 

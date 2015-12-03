@@ -88,6 +88,7 @@ type EncryptRequest struct {
 	Data []byte
 
 	Labels []string
+	Usages []string
 }
 
 type ReEncryptRequest EncryptRequest
@@ -556,7 +557,7 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		Predicate:  s.Predicate,
 	}
 
-	resp, err := crypt.Encrypt(s.Data, s.Labels, access)
+	resp, err := crypt.Encrypt(s.Data, s.Labels, s.Usages, access)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -585,7 +586,7 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, _, _, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, _, _, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -600,7 +601,7 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 		RightNames: s.RightOwners,
 	}
 
-	resp, err := crypt.Encrypt(data, s.Labels, access)
+	resp, err := crypt.Encrypt(data, s.Labels, usages, access)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -630,9 +631,22 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, allLabels, names, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, allLabels, names, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
+
 	if err != nil {
 		return jsonStatusError(err)
+	}
+
+	// a file must be marked as usable for "decrypt" before we will decrypt
+	// it for the user. If no usages are provided, we permit decryption
+	foundDecrypt := false
+	for _, usage := range usages {
+		if usage == "decrypt" {
+			foundDecrypt = true
+		}
+	}
+	if !foundDecrypt && len(usages) != 0 {
+		return jsonStatusError(errors.New("cannot decrypt this file"))
 	}
 
 	resp := &DecryptWithDelegates{
@@ -677,9 +691,20 @@ func DecryptSign(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, names, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, names, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		return jsonStatusError(err)
+	}
+
+	// a file must be marked as usable for "sign" before we will try to sign with it
+	foundSign := false
+	for _, usage := range usages {
+		if usage == "sign" {
+			foundSign = true
+		}
+	}
+	if !foundSign {
+		return jsonStatusError(errors.New("cannot sign with this file"))
 	}
 
 	var signer ssh.Signer

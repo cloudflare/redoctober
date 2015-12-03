@@ -100,7 +100,7 @@ func TestDuplicates(t *testing.T) {
 		RightNames: right,
 	}
 
-	resp, err := c.Encrypt([]byte("Hello World!"), []string{}, ac)
+	resp, err := c.Encrypt([]byte("Hello World!"), []string{}, []string{}, ac)
 	if err != nil {
 		t.Fatalf("Error: %s", err)
 	}
