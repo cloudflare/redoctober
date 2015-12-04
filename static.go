@@ -3,7 +3,7 @@
 package main
 
 const (
-	indexHtml = `<!DOCTYPE html>
+	indexHTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
 	<title>Red October - Two Man Rule File Encryption &amp; Decryption</title>
@@ -285,6 +285,12 @@ const (
 							<div class="col-md-6">
 								<label for="encrypt-labels">Labels to use <small>(comma separated)</small></label>
 								<input type="text" name="Labels" class="form-control" id="encrypt-labels" placeholder="e.g. Blue, Red" />
+							</div>
+						</div>
+						<div class="form-group row">
+							<div class="col-md-6">
+						      		<label for="encrypt-usages">Usages <small>(comma separated)</small></label>
+						      		<input type="text" name="Usages" class="form-control" id="encrypt-usages" placeholder="e.g. ssh-sign-with, decrypt" />
 							</div>
 						</div>
 						<div class="form-group">
@@ -709,6 +715,11 @@ const (
 				for(var i=0, l=data.Labels.length; i<l; i++){
 					data.Labels[i] = data.Labels[i].trim();
 					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
+				}
+				data.Usages = data.Usages.split(',');
+				for(var i=0, l=data.Usages.length; i<l; i++){
+					data.Usages[i] = data.Usages[i].trim();
+					if (data.Usages[i] == "") { data.Usages.splice(i, 1); }
 				}
 
 				// Convert data to base64.
