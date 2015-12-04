@@ -555,6 +555,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<input type="text" name="Labels" class="form-control" id="encrypt-labels" placeholder="e.g. Blue, Red" />
 						</div>
 					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="encrypt-usages">Usages <small>(comma separated)</small></label>
+							<input type="text" name="Usages" class="form-control" id="encrypt-usages" placeholder="e.g. sign, decrypt" />
+						</div>
+					</div>
 					<div class="form-group">
 						<label for="encrypt-data">Data <small>(not base64 encoded)</small></label>
 						<textarea name="Data" class="form-control" id="encrypt-data" rows="5" required></textarea>
@@ -960,6 +966,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				for(var i=0, l=data.Labels.length; i<l; i++){
 					data.Labels[i] = data.Labels[i].trim();
 					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
+				}
+				data.Usages = data.Usages.split(',');
+				for(var i=0, l=data.Usages.length; i<l; i++){
+					data.Usages[i] = data.Usages[i].trim();
+					if (data.Usages[i] == "") { data.Usages.splice(i, 1); }
 				}
 
 				// Convert data to base64.
