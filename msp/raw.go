@@ -1,7 +1,6 @@
 package msp
 
 import (
-	"container/list"
 	"errors"
 	"strings"
 )
@@ -15,6 +14,11 @@ const (
 
 func (t NodeType) Type() NodeType {
 	return t
+}
+
+type Layer struct {
+	Conditions []Condition
+	Operators  []NodeType
 }
 
 type Raw struct { // Represents one node in the tree.
@@ -84,7 +88,7 @@ func StringToRaw(r string) (out Raw, err error) {
 		return strings.TrimSpace(r[0:nextOper]), r[nextOper:]
 	}
 
-	staging := list.New() // Stack of (Condition list, operator list)
+	staging := []Layer{} // Stack of (Condition list, operator list)
 	indices := make(map[string]int, 0)
 
 	var nxt string
@@ -93,69 +97,69 @@ func StringToRaw(r string) (out Raw, err error) {
 
 		switch nxt {
 		case "(":
-			staging.PushFront([2]*list.List{list.New(), list.New()})
+			staging = append([]Layer{Layer{}}, staging...)
 		case ")":
-			top := staging.Remove(staging.Front()).([2]*list.List)
-			if top[0].Len() != (top[1].Len() + 1) {
+			if len(staging) < 1 { // Check 1
+				return out, errors.New("Invalid string: Illegal close parenthesis.")
+			}
+
+			top := staging[0] // Legal because of check 1.
+			staging = staging[1:]
+
+			if len(top.Conditions) != (len(top.Operators) + 1) { // Check 2
 				return out, errors.New("Invalid string: There needs to be an operator (& or |) for every pair of operands.")
 			}
 
 			for typ := NodeAnd; typ <= NodeOr; typ++ {
-				var step *list.Element
-				leftOperand := top[0].Front()
+				i := 0
+				for i < len(top.Operators) {
+					oper := top.Operators[i] // Legal because for loop condition.
 
-				for oper := top[1].Front(); oper != nil; oper = step {
-					step = oper.Next()
+					// Copy left and right out of slice and THEN give a pointer for them!
+					left, right := top.Conditions[i], top.Conditions[i+1] // Legal because of check 2.
+					if oper == typ {
+						built := Raw{typ, &left, &right}
 
-					if oper.Value.(NodeType) == typ {
-						left := leftOperand.Value.(Condition)
-						right := leftOperand.Next().Value.(Condition)
+						top.Conditions = append(
+							top.Conditions[:i],
+							append([]Condition{built}, top.Conditions[i+2:]...)...,
+						)
 
-						leftOperand.Next().Value = Raw{
-							NodeType: typ,
-							Left:     &left,
-							Right:    &right,
-						}
-
-						leftOperand = leftOperand.Next()
-
-						top[0].Remove(leftOperand.Prev())
-						top[1].Remove(oper)
+						top.Operators = append(top.Operators[:i], top.Operators[i+1:]...) // Legal because for loop condition.
 					} else {
-						leftOperand = leftOperand.Next()
+						i++
 					}
 				}
 			}
 
-			if top[0].Len() != 1 || top[1].Len() != 0 {
+			if len(top.Conditions) != 1 || len(top.Operators) != 0 { // Check 3
 				return out, errors.New("Invalid string: Couldn't evaluate all of the operators.")
 			}
 
-			if staging.Len() == 0 {
+			if len(staging) == 0 { // Check 4
 				if len(r) == 0 {
-					res := top[0].Front().Value
-
-					switch res.(type) {
-					case Raw:
-						return res.(Raw), nil
-					default:
-						return out, errors.New("Invalid string: Only one condition was found.")
+					res, ok := top.Conditions[0].(Raw) // Legal because of check 3.
+					if !ok {
+						return out, errors.New("Invalid string: Only one condition was found?")
 					}
+					return res, nil
 				}
 				return out, errors.New("Invalid string: Can't parse anymore, but there's still data. Too many closing parentheses or too few opening parentheses?")
 			}
-			staging.Front().Value.([2]*list.List)[0].PushBack(top[0].Front().Value)
+			staging[0].Conditions = append(staging[0].Conditions, top.Conditions[0]) // Legal because of checks 3 and 4.
 
 		case "&":
-			staging.Front().Value.([2]*list.List)[1].PushBack(NodeAnd)
+			// Legal because first operation is to add an empty layer to the stack.
+			// If the stack is ever empty again, the function tries to return or error.
+			staging[0].Operators = append(staging[0].Operators, NodeAnd)
 		case "|":
-			staging.Front().Value.([2]*list.List)[1].PushBack(NodeOr)
+			staging[0].Operators = append(staging[0].Operators, NodeOr) // Legal for same reason as case &.
 		default:
 			if _, there := indices[nxt]; !there {
 				indices[nxt] = 0
 			}
 
-			staging.Front().Value.([2]*list.List)[0].PushBack(Name{nxt, indices[nxt]})
+			staging[0].Conditions = append(staging[0].Conditions, Name{nxt, indices[nxt]}) // Legal for same reason as case &.
 			indices[nxt]++
 		}
 	}
