@@ -33,19 +33,20 @@ var (
 	createUserInput3 = &core.CreateUserRequest{Name: "Dodo", Password: "Dodgson"}
 
 	delegateInput1 = &core.DelegateRequest{
-		Name: createUserInput1.Name,
+		Name:     createUserInput1.Name,
 		Password: createUserInput1.Password,
-		Time: "2h34m",
-		Uses: 1,
+		Time:     "2h34m",
+		Uses:     1,
 	}
 	delegateInput2 = &core.DelegateRequest{
-		Name: createUserInput2.Name,
+		Name:     createUserInput2.Name,
 		Password: createUserInput2.Password,
-		Time: "2h34m",
-		Uses: 1,
+		Time:     "2h34m",
+		Uses:     1,
 	}
 
-	encryptInput     = &core.EncryptRequest{
+	encryptInput = &core.EncryptRequest{
+		Minimum:  2,
 		Name:     createVaultInput.Name,
 		Password: createVaultInput.Password,
 		Owners:   []string{createUserInput1.Name, createUserInput2.Name},
@@ -378,9 +379,9 @@ func TestDecrypt(t *testing.T) {
 	encryptedData := s.Response
 
 	decryptInput := &core.DecryptRequest{
-		Name: "Alice",
+		Name:     "Alice",
 		Password: "Lewis",
-		Data: encryptedData,
+		Data:     encryptedData,
 	}
 
 	// Check the first decrypt command (where not enough owners have decrypted yet).
@@ -612,8 +613,8 @@ func TestPassword(t *testing.T) {
 
 	// Check changing password with invalid password.
 	passwordInput := &core.PasswordRequest{
-		Name: createUserInput1.Name,
-		Password: "badpassword",
+		Name:        createUserInput1.Name,
+		Password:    "badpassword",
 		NewPassword: "worsepassword",
 	}
 	if err := postAndTest("password", passwordInput, 200, "Wrong Password"); err != nil {
@@ -623,8 +624,8 @@ func TestPassword(t *testing.T) {
 
 	// Check changing password with nonexistent user.
 	passwordInput = &core.PasswordRequest{
-		Name: createUserInput2.Name,
-		Password: "badpassword",
+		Name:        createUserInput2.Name,
+		Password:    "badpassword",
 		NewPassword: "worsepassword",
 	}
 	if err := postAndTest("password", passwordInput, 200, "Record not present"); err != nil {
@@ -634,8 +635,8 @@ func TestPassword(t *testing.T) {
 
 	// Check changing the password properly.
 	passwordInput = &core.PasswordRequest{
-		Name: createUserInput1.Name,
-		Password: createUserInput1.Password,
+		Name:        createUserInput1.Name,
+		Password:    createUserInput1.Password,
 		NewPassword: "foobar",
 	}
 	if err := postAndTest("password", passwordInput, 200, "ok"); err != nil {
@@ -662,7 +663,7 @@ func TestPurge(t *testing.T) {
 
 	// Check purging with non-admin user
 	purgeInput := &core.PurgeRequest{
-		Name: createUserInput1.Name,
+		Name:     createUserInput1.Name,
 		Password: createUserInput1.Password,
 	}
 	if err := postAndTest("purge", purgeInput, 200, "Admin required"); err != nil {
@@ -672,7 +673,7 @@ func TestPurge(t *testing.T) {
 
 	// Check purging with admin user
 	purgeInput = &core.PurgeRequest{
-		Name: createVaultInput.Name,
+		Name:     createVaultInput.Name,
 		Password: createVaultInput.Password,
 	}
 	if err := postAndTest("purge", purgeInput, 200, "ok"); err != nil {

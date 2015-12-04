@@ -69,6 +69,7 @@ type EncryptRequest struct {
 	Name     string
 	Password string
 
+	Minimum     int
 	Owners      []string
 	LeftOwners  []string
 	RightOwners []string
@@ -453,6 +454,7 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 	}
 
 	access := cryptor.AccessStructure{
+		Minimum:    s.Minimum,
 		Names:      s.Owners,
 		LeftNames:  s.LeftOwners,
 		RightNames: s.RightOwners,
@@ -497,6 +499,7 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 	}
 
 	access := cryptor.AccessStructure{
+		Minimum:    s.Minimum,
 		Names:      s.Owners,
 		LeftNames:  s.LeftOwners,
 		RightNames: s.RightOwners,

@@ -42,7 +42,8 @@ func New(records *passvault.Records, cache *keycache.Cache) Cryptor {
 // both, then he can decrypt it alone).  If a predicate is present, it must be
 // satisfied to decrypt.
 type AccessStructure struct {
-	Names []string
+	Minimum int
+	Names   []string
 
 	LeftNames  []string
 	RightNames []string
@@ -253,22 +254,18 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 		return
 	}
 
-	encryptKey := func(outer, inner string, clearKey []byte) (keyBytes []byte, err error) {
-		var outerCrypt, innerCrypt cipher.Block
+	encryptKey := func(keyNames []string, clearKey []byte) (keyBytes []byte, err error) {
 		keyBytes = make([]byte, 16)
+		copy(keyBytes, clearKey)
+		for _, keyName := range keyNames {
+			var keyCrypt cipher.Block
+			keyCrypt, err = aes.NewCipher(encrypted.KeySetRSA[keyName].aesKey)
+			if err != nil {
+				return
+			}
 
-		outerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[outer].aesKey)
-		if err != nil {
-			return
+			keyCrypt.Encrypt(keyBytes, keyBytes)
 		}
-
-		innerCrypt, err = aes.NewCipher(encrypted.KeySetRSA[inner].aesKey)
-		if err != nil {
-			return
-		}
-
-		innerCrypt.Encrypt(keyBytes, clearKey)
-		outerCrypt.Encrypt(keyBytes, keyBytes)
 
 		return
 	}
@@ -282,25 +279,39 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 			if err != nil {
 				return err
 			}
-		}
 
-		// encrypt file key with every combination of two keys
-		encrypted.KeySet = make([]MultiWrappedKey, 0)
-
-		for i := 0; i < len(access.Names); i++ {
-			for j := i + 1; j < len(access.Names); j++ {
-				keyBytes, err := encryptKey(access.Names[i], access.Names[j], clearKey)
+			if access.Minimum == 1 {
+				keyBytes, err := encryptKey([]string{access.Names[0]}, clearKey)
 				if err != nil {
 					return err
 				}
 
-				out := MultiWrappedKey{
-					Name: []string{access.Names[i], access.Names[j]},
+				encrypted.KeySet = append(encrypted.KeySet, MultiWrappedKey{
+					Name: []string{access.Names[0]},
 					Key:  keyBytes,
-				}
-
-				encrypted.KeySet = append(encrypted.KeySet, out)
+				})
 			}
+		}
+
+		if access.Minimum == 2 {
+			for i := 0; i < len(access.Names); i++ {
+				for j := i + 1; j < len(access.Names); j++ {
+					keyBytes, err := encryptKey([]string{access.Names[j], access.Names[i]}, clearKey)
+					if err != nil {
+						return err
+					}
+
+					out := MultiWrappedKey{
+						Name: []string{access.Names[i], access.Names[j]},
+						Key:  keyBytes,
+					}
+
+					encrypted.KeySet = append(encrypted.KeySet, out)
+				}
+			}
+		} else if access.Minimum > 3 {
+			err = errors.New("Encryption to a list of owners with minimum > 2 is not implemented")
+			return err
 		}
 	} else if len(access.LeftNames) > 0 && len(access.RightNames) > 0 {
 		// Generate a random AES key for each user and RSA/ECIES encrypt it
@@ -329,7 +340,7 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 					continue
 				}
 
-				keyBytes, err := encryptKey(leftName, rightName, clearKey)
+				keyBytes, err := encryptKey([]string{rightName, leftName}, clearKey)
 				if err != nil {
 					return err
 				}
