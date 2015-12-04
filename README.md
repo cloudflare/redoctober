@@ -342,3 +342,23 @@ conversion. For dealing with files directly, using the
 [HTML5 File API](https://developer.mozilla.org/en-US/docs/Web/API/FileReader.readAsDataURL)
 would be a good option.
 
+
+## SSH key encryption
+
+Red October can encrypt an SSH private key with a restriction that the key can
+be used to sign messages, but that it should not be returned as the result of a
+decrypt call. The ro client can use this feature to authenticate a user to a
+remote SSH server without ever handling the unencrypted private key directly.
+
+Generate an ssh key without passphrase:
+
+    $ ssh-keygen -f id_rsa -N ""
+
+Encrypt with the "ssh-sign-with" usage only:
+
+    $ ro -minimum 2 -owners alice,bob -usages ssh-sign-with \
+         -server ro.local -in id_rsa -out id_rsa.encrypted encrypt
+
+Use the remote server to authenticate to an SSH server
+
+    $ ro -server ro.local -in id_rsa.encrypted -pubkey id_rsa.pub ssh root@gibson
