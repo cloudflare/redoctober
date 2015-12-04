@@ -70,7 +70,6 @@ func TestUsesFlush(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	cache.Refresh()
 	if len(cache.UserKeys) != 0 {
 		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
