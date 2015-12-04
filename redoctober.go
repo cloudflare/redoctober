@@ -84,7 +84,7 @@ func queueRequest(process chan<- userRequest, requestType string, w http.Respons
 //
 // Returns a valid http.Server handling redoctober JSON requests (and
 // its associated listener) or an error
-func NewServer(process chan<- userRequest, staticPath, addr, caPath string, certPaths, keyPaths []string, useSystemdSocket bool) (*http.Server, *net.Listener, error) {
+func NewServer(process chan<- userRequest, staticPath, addr, caPath string, certPaths, keyPaths []string, useSystemdSocket bool) (*http.Server, net.Listener, error) {
 	config := &tls.Config{
 		PreferServerCipherSuites: true,
 		SessionTicketsDisabled:   true,
@@ -161,11 +161,12 @@ func NewServer(process chan<- userRequest, staticPath, addr, caPath string, cert
 	mux.HandleFunc("/", idxHandler.handle)
 
 	srv := http.Server{
-		Addr:    addr,
-		Handler: mux,
+		Addr:      addr,
+		Handler:   mux,
+		TLSConfig: config,
 	}
 
-	return &srv, &lstnr, nil
+	return &srv, lstnr, nil
 }
 
 type indexHandler struct {
@@ -268,7 +269,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
-	s.Serve(*l)
+	s.Serve(l)
 }
 
 var indexHtml = []byte(`<!DOCTYPE html>
