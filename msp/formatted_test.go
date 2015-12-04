@@ -87,3 +87,17 @@ func TestFormatted(t *testing.T) {
 		t.Fatalf("Query #3 decoded wrong: %v %v", decQuery3.String(), err)
 	}
 }
+
+func TestBugs(t *testing.T) {
+	bugs := []string{
+		"(),)",
+		"((2, Alice, Bob), Bob, Carl)",
+	}
+
+	for _, bug := range bugs {
+		_, err := StringToFormatted(bug)
+		if err == nil {
+			t.Fatalf("Didn't panic or error on a malformed string: %v", bug)
+		}
+	}
+}

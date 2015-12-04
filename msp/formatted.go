@@ -1,7 +1,6 @@
 package msp
 
 import (
-	"container/list"
 	"errors"
 	"fmt"
 	"strconv"
@@ -25,7 +24,7 @@ func StringToFormatted(f string) (out Formatted, err error) {
 	//
 	// Staging stack is empty on initialization and should have exactly 1 built
 	// threshold gate at the end of the string.
-	if f[0] != '(' || f[len(f)-1] != ')' {
+	if len(f) == 0 || f[0] != '(' || f[len(f)-1] != ')' {
 		return out, errors.New("Invalid string: Needs to begin and end with parentheses.")
 	}
 
@@ -54,7 +53,7 @@ func StringToFormatted(f string) (out Formatted, err error) {
 		return strings.TrimSpace(f[0:nextUnParen]), f[nextUnParen:]
 	}
 
-	staging := list.New()
+	staging := [][]Condition{}
 	indices := make(map[string]int, 0)
 
 	var nxt string
@@ -63,13 +62,22 @@ func StringToFormatted(f string) (out Formatted, err error) {
 
 		switch nxt {
 		case "(":
-			staging.PushFront(list.New())
+			staging = append([][]Condition{[]Condition{}}, staging...)
 		case ")":
-			top := staging.Remove(staging.Front()).(*list.List)
+			if len(staging) < 1 || len(staging[0]) < 1 { // Check 1
+				return out, errors.New("Invalid string: Illegal close parenthesis.")
+			}
+
+			top := staging[0] // Legal because of check 1.
+			staging = staging[1:]
 
 			var min int
-			minStr := top.Front()
-			min, err = strconv.Atoi(minStr.Value.(Name).string)
+			minStr, ok := top[0].(Name) // Legal because of check 1.
+			if !ok {
+				return out, errors.New("Invalid string: First argument wasn't a threshold!")
+			}
+
+			min, err = strconv.Atoi(minStr.string)
 			if err != nil {
 				return
 			}
@@ -79,25 +87,29 @@ func StringToFormatted(f string) (out Formatted, err error) {
 				Conds: []Condition{},
 			}
 
-			for cond := minStr.Next(); cond != nil; cond = cond.Next() {
-				built.Conds = append(built.Conds, cond.Value.(Condition))
+			for _, cond := range top[1:] {
+				built.Conds = append(built.Conds, cond)
 			}
 
-			if staging.Len() == 0 {
+			if len(staging) == 0 { // Check 2
 				if len(f) == 0 {
 					return built, nil
 				}
-				return built, errors.New("Invalid string: Can't parse anymore, but there's still data. Too many closing parentheses or too few opening parentheses?")
+				return out, errors.New("Invalid string: Can't parse anymore, but there's still data. Too many closing parentheses or too few opening parentheses?")
 			}
 
-			staging.Front().Value.(*list.List).PushBack(built)
+			staging[0] = append(staging[0], built) // Legal because of check 2.
 
 		default:
+			if len(staging) < 1 {
+				return out, errors.New("Invalid string: Name is not encapsulated!")
+			}
+
 			if _, there := indices[nxt]; !there {
 				indices[nxt] = 0
 			}
 
-			staging.Front().Value.(*list.List).PushBack(Name{nxt, indices[nxt]})
+			staging[0] = append(staging[0], Name{nxt, indices[nxt]}) // Legal because of check above.
 			indices[nxt]++
 		}
 	}
