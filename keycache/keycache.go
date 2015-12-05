@@ -133,7 +133,11 @@ func (cache *Cache) MatchUser(name, user string, labels []string) (ActiveUser, s
 func (cache *Cache) useKey(name, user, slot string, labels []string) {
 	if val, slot, present := cache.MatchUser(name, user, labels); present {
 		val.Usage.Uses -= 1
-		cache.setUser(val, name, slot)
+		if val.Usage.Uses <= 0 {
+			delete(cache.UserKeys, DelegateIndex{name, slot})
+		} else {
+			cache.setUser(val, name, slot)
+		}
 	}
 }
 
@@ -160,7 +164,7 @@ func (cache *Cache) FlushCache() {
 // Refresh purges all expired or used up keys.
 func (cache *Cache) Refresh() {
 	for d, active := range cache.UserKeys {
-		if active.Usage.Expiry.Before(time.Now()) || active.Usage.Uses <= 0 {
+		if active.Usage.Expiry.Before(time.Now()) {
 			log.Println("Record expired", d.Name, d.Slot, active.Usage.Users, active.Usage.Labels, active.Usage.Expiry)
 			delete(cache.UserKeys, d)
 		}

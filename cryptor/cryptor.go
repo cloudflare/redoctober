@@ -396,9 +396,9 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 // unwrapKey decrypts first key in keys whose encryption keys are in keycache
 func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (unwrappedKey []byte, names []string, err error) {
 	var (
-		keyFound  error
-		fullMatch bool = false
-		nameSet        = map[string]bool{}
+		decryptErr error
+		fullMatch  bool = false
+		nameSet         = map[string]bool{}
 	)
 
 	if len(encrypted.Predicate) == 0 {
@@ -427,7 +427,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 				tmpKeyValue := mwKey.Key
 				for _, mwName := range mwKey.Name {
 					pubEncrypted := encrypted.KeySetRSA[mwName]
-					if tmpKeyValue, keyFound = cache.DecryptKey(tmpKeyValue, mwName, user, encrypted.Labels, pubEncrypted.Key); keyFound != nil {
+					if tmpKeyValue, decryptErr = cache.DecryptKey(tmpKeyValue, mwName, user, encrypted.Labels, pubEncrypted.Key); decryptErr != nil {
 						break
 					}
 				}
@@ -438,7 +438,12 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 
 		if !fullMatch {
 			err = errors.New("Need more delegated keys")
-			names = nil
+			return
+		}
+
+		if decryptErr != nil {
+			err = errors.New("Failed to decrypt with all keys in keyset")
+			return
 		}
 
 		names = make([]string, 0, len(nameSet))
