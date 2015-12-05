@@ -1,0 +1,551 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C303E5301C1406DB00E682E0 /* OptionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C303E52F1C1406DB00E682E0 /* OptionViewController.swift */; };
+		C303E5321C140B7100E682E0 /* Server.swift in Sources */ = {isa = PBXBuildFile; fileRef = C303E5311C140B7100E682E0 /* Server.swift */; };
+		C303E5341C14172F00E682E0 /* Settings-02.png in Resources */ = {isa = PBXBuildFile; fileRef = C303E5331C14172F00E682E0 /* Settings-02.png */; };
+		C32B22D71C12909B000D6065 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32B22D61C12909B000D6065 /* AppDelegate.swift */; };
+		C32B22D91C12909B000D6065 /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32B22D81C12909B000D6065 /* ViewController.swift */; };
+		C32B22DC1C12909B000D6065 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C32B22DA1C12909B000D6065 /* Main.storyboard */; };
+		C32B22DE1C12909B000D6065 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C32B22DD1C12909B000D6065 /* Assets.xcassets */; };
+		C32B22E11C12909B000D6065 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C32B22DF1C12909B000D6065 /* LaunchScreen.storyboard */; };
+		C32B22EC1C12909B000D6065 /* RedOctoberTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32B22EB1C12909B000D6065 /* RedOctoberTests.swift */; };
+		C32B22F71C12909B000D6065 /* RedOctoberUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32B22F61C12909B000D6065 /* RedOctoberUITests.swift */; };
+		C32B23071C1290BC000D6065 /* question-mark-4-xxl.png in Resources */ = {isa = PBXBuildFile; fileRef = C32B23051C1290BC000D6065 /* question-mark-4-xxl.png */; };
+		C32B23081C1290BC000D6065 /* server-icon.png in Resources */ = {isa = PBXBuildFile; fileRef = C32B23061C1290BC000D6065 /* server-icon.png */; };
+		C32B230A1C1291CE000D6065 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C32B23091C1291CE000D6065 /* WebViewController.swift */; };
+		C32B230C1C12991E000D6065 /* cf-certified-partner-badge-250px.png in Resources */ = {isa = PBXBuildFile; fileRef = C32B230B1C12991E000D6065 /* cf-certified-partner-badge-250px.png */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		C32B22E81C12909B000D6065 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C32B22CB1C12909B000D6065 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C32B22D21C12909B000D6065;
+			remoteInfo = RedOctober;
+		};
+		C32B22F31C12909B000D6065 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C32B22CB1C12909B000D6065 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C32B22D21C12909B000D6065;
+			remoteInfo = RedOctober;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		C303E52F1C1406DB00E682E0 /* OptionViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OptionViewController.swift; sourceTree = "<group>"; };
+		C303E5311C140B7100E682E0 /* Server.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Server.swift; sourceTree = "<group>"; };
+		C303E5331C14172F00E682E0 /* Settings-02.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Settings-02.png"; sourceTree = "<group>"; };
+		C32B22D31C12909B000D6065 /* RedOctober.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RedOctober.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C32B22D61C12909B000D6065 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		C32B22D81C12909B000D6065 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		C32B22DB1C12909B000D6065 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		C32B22DD1C12909B000D6065 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C32B22E01C12909B000D6065 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		C32B22E21C12909B000D6065 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C32B22E71C12909B000D6065 /* RedOctoberTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RedOctoberTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C32B22EB1C12909B000D6065 /* RedOctoberTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedOctoberTests.swift; sourceTree = "<group>"; };
+		C32B22ED1C12909B000D6065 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C32B22F21C12909B000D6065 /* RedOctoberUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RedOctoberUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C32B22F61C12909B000D6065 /* RedOctoberUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RedOctoberUITests.swift; sourceTree = "<group>"; };
+		C32B22F81C12909B000D6065 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		C32B23051C1290BC000D6065 /* question-mark-4-xxl.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "question-mark-4-xxl.png"; sourceTree = "<group>"; };
+		C32B23061C1290BC000D6065 /* server-icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "server-icon.png"; sourceTree = "<group>"; };
+		C32B23091C1291CE000D6065 /* WebViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = WebViewController.swift; sourceTree = "<group>"; };
+		C32B230B1C12991E000D6065 /* cf-certified-partner-badge-250px.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "cf-certified-partner-badge-250px.png"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C32B22D01C12909B000D6065 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C32B22E41C12909B000D6065 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C32B22EF1C12909B000D6065 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C32B22CA1C12909B000D6065 = {
+			isa = PBXGroup;
+			children = (
+				C32B22D51C12909B000D6065 /* RedOctober */,
+				C32B22EA1C12909B000D6065 /* RedOctoberTests */,
+				C32B22F51C12909B000D6065 /* RedOctoberUITests */,
+				C32B22D41C12909B000D6065 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C32B22D41C12909B000D6065 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C32B22D31C12909B000D6065 /* RedOctober.app */,
+				C32B22E71C12909B000D6065 /* RedOctoberTests.xctest */,
+				C32B22F21C12909B000D6065 /* RedOctoberUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C32B22D51C12909B000D6065 /* RedOctober */ = {
+			isa = PBXGroup;
+			children = (
+				C32B23041C1290A9000D6065 /* Image */,
+				C32B22D61C12909B000D6065 /* AppDelegate.swift */,
+				C32B22D81C12909B000D6065 /* ViewController.swift */,
+				C32B22DA1C12909B000D6065 /* Main.storyboard */,
+				C32B22DD1C12909B000D6065 /* Assets.xcassets */,
+				C32B22DF1C12909B000D6065 /* LaunchScreen.storyboard */,
+				C32B22E21C12909B000D6065 /* Info.plist */,
+				C32B23091C1291CE000D6065 /* WebViewController.swift */,
+				C303E52F1C1406DB00E682E0 /* OptionViewController.swift */,
+				C303E5311C140B7100E682E0 /* Server.swift */,
+			);
+			path = RedOctober;
+			sourceTree = "<group>";
+		};
+		C32B22EA1C12909B000D6065 /* RedOctoberTests */ = {
+			isa = PBXGroup;
+			children = (
+				C32B22EB1C12909B000D6065 /* RedOctoberTests.swift */,
+				C32B22ED1C12909B000D6065 /* Info.plist */,
+			);
+			path = RedOctoberTests;
+			sourceTree = "<group>";
+		};
+		C32B22F51C12909B000D6065 /* RedOctoberUITests */ = {
+			isa = PBXGroup;
+			children = (
+				C32B22F61C12909B000D6065 /* RedOctoberUITests.swift */,
+				C32B22F81C12909B000D6065 /* Info.plist */,
+			);
+			path = RedOctoberUITests;
+			sourceTree = "<group>";
+		};
+		C32B23041C1290A9000D6065 /* Image */ = {
+			isa = PBXGroup;
+			children = (
+				C303E5331C14172F00E682E0 /* Settings-02.png */,
+				C32B230B1C12991E000D6065 /* cf-certified-partner-badge-250px.png */,
+				C32B23051C1290BC000D6065 /* question-mark-4-xxl.png */,
+				C32B23061C1290BC000D6065 /* server-icon.png */,
+			);
+			name = Image;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C32B22D21C12909B000D6065 /* RedOctober */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C32B22FB1C12909B000D6065 /* Build configuration list for PBXNativeTarget "RedOctober" */;
+			buildPhases = (
+				C32B22CF1C12909B000D6065 /* Sources */,
+				C32B22D01C12909B000D6065 /* Frameworks */,
+				C32B22D11C12909B000D6065 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = RedOctober;
+			productName = RedOctober;
+			productReference = C32B22D31C12909B000D6065 /* RedOctober.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C32B22E61C12909B000D6065 /* RedOctoberTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C32B22FE1C12909B000D6065 /* Build configuration list for PBXNativeTarget "RedOctoberTests" */;
+			buildPhases = (
+				C32B22E31C12909B000D6065 /* Sources */,
+				C32B22E41C12909B000D6065 /* Frameworks */,
+				C32B22E51C12909B000D6065 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C32B22E91C12909B000D6065 /* PBXTargetDependency */,
+			);
+			name = RedOctoberTests;
+			productName = RedOctoberTests;
+			productReference = C32B22E71C12909B000D6065 /* RedOctoberTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C32B22F11C12909B000D6065 /* RedOctoberUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C32B23011C12909B000D6065 /* Build configuration list for PBXNativeTarget "RedOctoberUITests" */;
+			buildPhases = (
+				C32B22EE1C12909B000D6065 /* Sources */,
+				C32B22EF1C12909B000D6065 /* Frameworks */,
+				C32B22F01C12909B000D6065 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				C32B22F41C12909B000D6065 /* PBXTargetDependency */,
+			);
+			name = RedOctoberUITests;
+			productName = RedOctoberUITests;
+			productReference = C32B22F21C12909B000D6065 /* RedOctoberUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C32B22CB1C12909B000D6065 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 0710;
+				LastUpgradeCheck = 0710;
+				ORGANIZATIONNAME = Cody;
+				TargetAttributes = {
+					C32B22D21C12909B000D6065 = {
+						CreatedOnToolsVersion = 7.1.1;
+						DevelopmentTeam = 86WUEYCV2C;
+					};
+					C32B22E61C12909B000D6065 = {
+						CreatedOnToolsVersion = 7.1.1;
+						DevelopmentTeam = 86WUEYCV2C;
+						TestTargetID = C32B22D21C12909B000D6065;
+					};
+					C32B22F11C12909B000D6065 = {
+						CreatedOnToolsVersion = 7.1.1;
+						DevelopmentTeam = 86WUEYCV2C;
+						TestTargetID = C32B22D21C12909B000D6065;
+					};
+				};
+			};
+			buildConfigurationList = C32B22CE1C12909B000D6065 /* Build configuration list for PBXProject "RedOctober" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = C32B22CA1C12909B000D6065;
+			productRefGroup = C32B22D41C12909B000D6065 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C32B22D21C12909B000D6065 /* RedOctober */,
+				C32B22E61C12909B000D6065 /* RedOctoberTests */,
+				C32B22F11C12909B000D6065 /* RedOctoberUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		C32B22D11C12909B000D6065 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C32B23071C1290BC000D6065 /* question-mark-4-xxl.png in Resources */,
+				C32B230C1C12991E000D6065 /* cf-certified-partner-badge-250px.png in Resources */,
+				C32B22E11C12909B000D6065 /* LaunchScreen.storyboard in Resources */,
+				C32B23081C1290BC000D6065 /* server-icon.png in Resources */,
+				C32B22DE1C12909B000D6065 /* Assets.xcassets in Resources */,
+				C32B22DC1C12909B000D6065 /* Main.storyboard in Resources */,
+				C303E5341C14172F00E682E0 /* Settings-02.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C32B22E51C12909B000D6065 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C32B22F01C12909B000D6065 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C32B22CF1C12909B000D6065 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C303E5321C140B7100E682E0 /* Server.swift in Sources */,
+				C32B22D91C12909B000D6065 /* ViewController.swift in Sources */,
+				C303E5301C1406DB00E682E0 /* OptionViewController.swift in Sources */,
+				C32B230A1C1291CE000D6065 /* WebViewController.swift in Sources */,
+				C32B22D71C12909B000D6065 /* AppDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C32B22E31C12909B000D6065 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C32B22EC1C12909B000D6065 /* RedOctoberTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C32B22EE1C12909B000D6065 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C32B22F71C12909B000D6065 /* RedOctoberUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		C32B22E91C12909B000D6065 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C32B22D21C12909B000D6065 /* RedOctober */;
+			targetProxy = C32B22E81C12909B000D6065 /* PBXContainerItemProxy */;
+		};
+		C32B22F41C12909B000D6065 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C32B22D21C12909B000D6065 /* RedOctober */;
+			targetProxy = C32B22F31C12909B000D6065 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		C32B22DA1C12909B000D6065 /* Main.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				C32B22DB1C12909B000D6065 /* Base */,
+			);
+			name = Main.storyboard;
+			sourceTree = "<group>";
+		};
+		C32B22DF1C12909B000D6065 /* LaunchScreen.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				C32B22E01C12909B000D6065 /* Base */,
+			);
+			name = LaunchScreen.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		C32B22F91C12909B000D6065 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.1;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C32B22FA1C12909B000D6065 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 9.1;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		C32B22FC1C12909B000D6065 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				INFOPLIST_FILE = RedOctober/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "Longfei-Li.RedOctober";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		C32B22FD1C12909B000D6065 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				INFOPLIST_FILE = RedOctober/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "Longfei-Li.RedOctober";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		C32B22FF1C12909B000D6065 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				INFOPLIST_FILE = RedOctoberTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "Longfei-Li.RedOctoberTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RedOctober.app/RedOctober";
+			};
+			name = Debug;
+		};
+		C32B23001C12909B000D6065 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				INFOPLIST_FILE = RedOctoberTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "Longfei-Li.RedOctoberTests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RedOctober.app/RedOctober";
+			};
+			name = Release;
+		};
+		C32B23021C12909B000D6065 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = RedOctoberUITests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "Longfei-Li.RedOctoberUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_TARGET_NAME = RedOctober;
+				USES_XCTRUNNER = YES;
+			};
+			name = Debug;
+		};
+		C32B23031C12909B000D6065 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				INFOPLIST_FILE = RedOctoberUITests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = "Longfei-Li.RedOctoberUITests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				TEST_TARGET_NAME = RedOctober;
+				USES_XCTRUNNER = YES;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C32B22CE1C12909B000D6065 /* Build configuration list for PBXProject "RedOctober" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C32B22F91C12909B000D6065 /* Debug */,
+				C32B22FA1C12909B000D6065 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C32B22FB1C12909B000D6065 /* Build configuration list for PBXNativeTarget "RedOctober" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C32B22FC1C12909B000D6065 /* Debug */,
+				C32B22FD1C12909B000D6065 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C32B22FE1C12909B000D6065 /* Build configuration list for PBXNativeTarget "RedOctoberTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C32B22FF1C12909B000D6065 /* Debug */,
+				C32B23001C12909B000D6065 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C32B23011C12909B000D6065 /* Build configuration list for PBXNativeTarget "RedOctoberUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C32B23021C12909B000D6065 /* Debug */,
+				C32B23031C12909B000D6065 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C32B22CB1C12909B000D6065 /* Project object */;
+}
