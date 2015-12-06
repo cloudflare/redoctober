@@ -7,12 +7,14 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
 	"testing"
 
 	"github.com/cloudflare/redoctober/passvault"
+	"golang.org/x/crypto/ssh"
 )
 
 func TestCreate(t *testing.T) {
@@ -404,6 +406,8 @@ func TestEncryptDecrypt(t *testing.T) {
 	encryptJson := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"Minimum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
 	encryptJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Labels\":[\"blue\",\"red\"]}")
 	encryptJson3 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":1,\"Owners\":[\"Alice\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
+	encryptJson4 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":1,\"Owners\":[\"Alice\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Usages\":[\"decrypt\"]}")
+	encryptJson5 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":1,\"Owners\":[\"Alice\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Usages\":[\"unused\"]}")
 
 	Init("memory", "", "", "", "")
 
@@ -619,6 +623,92 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 	if s.Status != "ok" {
 		t.Fatalf("Error in decrypt, %v", s.Status)
+	}
+
+	// Encrypt with "decrypt" usage
+	respJson, err = Encrypt(encryptJson4)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in encrypt, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson6)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	// decrypt file
+	decryptJson3, err := json.Marshal(DecryptRequest{Name: "Alice", Password: "Hello", Data: s.Response})
+	if err != nil {
+		t.Fatalf("Error in marshalling decryption, %v", err)
+	}
+
+	respJson2, err = Decrypt(decryptJson3)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson2, &s)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in decrypt, %v", s.Status)
+	}
+
+	// Encrypt with "unused" usage
+	respJson, err = Encrypt(encryptJson5)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in encrypt, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson6)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	// decrypt file
+	decryptJson4, err := json.Marshal(DecryptRequest{Name: "Alice", Password: "Hello", Data: s.Response})
+	if err != nil {
+		t.Fatalf("Error in marshalling decryption, %v", err)
+	}
+
+	respJson2, err = Decrypt(decryptJson4)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson2, &s)
+	if err != nil {
+		t.Fatalf("Error in decrypt, %v", err)
+	}
+	if s.Status == "ok" {
+		t.Fatalf("Expected error decrypting blob without \"decrypt\" usage")
 	}
 }
 
@@ -1129,5 +1219,136 @@ func TestValidateName(t *testing.T) {
 	err = validateName("username", "password")
 	if err != nil {
 		t.Fatalf("No error expected when username and password provided, %v", err)
+	}
+}
+func TestSSHSignWith(t *testing.T) {
+	delegateJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":10}")
+
+	Init("memory")
+
+	// check for summary of initialized vault with new member
+	var s ResponseData
+	respJson, err := Create(delegateJson)
+	if err != nil {
+		t.Fatalf("Error in creating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in creating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in creating account, %v", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in delegating account, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in delegating account, %v", s.Status)
+	}
+
+	sshKey, err := ioutil.ReadFile("../testdata/ssh_key")
+	if err != nil {
+		t.Fatalf("Error loading test SSH key, %v", err)
+	}
+
+	sshPubKeyBytes, err := ioutil.ReadFile("../testdata/ssh_key.pub")
+	if err != nil {
+		t.Fatalf("Error loading test SSH pubkey, %v", err)
+	}
+
+	sshPubKey, _, _, _, err := ssh.ParseAuthorizedKey(sshPubKeyBytes)
+	if err != nil {
+		t.Fatalf("Error loading test SSH pubkey, %v", err)
+	}
+
+	e := EncryptRequest{Name: "Alice", Password: "Hello",
+		Owners: []string{"Alice"}, Minimum: 1, Data: sshKey}
+
+	encryptJson, err := json.Marshal(e)
+	if err != nil {
+		t.Fatalf("Error marshalling encrypt request, %v", err)
+	}
+
+	// Encrypt SSH key
+	respJson, err = Encrypt(encryptJson)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in encrypt, %v", s.Status)
+	}
+
+	// try to generate a signature
+	sshSignWithJson, err := json.Marshal(SSHSignWithRequest{Name: "Alice", Password: "Hello", Data: s.Response, TBSData: []byte("signme")})
+	if err != nil {
+		t.Fatalf("Error marshalling ssh-sign-with request, %v", err)
+	}
+
+	respJson, err = SSHSignWith(sshSignWithJson)
+	if err != nil {
+		t.Fatalf("Error in ssh-sign-with, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in ssh-sign-with, %v", err)
+	}
+	if s.Status != "cannot sign with this file" {
+		t.Fatalf("Expected error using ssh-sign-with without 'ssh-sign-with' usage, got %v", s.Status)
+	}
+
+	e.Usages = []string{"ssh-sign-with"}
+	encryptJson, err = json.Marshal(e)
+	if err != nil {
+		t.Fatalf("Error marshalling encrypt request, %v", err)
+	}
+
+	respJson, err = Encrypt(encryptJson)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in encrypt, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in encrypt, %v", s.Status)
+	}
+
+	sshSignWithJson, err = json.Marshal(SSHSignWithRequest{Name: "Alice", Password: "Hello", Data: s.Response, TBSData: []byte("signme")})
+	if err != nil {
+		t.Fatalf("Error marshalling ssh-sign-with request, %v", err)
+	}
+
+	respJson, err = SSHSignWith(sshSignWithJson)
+	if err != nil {
+		t.Fatalf("Error in ssh-sign-with, %v", err)
+	}
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error in ssh-sign-with, %v", err)
+	}
+	if s.Status != "ok" {
+		t.Fatalf("Error in ssh-sign-with, %v", s.Status)
+	}
+
+	var sshSignWithResponse SSHSignatureWithDelegates
+	err = json.Unmarshal(s.Response, &sshSignWithResponse)
+	if err != nil {
+		t.Fatalf("Error unmarshalling ssh-sign-with response, %v", err)
+	}
+
+	err = sshPubKey.Verify([]byte("signme"), &sshSignWithResponse.Signature)
+	if err != nil {
+		t.Fatalf("Error verifying ssh-sign-with signature, %v", err)
 	}
 }

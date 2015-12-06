@@ -5,14 +5,13 @@
 package core
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"strconv"
 	"time"
-
-	"crypto/rand"
 
 	"github.com/cloudflare/redoctober/cryptor"
 	"github.com/cloudflare/redoctober/hipchat"
@@ -100,7 +99,7 @@ type DecryptRequest struct {
 	Data []byte
 }
 
-type DecryptSignRequest struct {
+type SSHSignWithRequest struct {
 	Name     string
 	Password string
 
@@ -172,11 +171,10 @@ type DecryptWithDelegates struct {
 	Delegates []string
 }
 
-type DecryptSignWithDelegates struct {
-	SignatureFormat string
-	Signature       []byte
-	Secure          bool
-	Delegates       []string
+type SSHSignatureWithDelegates struct {
+	Signature ssh.Signature
+	Secure    bool
+	Delegates []string
 }
 
 type OwnersData struct {
@@ -668,16 +666,16 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 	return jsonResponse(out)
 }
 
-// DecryptSign processes a decrypt-sign request.
-func DecryptSign(jsonIn []byte) ([]byte, error) {
-	var s DecryptSignRequest
+// SSHSignWith signs a message with an SSH key
+func SSHSignWith(jsonIn []byte) ([]byte, error) {
+	var s SSHSignWithRequest
 	var err error
 
 	defer func() {
 		if err != nil {
-			log.Printf("core.decrypt-sign failed: user=%s %v", s.Name, err)
+			log.Printf("core.ssh-sign-with failed: user=%s %v", s.Name, err)
 		} else {
-			log.Printf("core.decrypt-sign success: user=%s", s.Name)
+			log.Printf("core.ssh-sign-with success: user=%s", s.Name)
 		}
 	}()
 
@@ -699,7 +697,7 @@ func DecryptSign(jsonIn []byte) ([]byte, error) {
 	// a file must be marked as usable for "sign" before we will try to sign with it
 	foundSign := false
 	for _, usage := range usages {
-		if usage == "sign" {
+		if usage == "ssh-sign-with" {
 			foundSign = true
 		}
 	}
@@ -713,14 +711,11 @@ func DecryptSign(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	var signature *ssh.Signature
-	signature, err = signer.Sign(rand.Reader, s.TBSData)
-
-	resp := &DecryptSignWithDelegates{
-		SignatureFormat: signature.Format,
-		Signature:       signature.Blob,
-		Secure:          secure,
-		Delegates:       names,
+	signature, err := signer.Sign(rand.Reader, s.TBSData)
+	resp := &SSHSignatureWithDelegates{
+		Signature: *signature,
+		Secure:    secure,
+		Delegates: names,
 	}
 
 	out, err := json.Marshal(resp)

@@ -107,9 +107,12 @@ type SingleWrappedKey struct {
 // EncryptedData is the format for encrypted data containing all the
 // keys necessary to decrypt it when delegated.
 type EncryptedData struct {
-	Version   int
-	VaultId   int                         `json:",omitempty"`
-	Labels    []string                    `json:",omitempty"`
+	Version int
+	VaultId int      `json:",omitempty"`
+	Labels  []string `json:",omitempty"`
+
+	// Usages lists the endpoints which may use this data
+	// If empty, only decryption is permitted
 	Usages    []string                    `json:",omitempty"`
 	Predicate string                      `json:",omitempty"`
 	KeySet    []MultiWrappedKey           `json:",omitempty"`

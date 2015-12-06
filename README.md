@@ -353,9 +353,9 @@ Generate an ssh key without passphrase:
 
     $ ssh-keygen -f id_rsa -N ""
 
-Encrypt with the "sign" usage only:
+Encrypt with the "ssh-sign-with" usage only:
 
-    $ ro -minimum 2 -owners alice,bob -usages sign \
+    $ ro -minimum 2 -owners alice,bob -usages ssh-sign-with \
          -server ro.local -in id_rsa -out id_rsa.encrypted encrypt
 
 Use the remote server to authenticate to an SSH server

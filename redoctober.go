@@ -28,23 +28,23 @@ import (
 // List of URLs to register and their related functions
 
 var functions = map[string]func([]byte) ([]byte, error){
-	"/create":       core.Create,
-	"/create-user":  core.CreateUser,
-	"/summary":      core.Summary,
-	"/purge":        core.Purge,
-	"/delegate":     core.Delegate,
-	"/password":     core.Password,
-	"/encrypt":      core.Encrypt,
-	"/re-encrypt":   core.ReEncrypt,
-	"/decrypt":      core.Decrypt,
-	"/decrypt-sign": core.DecryptSign,
-	"/owners":       core.Owners,
-	"/modify":       core.Modify,
-	"/export":       core.Export,
-	"/order":        core.Order,
-	"/orderout":     core.OrdersOutstanding,
-	"/orderinfo":    core.OrderInfo,
-	"/ordercancel":  core.OrderCancel,
+	"/create":        core.Create,
+	"/create-user":   core.CreateUser,
+	"/summary":       core.Summary,
+	"/purge":         core.Purge,
+	"/delegate":      core.Delegate,
+	"/password":      core.Password,
+	"/encrypt":       core.Encrypt,
+	"/re-encrypt":    core.ReEncrypt,
+	"/decrypt":       core.Decrypt,
+	"/ssh-sign-with": core.SSHSignWith,
+	"/owners":        core.Owners,
+	"/modify":        core.Modify,
+	"/export":        core.Export,
+	"/order":         core.Order,
+	"/orderout":      core.OrdersOutstanding,
+	"/orderinfo":     core.OrderInfo,
+	"/ordercancel":   core.OrderCancel,
 }
 
 type userRequest struct {
@@ -558,7 +558,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="encrypt-usages">Usages <small>(comma separated)</small></label>
-							<input type="text" name="Usages" class="form-control" id="encrypt-usages" placeholder="e.g. sign, decrypt" />
+							<input type="text" name="Usages" class="form-control" id="encrypt-usages" placeholder="e.g. ssh-sign-with, decrypt" />
 						</div>
 					</div>
 					<div class="form-group">
