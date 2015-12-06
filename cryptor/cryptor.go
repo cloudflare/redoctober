@@ -64,9 +64,9 @@ type UserDatabase struct {
 	shareSet map[string][][]byte
 }
 
-func (u UserDatabase) ValidUser(name string) bool {
-	_, ok := u.records.GetRecord(name)
-	return ok
+func (u UserDatabase) ValidUser(name string) (bool, error) {
+	_, ok, err := u.records.GetRecord(name)
+	return ok, err
 }
 
 func (u UserDatabase) CanGetShare(name string) bool {
@@ -237,7 +237,10 @@ func (encrypted *EncryptedData) unlock(key []byte) (err error) {
 // wrapKey encrypts the clear key according to an access structure.
 func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []byte, access AccessStructure) (err error) {
 	generateRandomKey := func(name string) (singleWrappedKey SingleWrappedKey, err error) {
-		rec, ok := records.GetRecord(name)
+		rec, ok, err := records.GetRecord(name)
+		if err != nil {
+			return
+		}
 		if !ok {
 			err = errors.New("Missing user on disk")
 			return

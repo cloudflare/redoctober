@@ -140,7 +140,18 @@ func jsonStatusError(err error) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: err.Error()})
 }
 func jsonSummary() ([]byte, error) {
-	return json.Marshal(SummaryData{Status: "ok", Live: cache.GetSummary(), All: records.GetSummary()})
+	live, err := cache.GetSummary()
+	if err != nil {
+		//fmt.Printf("Error 1")
+		return nil, err
+	}
+
+	all, err := records.GetSummary()
+	if err != nil {
+		return nil, err
+	}
+
+	return json.Marshal(SummaryData{Status: "ok", Live: live, All: all})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
@@ -149,11 +160,18 @@ func jsonResponse(resp []byte) ([]byte, error) {
 // validateUser checks that the username and password passed in are
 // correct. If admin is true, the user must be an admin as well.
 func validateUser(name, password string, admin bool) error {
-	if records.NumRecords() == 0 {
+	numRecords, err := records.NumRecords()
+	if err != nil {
+		return err
+	}
+	if numRecords == 0 {
 		return errors.New("Vault is not created yet")
 	}
 
-	pr, ok := records.GetRecord(name)
+	pr, ok, err := records.GetRecord(name)
+	if err != nil {
+		return err
+	}
 	if !ok {
 		return errors.New("User not present")
 	}
@@ -183,19 +201,19 @@ func validateName(name, password string) error {
 }
 
 // Init reads the records from disk from a given path
-func Init(path string) error {
+func Init(clear bool) error {
 	var err error
 
 	defer func() {
 		if err != nil {
 			log.Printf("core.init failed: %v", err)
 		} else {
-			log.Printf("core.init success: path=%s", path)
+			log.Printf("core.init success")
 		}
 	}()
 
-	if records, err = passvault.InitFrom(path); err != nil {
-		err = fmt.Errorf("failed to load password vault %s: %s", path, err)
+	if records, err = passvault.InitDB(clear); err != nil {
+		err = fmt.Errorf("failed to load password vault: %s", err)
 	}
 
 	cache = keycache.Cache{UserKeys: make(map[keycache.DelegateIndex]keycache.ActiveUser)}
@@ -221,7 +239,11 @@ func Create(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if records.NumRecords() != 0 {
+	numRecords, err := records.NumRecords()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if numRecords != 0 {
 		err = errors.New("Vault is already created")
 		return jsonStatusError(err)
 	}
@@ -256,7 +278,11 @@ func Summary(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if records.NumRecords() == 0 {
+	numRecords, err := records.NumRecords()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if numRecords == 0 {
 		err = errors.New("vault has not been created")
 		return jsonStatusError(err)
 	}
@@ -285,7 +311,11 @@ func Purge(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if records.NumRecords() == 0 {
+	numRecords, err := records.NumRecords()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if numRecords == 0 {
 		err = errors.New("vault has not been created")
 		return jsonStatusError(err)
 	}
@@ -316,7 +346,11 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if records.NumRecords() == 0 {
+	numRecords, err := records.NumRecords()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if numRecords == 0 {
 		err = errors.New("Vault is not created yet")
 		return jsonStatusError(err)
 	}
@@ -328,7 +362,11 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 	// Make sure the user we are delegating to exists
 	for _, user := range s.Users {
-		if _, ok := records.GetRecord(user); !ok {
+		_, ok, err := records.GetRecord(user)
+		if err != nil {
+			return jsonStatusError(err)
+		}
+		if !ok {
 			err = errors.New("User not present")
 			return jsonStatusError(err)
 		}
@@ -336,7 +374,10 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	// Find password record for user and verify that their password
 	// matches. If not found then add a new entry for this user.
 
-	pr, found := records.GetRecord(s.Name)
+	pr, found, err := records.GetRecord(s.Name)
+	if err != nil {
+		return jsonStatusError(err)
+	}
 	if found {
 		if err = pr.ValidatePassword(s.Password); err != nil {
 			return jsonStatusError(err)
@@ -377,7 +418,11 @@ func CreateUser(jsonIn []byte) ([]byte, error) {
 		s.UserType = passvault.DefaultRecordType
 	}
 
-	if records.NumRecords() == 0 {
+	numRecords, err := records.NumRecords()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if numRecords == 0 {
 		err = errors.New("Vault is not created yet")
 		return jsonStatusError(err)
 	}
@@ -387,7 +432,10 @@ func CreateUser(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	_, found := records.GetRecord(s.Name)
+	_, found, err := records.GetRecord(s.Name)
+	if err != nil {
+		return jsonStatusError(err)
+	}
 	if found {
 		err = errors.New("User with that name already exists")
 		return jsonStatusError(err)
@@ -417,7 +465,11 @@ func Password(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if records.NumRecords() == 0 {
+	numRecords, err := records.NumRecords()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if numRecords == 0 {
 		err = errors.New("Vault is not created yet")
 		return jsonStatusError(err)
 	}
@@ -576,7 +628,11 @@ func Modify(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, ok := records.GetRecord(s.ToModify); !ok {
+	_, ok, err := records.GetRecord(s.ToModify)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if !ok {
 		err = errors.New("core: record to modify missing")
 		return jsonStatusError(err)
 	}

@@ -16,17 +16,18 @@ import (
 	"crypto/sha1"
 	"crypto/x509"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
-	"io/ioutil"
 	"math/big"
 	mrand "math/rand"
-	"os"
 
 	"github.com/cloudflare/redoctober/ecdh"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/symcrypt"
 	"golang.org/x/crypto/scrypt"
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3" // Initialize SQLite without bringing it in scope
+	"fmt"
+	"os"
 )
 
 // Constants for record type
@@ -34,6 +35,26 @@ const (
 	RSARecord = "RSA"
 	ECCRecord = "ECC"
 )
+
+const schema = `
+	CREATE TABLE IF NOT EXISTS passvault (
+		Username VARCHAR(2500) PRIMARY KEY,
+		Type VARCHAR(100),
+		PasswordSalt BLOB,
+		HashedPassword BLOB,
+		KeySalt BLOB,
+		Admin TINYINT,
+
+		RSAExp BLOB,
+		RSAExpIV BLOB,
+		RSAPrimeP BLOB,
+		RSAPrimePIV BLOB,
+		RSAPrimeQ BLOB,
+		RSAPrimeQIV BLOB,
+		RSAPublicModulus BIGINT,
+		RSAPublicExponent INT
+	)
+`
 
 var DefaultRecordType = RSARecord
 
@@ -67,6 +88,7 @@ func (pk *ECPublicKey) toECDSA() *ecdsa.PublicKey {
 // material for a single user name. It is written and read from
 // storage in JSON format.
 type PasswordRecord struct {
+	Username       string
 	Type           string
 	PasswordSalt   []byte
 	HashedPassword []byte
@@ -88,15 +110,10 @@ type PasswordRecord struct {
 	Admin bool
 }
 
-// diskRecords is the structure used to read and write a JSON file
-// containing the contents of a password vault
 type Records struct {
-	Version   int
 	VaultId   int
 	HmacKey   []byte
-	Passwords map[string]PasswordRecord
-
-	localPath string // Path of current vault
+	db        *sql.DB
 }
 
 // Summary is a minmial account summary.
@@ -167,8 +184,9 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 }
 
 // createPasswordRec creates a new record from a username and password
-func createPasswordRec(password string, admin bool, userType string) (newRec PasswordRecord, err error) {
+func createPasswordRec(name string, password string, admin bool, userType string) (newRec PasswordRecord, err error) {
 	newRec.Type = userType
+	newRec.Username = name
 
 	if newRec.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
@@ -254,118 +272,46 @@ func encryptECB(data, key []byte) (encryptedData []byte, err error) {
 	return
 }
 
-// InitFromDisk reads the record from disk and initialize global context.
-func InitFrom(path string) (records Records, err error) {
-	var jsonDiskRecord []byte
-
-	if path != "memory" {
-		jsonDiskRecord, err = ioutil.ReadFile(path)
-
-		// It's OK for the file to be missing, we'll create it later if
-		// anything is added.
-
-		if err != nil && !os.IsNotExist(err) {
+func InitDB(clear bool) (records Records, err error) {
+	if clear {
+		if err = os.Remove("./passvault.db"); err != nil {
 			return
 		}
 	}
+	
+	db, err := sql.Open("sqlite3", "./passvault.db")
 
-	// Initialized so that we can determine later if anything was read
-	// from the file.
-
-	records.Version = 0
-
-	if len(jsonDiskRecord) != 0 {
-		if err = json.Unmarshal(jsonDiskRecord, &records); err != nil {
-			return
-		}
-	}
-
-	err = errors.New("Format error")
-	for _, rec := range records.Passwords {
-		if len(rec.PasswordSalt) != 16 {
-			return
-		}
-		if len(rec.HashedPassword) != 16 {
-			return
-		}
-		if len(rec.KeySalt) != 16 {
-			return
-		}
-		if rec.Type == RSARecord {
-			if len(rec.RSAKey.RSAExp) == 0 || len(rec.RSAKey.RSAExp)%16 != 0 {
-				return
-			}
-			if len(rec.RSAKey.RSAPrimeP) == 0 || len(rec.RSAKey.RSAPrimeP)%16 != 0 {
-				return
-			}
-			if len(rec.RSAKey.RSAPrimeQ) == 0 || len(rec.RSAKey.RSAPrimeQ)%16 != 0 {
-				return
-			}
-			if len(rec.RSAKey.RSAExpIV) != 16 {
-				return
-			}
-			if len(rec.RSAKey.RSAPrimePIV) != 16 {
-				return
-			}
-			if len(rec.RSAKey.RSAPrimeQIV) != 16 {
-				return
-			}
-		}
-		if rec.Type == ECCRecord {
-			if len(rec.ECKey.ECPriv) == 0 || len(rec.ECKey.ECPriv)%16 != 0 {
-				return
-			}
-			if len(rec.ECKey.ECPrivIV) != 16 {
-				return
-			}
-		}
-	}
-
-	// If the Version field is 0 then it indicates that nothing was
-	// read from the file and so it needs to be initialized.
-
-	if records.Version == 0 {
-		records.Version = DEFAULT_VERSION
-		records.VaultId = int(mrand.Int31())
-		records.HmacKey, err = symcrypt.MakeRandom(16)
-		if err != nil {
-			return
-		}
-		records.Passwords = make(map[string]PasswordRecord)
-	}
-
-	records.localPath = path
-
-	err = nil
-	return
-}
-
-// WriteRecordsToDisk saves the current state of the records to disk.
-func (records *Records) WriteRecordsToDisk() error {
-	if records.localPath == "memory" {
-		return nil
-	}
-
-	jsonDiskRecord, err := json.Marshal(records)
 	if err != nil {
-		return err
+		return
 	}
-	return ioutil.WriteFile(records.localPath, jsonDiskRecord, 0644)
+
+	if _, err = db.Exec(schema); err != nil {
+		return
+	}
+
+	records.db = db
+	records.VaultId = int(mrand.Int31())
+	records.HmacKey, err = symcrypt.MakeRandom(16)
+
+	return records, err
 }
 
 // AddNewRecord adds a new record for a given username and password.
 func (records *Records) AddNewRecord(name, password string, admin bool, userType string) (PasswordRecord, error) {
-	pr, err := createPasswordRec(password, admin, userType)
+	pr, err := createPasswordRec(name, password, admin, userType)
 	if err != nil {
 		return pr, err
 	}
-	records.SetRecord(pr, name)
-	return pr, records.WriteRecordsToDisk()
+	err = records.SetNewRecord(pr, name)
+	return pr, err
 }
 
 // ChangePassword changes the password for a given user.
 func (records *Records) ChangePassword(name, password, newPassword string) (err error) {
-	pr, ok := records.GetRecord(name)
+	pr, ok, err := records.GetRecord(name)
+	if err != nil {
+		return
+	}
 	if !ok {
 		err = errors.New("Record not present")
 		return
@@ -420,49 +366,160 @@ func (records *Records) ChangePassword(name, password, newPassword string) (err 
 
 	pr.KeySalt = keySalt
 
-	records.SetRecord(pr, name)
-
-	return records.WriteRecordsToDisk()
+	return records.SetExistingRecord(pr, name)
 }
 
 // DeleteRecord deletes a given record.
 func (records *Records) DeleteRecord(name string) error {
-	if _, ok := records.GetRecord(name); ok {
-		delete(records.Passwords, name)
-		return records.WriteRecordsToDisk()
+	result, err := records.db.Exec("DELETE FROM passvault WHERE Username = $1", name)
+
+	if err != nil {
+		return err
 	}
-	return errors.New("Record missing")
+
+	var numRowsAffected int64
+	numRowsAffected, err = result.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if numRowsAffected != 1 {
+		return errors.New("Record missing")
+	}
+
+	return nil
 }
 
 // RevokeRecord removes admin status from a record.
 func (records *Records) RevokeRecord(name string) error {
-	if rec, ok := records.GetRecord(name); ok {
-		rec.Admin = false
-		records.SetRecord(rec, name)
-		return records.WriteRecordsToDisk()
+	result, err := records.db.Exec("UPDATE passvault SET admin = 0 WHERE Username = $1", name)
+
+	if err != nil {
+		return err
 	}
-	return errors.New("Record missing")
+
+	var numRowsAffected int64
+	numRowsAffected, err = result.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if numRowsAffected != 1 {
+		return errors.New("Record missing")
+	}
+
+	return nil
 }
 
 // MakeAdmin adds admin status to a given record.
 func (records *Records) MakeAdmin(name string) error {
-	if rec, ok := records.GetRecord(name); ok {
-		rec.Admin = true
-		records.SetRecord(rec, name)
-		return records.WriteRecordsToDisk()
+	result, err := records.db.Exec("UPDATE passvault SET admin = 1 WHERE Username = $1", name)
+
+	if err != nil {
+		return err
 	}
-	return errors.New("Record missing")
+
+	var numRowsAffected int64
+	numRowsAffected, err = result.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if numRowsAffected != 1 {
+		return errors.New("Record missing")
+	}
+
+	return nil
 }
 
-// SetRecord puts a record into the global status.
-func (records *Records) SetRecord(pr PasswordRecord, name string) {
-	records.Passwords[name] = pr
+func (records *Records) SetNewRecord(pr PasswordRecord, name string) error {
+	_, err := records.db.Exec(`INSERT INTO passvault (
+	    Username, Type, PasswordSalt, HashedPassword, KeySalt, Admin,
+	    RSAExp, RSAExpIV, RSAPrimeP, RSAPrimePIV,
+	    RSAPrimeQ, RSAPrimeQIV, RSAPublicModulus, RSAPublicExponent
+	) 
+	VALUES (
+		$1, $2, $3, $4, $5, $6,
+		$7, $8, $9, $10,
+		$11, $12, $13, $14
+	)`,
+		pr.Username, pr.Type, pr.PasswordSalt, pr.HashedPassword, pr.KeySalt, pr.Admin,
+		pr.RSAKey.RSAExp, pr.RSAKey.RSAExpIV, pr.RSAKey.RSAPrimeP, pr.RSAKey.RSAPrimePIV,
+		pr.RSAKey.RSAPrimeQ, pr.RSAKey.RSAPrimeQIV, pr.RSAKey.RSAPublic.N.Int64(), pr.RSAKey.RSAPublic.E)
+
+	if err != nil {
+		fmt.Printf("Error: %v", err);
+	}
+
+	return err
+}
+
+func (records *Records) SetExistingRecord(pr PasswordRecord, name string) error {
+	result, err := records.db.Exec(`UPDATE passvault
+	SET Type = $1,
+	    PasswordSalt = $2,
+		HashedPassword = $3,
+		KeySalt = $4,
+		Admin = $5,
+
+		RSAExp = $6,
+		RSAExpIV = $7,
+		RSAPrimeP = $8,
+		RSAPrimePIV = $9,
+		RSAPrimeQ = $10,
+		RSAPrimeQIV = $11,
+		RSAPublicModulus = $12,
+		RSAPublicExponent = $13
+	WHERE Username = $14`, pr.Type, pr.HashedPassword, pr.KeySalt, pr.Admin,
+		pr.RSAKey.RSAExp, pr.RSAKey.RSAExpIV, pr.RSAKey.RSAPrimeP, pr.RSAKey.RSAPrimePIV,
+		pr.RSAKey.RSAPrimeQ, pr.RSAKey.RSAPrimeQIV, pr.RSAKey.RSAPublic.N, pr.RSAKey.RSAPublic.E,
+		name)
+
+	if err != nil {
+		return err
+	}
+
+	var numRowsAffected int64
+	numRowsAffected, err = result.RowsAffected()
+
+	if err != nil {
+		return err
+	}
+
+	if numRowsAffected != 1 {
+		return errors.New("Record missing")
+	}
+
+	return nil
 }
 
 // GetRecord returns a record given a name.
-func (records *Records) GetRecord(name string) (PasswordRecord, bool) {
-	dpr, found := records.Passwords[name]
-	return dpr, found
+func (records *Records) GetRecord(name string) (pr PasswordRecord, found bool, err error) {
+	rows, err := records.db.Query("SELECT * FROM passvault WHERE Username = $1", name)
+
+	if err != nil {
+		return
+	}
+
+	if !rows.Next() {
+		found = false
+		return
+	}
+	found = true
+
+	var RSAPublicModulus *big.Int;
+	var RSAPublicExponent int;
+	err = rows.Scan(&pr.Username, &pr.Type, &pr.PasswordSalt, &pr.HashedPassword,
+		&pr.KeySalt, &pr.Admin, &pr.RSAKey.RSAExp, &pr.RSAKey.RSAExpIV,
+		&pr.RSAKey.RSAPrimeP, &pr.RSAKey.RSAPrimePIV, &pr.RSAKey.RSAPrimeQ,
+		&pr.RSAKey.RSAPrimeQIV, &RSAPublicModulus, &RSAPublicExponent)
+
+	pr.RSAKey.RSAPublic = rsa.PublicKey{RSAPublicModulus, RSAPublicExponent}
+
+	return
 }
 
 // GetVaultId returns the id of the current vault.
@@ -476,17 +533,46 @@ func (records *Records) GetHMACKey() (key []byte, err error) {
 }
 
 // NumRecords returns the number of records in the vault.
-func (records *Records) NumRecords() int {
-	return len(records.Passwords)
+func (records *Records) NumRecords() (int, error) {
+	rows, err := records.db.Query("SELECT COUNT(*) FROM passvault")
+
+	if err != nil {
+		return 0, err
+	}
+
+	if !rows.Next() {
+		return 0, errors.New("Cannot count rows from passvault")
+	}
+
+	var count int
+	err = rows.Scan(&count)
+
+	return count, err
 }
 
 // GetSummary returns a summary of the records on disk.
-func (records *Records) GetSummary() (summary map[string]Summary) {
+func (records *Records) GetSummary() (summary map[string]Summary, err error) {
 	summary = make(map[string]Summary)
-	for name, pass := range records.Passwords {
-		summary[name] = Summary{pass.Admin, pass.Type}
+
+	rows, err := records.db.Query("SELECT Username, Admin, Type FROM passvault")
+
+	if err != nil {
+		return
 	}
-	return
+
+	for rows.Next() {
+		var username string
+		var admin int
+		var prType string
+
+		if err = rows.Scan(&username, &admin, &prType); err != nil {
+			return nil, err
+		}
+
+		summary[username] = Summary{admin == 1, prType}
+	}
+
+	return summary, nil
 }
 
 // IsAdmin returns the admin status of the PasswordRecord.
