@@ -29,14 +29,14 @@ func (signer ROSigner) PublicKey() ssh.PublicKey {
 }
 
 func (signer ROSigner) Sign(rand io.Reader, msg []byte) (signature *ssh.Signature, err error) {
-	req := core.DecryptSignRequest{
+	req := core.SSHSignWithRequest{
 		Name:     signer.user,
 		Password: signer.pswd,
 		Data:     signer.encryptedKey,
 		TBSData:  msg,
 	}
 
-	resp, err := signer.server.DecryptSign(req)
+	resp, err := signer.server.SSHSignWith(req)
 	if err != nil {
 		return nil, err
 	}
@@ -45,14 +45,12 @@ func (signer ROSigner) Sign(rand io.Reader, msg []byte) (signature *ssh.Signatur
 		return nil, errors.New("response status error")
 	}
 
-	var respMsg core.DecryptSignWithDelegates
+	var respMsg core.SSHSignatureWithDelegates
 	err = json.Unmarshal(resp.Response, &respMsg)
 	if err != nil {
 		return nil, err
 	}
-
-	respSignature := ssh.Signature{Format: respMsg.SignatureFormat, Blob: respMsg.Signature}
-	return &respSignature, nil
+	return &respMsg.Signature, nil
 }
 
 type ROAgent struct {

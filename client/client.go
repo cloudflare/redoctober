@@ -254,14 +254,14 @@ func (c *RemoteServer) Decrypt(req core.DecryptRequest) (*core.ResponseData, err
 
 }
 
-// DecryptSign issues an decrypt-sign request to the remote server
-func (c *RemoteServer) DecryptSign(req core.DecryptSignRequest) (*core.ResponseData, error) {
+// SSHSignWith issues an SSH-sign-with request to the remote server
+func (c *RemoteServer) SSHSignWith(req core.SSHSignWithRequest) (*core.ResponseData, error) {
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
 		return nil, err
 	}
 
-	respBytes, err := c.doAction("decrypt-sign", reqBytes)
+	respBytes, err := c.doAction("ssh-sign-with", reqBytes)
 	if err != nil {
 		return nil, err
 	}

@@ -223,10 +223,6 @@ func (encrypted *EncryptedData) computeHmac(key []byte) []byte {
 		mac.Write([]byte(usage))
 	}
 
-	for index := range encrypted.Usages {
-		mac.Write([]byte(encrypted.Usages[index]))
-	}
-
 	return mac.Sum(nil)
 }
 
