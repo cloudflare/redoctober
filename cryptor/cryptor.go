@@ -168,6 +168,7 @@ func (encrypted *EncryptedData) computeHmac(key []byte) []byte {
 
 	// sort the labels
 	sort.Strings(encrypted.Labels)
+	sort.Strings(encrypted.Usages)
 
 	// start hashing
 	mac.Write([]byte(strconv.Itoa(encrypted.Version)))
@@ -194,6 +195,10 @@ func (encrypted *EncryptedData) computeHmac(key []byte) []byte {
 	// hash the labels
 	for index := range encrypted.Labels {
 		mac.Write([]byte(encrypted.Labels[index]))
+	}
+
+	for index := range encrypted.Usages {
+		mac.Write([]byte(encrypted.Usages[index]))
 	}
 
 	return mac.Sum(nil)
