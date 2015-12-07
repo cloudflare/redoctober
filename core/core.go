@@ -27,8 +27,9 @@ var (
 // the Delegate function below).
 
 type CreateRequest struct {
-	Name     string
-	Password string
+	Name      string
+	Password  string
+	PublicKey string
 }
 
 type SummaryRequest struct {
@@ -39,6 +40,10 @@ type SummaryRequest struct {
 type PurgeRequest struct {
 	Name     string
 	Password string
+}
+
+type PreDelegateRequest struct {
+	Name string
 }
 
 type DelegateRequest struct {
@@ -53,9 +58,10 @@ type DelegateRequest struct {
 }
 
 type CreateUserRequest struct {
-	Name     string
-	Password string
-	UserType string
+	Name      string
+	Password  string
+	UserType  string
+	PublicKey string
 }
 
 type PasswordRequest struct {
@@ -111,6 +117,11 @@ type ExportRequest struct {
 type ResponseData struct {
 	Status   string
 	Response []byte `json:",omitempty"`
+}
+
+type PreDelegateData struct {
+	Status string
+	Response string
 }
 
 type SummaryData struct {
@@ -231,7 +242,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, err = records.AddNewRecord(s.Name, s.Password, true, passvault.DefaultRecordType); err != nil {
+	if _, err = records.AddNewRecord(s.Name, s.Password, true, passvault.DefaultRecordType, s.PublicKey); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -299,6 +310,41 @@ func Purge(jsonIn []byte) ([]byte, error) {
 	return jsonStatusOk()
 }
 
+func PreDelegate(jsonIn []byte) ([]byte, error) {
+	var s PreDelegateRequest
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.delegate failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.delegate success: user=%s", s.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if records.NumRecords() == 0 {
+		err = errors.New("Vault is not created yet")
+		return jsonStatusError(err)
+	}
+
+	pr, found := records.GetRecord(s.Name)
+	if !found {
+		err = errors.New("No user exists with name " + s.Name)
+		return jsonStatusError(err)
+	}
+	
+	if pr.PublicKey == "" {
+		err = errors.New("This user does not use PGP")
+		return jsonStatusError(err)
+	}
+
+	return jsonResponse(pr.HashedPassword)
+}
+
 // Delegate processes a delegation request.
 func Delegate(jsonIn []byte) ([]byte, error) {
 	var s DelegateRequest
@@ -342,7 +388,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 			return jsonStatusError(err)
 		}
 	} else {
-		if pr, err = records.AddNewRecord(s.Name, s.Password, false, passvault.DefaultRecordType); err != nil {
+		if pr, err = records.AddNewRecord(s.Name, s.Password, false, passvault.DefaultRecordType, ""); err != nil {
 			return jsonStatusError(err)
 		}
 	}
@@ -393,7 +439,7 @@ func CreateUser(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, err = records.AddNewRecord(s.Name, s.Password, false, s.UserType); err != nil {
+	if _, err = records.AddNewRecord(s.Name, s.Password, false, s.UserType, s.PublicKey); err != nil {
 		return jsonStatusError(err)
 	}
 

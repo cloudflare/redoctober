@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"encoding/base64"
 )
 
 // DecryptCBC decrypt bytes using a key and IV with AES in CBC mode.
@@ -42,4 +43,9 @@ func MakeRandom(length int) ([]byte, error) {
 	bytes := make([]byte, length)
 	_, err := rand.Read(bytes)
 	return bytes, err
+}
+
+func MakeRandomString() (string, error) {
+	b, err := MakeRandom(32)
+	return base64.URLEncoding.EncodeToString(b), err
 }

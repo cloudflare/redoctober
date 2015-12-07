@@ -35,6 +35,26 @@
 	<div class="container">
 		<h1 class="page-header">Red October Management</h1>
 		<section class="row">
+			<div id="pre-delegate" class="col-md-6">
+				<h3>Pre-Delegate</h3>
+
+				<form id="user-pre-delegate" class="ro-user-pre-delegate" role="form" action="/pre-delegate" method="post">
+					<pre class="feedback pre-delegate-feedback"></pre>
+
+					<div class="form-group row">
+						<div class="col-md-12">
+							<label for="pre-delegate-user">User name</label>
+							<input type="text" name="Name" class="form-control" id="pre-delegate-user" placeholder="User name" required />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Pre-Delegate</button>
+				</form>
+			</div>
+		</section>
+
+		<hr />
+		
+		<section class="row">
 			<div id="delegate" class="col-md-6">
 				<h3>Delegate</h3>
 
@@ -153,6 +173,12 @@
 								<option value="RSA">RSA</option>
 								<option value="ECC">ECC</option>
 							</select>
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-12">
+							<label for="pgp-public-key">PGP Public Key</label>
+							<textarea name="PublicKey" id="pgp-public-key" cols="30" rows="10" class="form-control"></textarea>
 						</div>
 					</div>
 					<button type="submit" class="btn btn-primary">Create</button>
@@ -401,6 +427,20 @@
 						$('.summary-results').removeClass('hide');
 					}
 				})
+			});
+
+			// Pre-Delegate
+			$('body').on('submit', '#user-pre-delegate', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+						data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						$form.find('.feedback').append( makeAlert({ type: 'info', message: d.Response }) );
+					}
+				});
 			});
 
 			// Delegate

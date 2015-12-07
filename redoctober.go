@@ -28,18 +28,19 @@ import (
 // List of URLs to register and their related functions
 
 var functions = map[string]func([]byte) ([]byte, error){
-	"/create":      core.Create,
-	"/summary":     core.Summary,
-	"/purge":       core.Purge,
-	"/delegate":    core.Delegate,
-	"/create-user": core.CreateUser,
-	"/password":    core.Password,
-	"/encrypt":     core.Encrypt,
-	"/re-encrypt":  core.ReEncrypt,
-	"/decrypt":     core.Decrypt,
-	"/owners":      core.Owners,
-	"/modify":      core.Modify,
-	"/export":      core.Export,
+	"/create":       core.Create,
+	"/summary":      core.Summary,
+	"/purge":        core.Purge,
+	"/pre-delegate": core.PreDelegate,
+	"/delegate":     core.Delegate,
+	"/create-user":  core.CreateUser,
+	"/password":     core.Password,
+	"/encrypt":      core.Encrypt,
+	"/re-encrypt":   core.ReEncrypt,
+	"/decrypt":      core.Decrypt,
+	"/owners":       core.Owners,
+	"/modify":       core.Modify,
+	"/export":       core.Export,
 }
 
 type userRequest struct {
