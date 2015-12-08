@@ -30,7 +30,6 @@ import (
 	"golang.org/x/crypto/openpgp"
 	"golang.org/x/crypto/openpgp/armor"
 	"strings"
-	"fmt"
 )
 
 // Constants for record type
@@ -208,18 +207,29 @@ func createPasswordRec(password string, admin bool, userType string, publicKey s
 	newRec.Type = userType
 	newRec.PublicKey = publicKey
 	
-	if newRec.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
-		return
-	}
-
 	if publicKey == "" {
+		if newRec.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
+			return
+		}
+		
 		if newRec.HashedPassword, err = hashPassword(password, newRec.PasswordSalt); err != nil {
 			return
 		}
 	} else {
-		password, _ = symcrypt.MakeRandomString()
+		salt, err := symcrypt.MakeRandomString()
+		if err != nil {
+			return newRec, err
+		}
+
+		newRec.PasswordSalt = []byte(salt)
+		
+		password, err = symcrypt.MakeRandomString()
+		if err != nil {
+			return newRec, err
+		}
+		
 		if newRec.HashedPassword, err = pgpEncrypt([]byte(password), newRec.PasswordSalt, publicKey); err != nil {
-			return
+			return newRec, err
 		}
 	}
 
