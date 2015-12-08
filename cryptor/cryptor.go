@@ -42,21 +42,21 @@ func New(records *passvault.Records, cache *keycache.Cache) Cryptor {
 // both, then he can decrypt it alone).  If a predicate is present, it must be
 // satisfied to decrypt.
 type AccessStructure struct {
-	Minimum int
-	Names   []string
+	Minimum    int
+	Names      []string
 
 	LeftNames  []string
 	RightNames []string
 
-	Predicate string
+	Predicate  string
 }
 
 // Implements msp.UserDatabase
 type UserDatabase struct {
-	names *[]string
+	names    *[]string
 
-	records *passvault.Records
-	cache   *keycache.Cache
+	records  *passvault.Records
+	cache    *keycache.Cache
 
 	user     string
 	labels   []string
@@ -107,9 +107,9 @@ type SingleWrappedKey struct {
 // EncryptedData is the format for encrypted data containing all the
 // keys necessary to decrypt it when delegated.
 type EncryptedData struct {
-	Version int
-	VaultId int      `json:",omitempty"`
-	Labels  []string `json:",omitempty"`
+	Version   int
+	VaultId   int      `json:",omitempty"`
+	Labels    []string `json:",omitempty"`
 
 	// Usages lists the endpoints which may use this data
 	// If empty, only decryption is permitted
@@ -131,8 +131,8 @@ type pair struct {
 type mwkSlice []MultiWrappedKey
 type swkSlice []pair
 
-func (s mwkSlice) Len() int             { return len(s) }
-func (s mwkSlice) Swap(i, j int)        { s[i], s[j] = s[j], s[i] }
+func (s mwkSlice) Len() int { return len(s) }
+func (s mwkSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s mwkSlice) Less(i, j int) bool { // Alphabetic order
 	var shorter = i
 	if len(s[i].Name) > len(s[j].Name) {
@@ -148,8 +148,8 @@ func (s mwkSlice) Less(i, j int) bool { // Alphabetic order
 	return false
 }
 
-func (s swkSlice) Len() int           { return len(s) }
-func (s swkSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s swkSlice) Len() int { return len(s) }
+func (s swkSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s swkSlice) Less(i, j int) bool { return s[i].name < s[j].name }
 
 // computeHmac computes the signature of the encrypted data structure
@@ -196,12 +196,12 @@ func (encrypted *EncryptedData) computeHmac(key []byte) []byte {
 	mac.Write(encrypted.Data)
 
 	// hash the labels
-	for index := range encrypted.Labels {
-		mac.Write([]byte(encrypted.Labels[index]))
+	for _, label := range encrypted.Labels {
+		mac.Write([]byte(label))
 	}
 
-	for index := range encrypted.Usages {
-		mac.Write([]byte(encrypted.Usages[index]))
+	for _, usage := range encrypted.Usages {
+		mac.Write([]byte(usage))
 	}
 
 	return mac.Sum(nil)
@@ -410,8 +410,8 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (unwrappedKey []byte, names []string, err error) {
 	var (
 		decryptErr error
-		fullMatch  bool = false
-		nameSet         = map[string]bool{}
+		fullMatch bool = false
+		nameSet = map[string]bool{}
 	)
 
 	if len(encrypted.Predicate) == 0 {

@@ -635,16 +635,19 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	// a file must be marked as usable for "decrypt" before we will decrypt
-	// it for the user. If no usages are provided, we permit decryption
-	foundDecrypt := false
-	for _, usage := range usages {
-		if usage == "decrypt" {
-			foundDecrypt = true
+	if len(usages) != 0 {
+		// a file must be marked as usable for "decrypt" before we will decrypt
+		// it for the user. If no usages are provided, we permit decryption
+		foundDecrypt := false
+		for _, usage := range usages {
+			if usage == "decrypt" {
+				foundDecrypt = true
+				break
+			}
 		}
-	}
-	if !foundDecrypt && len(usages) != 0 {
-		return jsonStatusError(errors.New("cannot decrypt this file"))
+		if !foundDecrypt {
+			return jsonStatusError(errors.New("cannot decrypt this file"))
+		}
 	}
 
 	resp := &DecryptWithDelegates{
@@ -699,6 +702,7 @@ func SSHSignWith(jsonIn []byte) ([]byte, error) {
 	for _, usage := range usages {
 		if usage == "ssh-sign-with" {
 			foundSign = true
+			break
 		}
 	}
 	if !foundSign {

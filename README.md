@@ -361,4 +361,3 @@ Encrypt with the "ssh-sign-with" usage only:
 Use the remote server to authenticate to an SSH server
 
     $ ro -server ro.local -in id_rsa.encrypted -pubkey id_rsa.pub ssh root@gibson
-
