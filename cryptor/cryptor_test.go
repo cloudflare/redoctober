@@ -87,7 +87,7 @@ func TestDuplicates(t *testing.T) {
 	c := Cryptor{&records, &cache}
 
 	for _, name := range names {
-		pr, err := records.AddNewRecord(name, "weakpassword", true, passvault.DefaultRecordType)
+		pr, err := records.AddNewRecord(name, "weakpassword", true, passvault.DefaultRecordType, "")
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
