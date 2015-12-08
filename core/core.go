@@ -13,6 +13,7 @@ import (
 	"github.com/cloudflare/redoctober/cryptor"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/symcrypt"
 )
 
 var (
@@ -391,6 +392,17 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	// add signed-in record to active set
 	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Slot, s.Time); err != nil {
 		return jsonStatusError(err)
+	}
+	
+	if pr.PublicKey != "" {
+		newPassword, err := symcrypt.MakeRandomString()
+		if err != nil {
+			return jsonStatusError(err)
+		}
+		
+		if err = records.ChangePassword(s.Name, s.Password, newPassword); err != nil {
+			return jsonStatusError(err)
+		}
 	}
 
 	return jsonStatusOk()
