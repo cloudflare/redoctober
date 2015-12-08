@@ -467,6 +467,12 @@ func (records *Records) ChangePassword(name, password, newPassword string) (err 
 		return
 	}
 
+	if pr.PublicKey != "" {
+		if pr.EncryptedPassword, err = pgpEncrypt([]byte(newPassword), pr.PublicKey); err != nil {
+			return
+		}
+	}
+
 	pr.KeySalt = keySalt
 
 	records.SetRecord(pr, name)
