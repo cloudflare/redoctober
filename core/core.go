@@ -342,7 +342,7 @@ func PreDelegate(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	return jsonResponse(pr.HashedPassword)
+	return jsonResponse(pr.EncryptedPassword)
 }
 
 // Delegate processes a delegation request.
