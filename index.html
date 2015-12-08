@@ -438,7 +438,7 @@
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').html( makeAlert({ type: 'info', message: window.atob(d.Response) }) );
+						$form.find('.feedback').html( makeAlert({ type: 'info', message: d.EncryptedPassword }) );
 					}
 				});
 			});

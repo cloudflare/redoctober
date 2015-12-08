@@ -74,7 +74,7 @@ type PasswordRecord struct {
 	PasswordSalt      []byte
 	HashedPassword    []byte
 	PublicKey         string
-	EncryptedPassword []byte
+	EncryptedPassword string
 	KeySalt           []byte
 	RSAKey struct {
 		RSAExp      []byte
@@ -171,36 +171,36 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 	return
 }
 
-func pgpEncrypt(content []byte, publicKey string) ([]byte, error) {
+func pgpEncrypt(content string, publicKey string) (string, error) {
 	pubringBlock, err := armor.Decode(strings.NewReader(publicKey))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	pubring, err := openpgp.ReadKeyRing(pubringBlock.Body)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	outbuf := bytes.NewBuffer(nil)
 	w, err := armor.Encode(outbuf, "PGP MESSAGE", nil)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	plaintext, err := openpgp.Encrypt(w, pubring, nil, nil, nil)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	_, err = plaintext.Write(content)
+	_, err = plaintext.Write([]byte(content))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	plaintext.Close()
 	w.Close()
 
-	return []byte(outbuf.String()), err
+	return outbuf.String(), err
 }
 
 // createPasswordRec creates a new record from a username and password
@@ -214,7 +214,7 @@ func createPasswordRec(password string, admin bool, userType string, publicKey s
 			return newRec, err
 		}
 
-		if newRec.EncryptedPassword, err = pgpEncrypt([]byte(password), publicKey); err != nil {
+		if newRec.EncryptedPassword, err = pgpEncrypt(password, publicKey); err != nil {
 			return newRec, err
 		}
 	}
@@ -468,7 +468,7 @@ func (records *Records) ChangePassword(name, password, newPassword string) (err 
 	}
 
 	if pr.PublicKey != "" {
-		if pr.EncryptedPassword, err = pgpEncrypt([]byte(newPassword), pr.PublicKey); err != nil {
+		if pr.EncryptedPassword, err = pgpEncrypt(newPassword, pr.PublicKey); err != nil {
 			return
 		}
 	}

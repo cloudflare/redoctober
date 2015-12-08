@@ -120,6 +120,11 @@ type ResponseData struct {
 	Response []byte `json:",omitempty"`
 }
 
+type PreDelegateData struct {
+	Status            string
+	EncryptedPassword string
+}
+
 type SummaryData struct {
 	Status string
 	Live   map[string]keycache.ActiveUser
@@ -148,6 +153,9 @@ func jsonStatusError(err error) ([]byte, error) {
 }
 func jsonSummary() ([]byte, error) {
 	return json.Marshal(SummaryData{Status: "ok", Live: cache.GetSummary(), All: records.GetSummary()})
+}
+func jsonPreDelegate(encryptedPassword string) ([]byte, error) {
+	return json.Marshal(PreDelegateData{Status: "ok", EncryptedPassword: encryptedPassword})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
@@ -338,7 +346,7 @@ func PreDelegate(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	return jsonResponse(pr.EncryptedPassword)
+	return jsonPreDelegate(pr.EncryptedPassword)
 }
 
 // Delegate processes a delegation request.
