@@ -267,7 +267,6 @@ func (c *RemoteServer) SSHSignWith(req core.SSHSignWithRequest) (*core.ResponseD
 	}
 
 	return unmarshalResponseData(respBytes)
-
 }
 
 // DecryptIntoData issues an decrypt request to the remote server and extract
