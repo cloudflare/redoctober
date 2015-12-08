@@ -42,7 +42,6 @@ func (signer ROSigner) Sign(rand io.Reader, msg []byte) (signature *ssh.Signatur
 	}
 	if resp.Status != "ok" {
 		log.Fatal("response status error:", resp.Status)
-		return nil, errors.New("response status error")
 	}
 
 	var respMsg core.SSHSignatureWithDelegates
