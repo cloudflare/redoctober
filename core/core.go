@@ -119,11 +119,6 @@ type ResponseData struct {
 	Response []byte `json:",omitempty"`
 }
 
-type PreDelegateData struct {
-	Status string
-	Response string
-}
-
 type SummaryData struct {
 	Status string
 	Live   map[string]keycache.ActiveUser
