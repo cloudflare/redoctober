@@ -434,6 +434,12 @@ func CreateUser(jsonIn []byte) ([]byte, error) {
 		err = errors.New("Vault is not created yet")
 		return jsonStatusError(err)
 	}
+	
+	// If the user is using PGP then set the password to a space so that it
+	// passes validateName. It will be set later during `AddNewRecord`.
+	if s.PublicKey != "" {
+		s.Password = " "
+	}
 
 	// Validate the Name and Password as valid
 	if err = validateName(s.Name, s.Password); err != nil {
