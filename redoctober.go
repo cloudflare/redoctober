@@ -178,10 +178,10 @@ type indexHandler struct {
 	staticPath string
 }
 
-func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
+func (handler *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 	var body io.ReadSeeker
-	if this.staticPath != "" {
-		f, err := os.Open(this.staticPath)
+	if handler.staticPath != "" {
+		f, err := os.Open(handler.staticPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -189,7 +189,7 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 		defer f.Close()
 		body = f
 	} else {
-		body = bytes.NewReader(indexHtml)
+		body = bytes.NewReader(indexHTML)
 	}
 
 	header := w.Header()
@@ -281,7 +281,7 @@ func main() {
 	s.Serve(l)
 }
 
-var indexHtml = []byte(`<!DOCTYPE html>
+var indexHTML = []byte(`<!DOCTYPE html>
 <html lang="en">
 <head>
 	<title>Red October - Two Man Rule File Encryption &amp; Decryption</title>

@@ -37,7 +37,7 @@ func NewRemoteServer(serverAddress, CAFile string) (*RemoteServer, error) {
 		}
 		ok := rootCAs.AppendCertsFromPEM(pemBytes)
 		if !ok {
-			return nil, errors.New("fail to populate CA root pool.")
+			return nil, errors.New("fail to populate CA root pool")
 		}
 	}
 
