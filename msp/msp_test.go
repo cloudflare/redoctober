@@ -9,18 +9,18 @@ import (
 
 type Database map[string][][]byte
 
-func (d Database) ValidUser(name string) bool {
-	_, ok := d[name]
+func (d *Database) ValidUser(name string) bool {
+	_, ok := (*d)[name]
 	return ok
 }
 
-func (d Database) CanGetShare(name string) bool {
-	_, ok := d[name]
+func (d *Database) CanGetShare(name string) bool {
+	_, ok := (*d)[name]
 	return ok
 }
 
-func (d Database) GetShare(name string) ([][]byte, error) {
-	out, ok := d[name]
+func (d *Database) GetShare(name string) ([][]byte, error) {
+	out, ok := (*d)[name]
 
 	if ok {
 		return out, nil
@@ -30,11 +30,11 @@ func (d Database) GetShare(name string) ([][]byte, error) {
 }
 
 func TestMSP(t *testing.T) {
-	db := UserDatabase(Database(map[string][][]byte{
+	db := &Database{
 		"Alice": [][]byte{},
 		"Bob":   [][]byte{},
 		"Carl":  [][]byte{},
-	}))
+	}
 
 	sec := make([]byte, 16)
 	rand.Read(sec)
@@ -42,8 +42,8 @@ func TestMSP(t *testing.T) {
 
 	predicate, _ := StringToMSP("(2, (1, Alice, Bob), Carl)")
 
-	shares1, _ := predicate.DistributeShares(sec, &db)
-	shares2, _ := predicate.DistributeShares(sec, &db)
+	shares1, _ := predicate.DistributeShares(sec, db)
+	shares2, _ := predicate.DistributeShares(sec, db)
 
 	alice := bytes.Compare(shares1["Alice"][0], shares2["Alice"][0])
 	bob := bytes.Compare(shares1["Bob"][0], shares2["Bob"][0])
@@ -53,8 +53,8 @@ func TestMSP(t *testing.T) {
 		t.Fatalf("Key splitting isn't random! %v %v", shares1, shares2)
 	}
 
-	db1 := UserDatabase(Database(shares1))
-	db2 := UserDatabase(Database(shares2))
+	db1 := Database(shares1)
+	db2 := Database(shares2)
 
 	sec1, err := predicate.RecoverSecret(&db1)
 	if err != nil {

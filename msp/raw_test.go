@@ -11,32 +11,32 @@ func TestRaw(t *testing.T) {
 
 	query1 := Raw{
 		NodeType: NodeAnd,
-		Left:     &alice,
-		Right:    &bob,
+		Left:     alice,
+		Right:    bob,
 	}
 
 	aliceOrBob := Condition(Raw{
 		NodeType: NodeOr,
-		Left:     &alice,
-		Right:    &bob,
+		Left:     alice,
+		Right:    bob,
 	})
 
 	query2 := Raw{
 		NodeType: NodeAnd,
-		Left:     &aliceOrBob,
-		Right:    &carl,
+		Left:     aliceOrBob,
+		Right:    carl,
 	}
 
-	db := UserDatabase(Database(map[string][][]byte{
+	db := &Database{
 		"Alice": [][]byte{[]byte("blah")},
 		"Carl":  [][]byte{[]byte("herp")},
-	}))
+	}
 
-	if query1.Ok(&db) != false {
+	if query1.Ok(db) != false {
 		t.Fatalf("Query #1 was wrong.")
 	}
 
-	if query2.Ok(&db) != true {
+	if query2.Ok(db) != true {
 		t.Fatalf("Query #2 was wrong.")
 	}
 
