@@ -361,7 +361,7 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 			return err
 		}
 
-		db := msp.UserDatabase(UserDatabase{records: records})
+		db := UserDatabase{records: records}
 		shareSet, err := sss.DistributeShares(clearKey, &db)
 		if err != nil {
 			return err
@@ -458,14 +458,14 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 			return nil, nil, err
 		}
 
-		db := msp.UserDatabase(UserDatabase{
+		db := UserDatabase{
 			names:    &names,
 			cache:    cache,
 			user:     user,
 			labels:   encrypted.Labels,
 			keySet:   encrypted.KeySetRSA,
 			shareSet: encrypted.ShareSet,
-		})
+		}
 		unwrappedKey, err = sss.RecoverSecret(&db)
 
 		return
