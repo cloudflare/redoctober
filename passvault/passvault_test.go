@@ -18,7 +18,7 @@ func TestStaticVault(t *testing.T) {
 		t.Fatalf("Error reading record")
 	}
 
-	_, err = records.AddNewRecord("test", "bad pass", true, DefaultRecordType)
+	_, err = records.AddNewRecord("test", "bad pass", true, DefaultRecordType, "")
 	if err != nil {
 		t.Fatalf("Error creating record")
 	}
@@ -38,7 +38,7 @@ func TestRSAEncryptDecrypt(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	myRec, err := records.AddNewRecord("user", "weakpassword", true, RSARecord)
+	myRec, err := records.AddNewRecord("user", "weakpassword", true, RSARecord, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -70,7 +70,7 @@ func TestECCEncryptDecrypt(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	myRec, err := records.AddNewRecord("user", "weakpassword", true, ECCRecord)
+	myRec, err := records.AddNewRecord("user", "weakpassword", true, ECCRecord, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -103,7 +103,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	_, err = records.AddNewRecord("user", "weakpassword", true, ECCRecord)
+	_, err = records.AddNewRecord("user", "weakpassword", true, ECCRecord, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -113,7 +113,7 @@ func TestChangePassword(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	_, err = records.AddNewRecord("user2", "weakpassword", true, RSARecord)
+	_, err = records.AddNewRecord("user2", "weakpassword", true, RSARecord, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -134,7 +134,7 @@ func TestNumRecords(t *testing.T) {
 		t.Fatalf("Error in number of records. Expected 0, got %d.", recordCount)
 	}
 
-	if _, err = records.AddNewRecord("user", "password", true, RSARecord); err != nil {
+	if _, err = records.AddNewRecord("user", "password", true, RSARecord, ""); err != nil {
 		t.Fatalf("%v", err)
 	}
 
@@ -153,11 +153,11 @@ func TestGetSummary(t *testing.T) {
 		t.Fatalf("Expected 0 elements in summary but got %d instead.", len(summary))
 	}
 
-	if _, err := records.AddNewRecord("user1", "password", true, RSARecord); err != nil {
+	if _, err := records.AddNewRecord("user1", "password", true, RSARecord, ""); err != nil {
 		t.Fatalf("%v", err)
 	}
 
-	if _, err := records.AddNewRecord("user2", "password", false, ECCRecord); err != nil {
+	if _, err := records.AddNewRecord("user2", "password", false, ECCRecord, ""); err != nil {
 		t.Fatalf("%v", err)
 	}
 
@@ -183,7 +183,7 @@ func TestDeleteRecord(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	_, err = records.AddNewRecord("user", "weakpassword", true, ECCRecord)
+	_, err = records.AddNewRecord("user", "weakpassword", true, ECCRecord, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -205,7 +205,7 @@ func TestMakeRevokeAdmin(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	myRec, err := records.AddNewRecord("user", "weakpassword", false, ECCRecord)
+	myRec, err := records.AddNewRecord("user", "weakpassword", false, ECCRecord, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}

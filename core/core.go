@@ -13,6 +13,7 @@ import (
 	"github.com/cloudflare/redoctober/cryptor"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/symcrypt"
 )
 
 var (
@@ -27,8 +28,9 @@ var (
 // the Delegate function below).
 
 type CreateRequest struct {
-	Name     string
-	Password string
+	Name      string
+	Password  string
+	PublicKey string
 }
 
 type SummaryRequest struct {
@@ -39,6 +41,10 @@ type SummaryRequest struct {
 type PurgeRequest struct {
 	Name     string
 	Password string
+}
+
+type PreDelegateRequest struct {
+	Name string
 }
 
 type DelegateRequest struct {
@@ -53,9 +59,10 @@ type DelegateRequest struct {
 }
 
 type CreateUserRequest struct {
-	Name     string
-	Password string
-	UserType string
+	Name      string
+	Password  string
+	UserType  string
+	PublicKey string
 }
 
 type PasswordRequest struct {
@@ -113,6 +120,11 @@ type ResponseData struct {
 	Response []byte `json:",omitempty"`
 }
 
+type PreDelegateData struct {
+	Status            string
+	EncryptedPassword string
+}
+
 type SummaryData struct {
 	Status string
 	Live   map[string]keycache.ActiveUser
@@ -141,6 +153,9 @@ func jsonStatusError(err error) ([]byte, error) {
 }
 func jsonSummary() ([]byte, error) {
 	return json.Marshal(SummaryData{Status: "ok", Live: cache.GetSummary(), All: records.GetSummary()})
+}
+func jsonPreDelegate(encryptedPassword string) ([]byte, error) {
+	return json.Marshal(PreDelegateData{Status: "ok", EncryptedPassword: encryptedPassword})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
@@ -231,7 +246,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, err = records.AddNewRecord(s.Name, s.Password, true, passvault.DefaultRecordType); err != nil {
+	if _, err = records.AddNewRecord(s.Name, s.Password, true, passvault.DefaultRecordType, s.PublicKey); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -299,6 +314,41 @@ func Purge(jsonIn []byte) ([]byte, error) {
 	return jsonStatusOk()
 }
 
+func PreDelegate(jsonIn []byte) ([]byte, error) {
+	var s PreDelegateRequest
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.delegate failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.delegate success: user=%s", s.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &s); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if records.NumRecords() == 0 {
+		err = errors.New("Vault is not created yet")
+		return jsonStatusError(err)
+	}
+
+	pr, found := records.GetRecord(s.Name)
+	if !found {
+		err = errors.New("No user exists with name " + s.Name)
+		return jsonStatusError(err)
+	}
+	
+	if pr.PublicKey == "" {
+		err = errors.New("This user does not use PGP")
+		return jsonStatusError(err)
+	}
+
+	return jsonPreDelegate(pr.EncryptedPassword)
+}
+
 // Delegate processes a delegation request.
 func Delegate(jsonIn []byte) ([]byte, error) {
 	var s DelegateRequest
@@ -342,7 +392,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 			return jsonStatusError(err)
 		}
 	} else {
-		if pr, err = records.AddNewRecord(s.Name, s.Password, false, passvault.DefaultRecordType); err != nil {
+		if pr, err = records.AddNewRecord(s.Name, s.Password, false, passvault.DefaultRecordType, ""); err != nil {
 			return jsonStatusError(err)
 		}
 	}
@@ -350,6 +400,17 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	// add signed-in record to active set
 	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Slot, s.Time); err != nil {
 		return jsonStatusError(err)
+	}
+	
+	if pr.PublicKey != "" {
+		newPassword, err := symcrypt.MakeRandomString()
+		if err != nil {
+			return jsonStatusError(err)
+		}
+		
+		if err = records.ChangePassword(s.Name, s.Password, newPassword); err != nil {
+			return jsonStatusError(err)
+		}
 	}
 
 	return jsonStatusOk()
@@ -381,6 +442,12 @@ func CreateUser(jsonIn []byte) ([]byte, error) {
 		err = errors.New("Vault is not created yet")
 		return jsonStatusError(err)
 	}
+	
+	// If the user is using PGP then set the password to a space so that it
+	// passes validateName. It will be set later during `AddNewRecord`.
+	if s.PublicKey != "" {
+		s.Password = " "
+	}
 
 	// Validate the Name and Password as valid
 	if err = validateName(s.Name, s.Password); err != nil {
@@ -393,7 +460,7 @@ func CreateUser(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, err = records.AddNewRecord(s.Name, s.Password, false, s.UserType); err != nil {
+	if _, err = records.AddNewRecord(s.Name, s.Password, false, s.UserType, s.PublicKey); err != nil {
 		return jsonStatusError(err)
 	}
 

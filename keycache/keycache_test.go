@@ -19,7 +19,7 @@ func TestUsesFlush(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -83,7 +83,7 @@ func TestTimeFlush(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -122,7 +122,7 @@ func TestGoodLabel(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -164,7 +164,7 @@ func TestBadLabel(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -206,7 +206,7 @@ func TestGoodUser(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -253,7 +253,7 @@ func TestBadUser(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType, "")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}

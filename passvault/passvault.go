@@ -26,7 +26,10 @@ import (
 	"github.com/cloudflare/redoctober/ecdh"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/symcrypt"
+	"golang.org/x/crypto/openpgp"
+	"golang.org/x/crypto/openpgp/armor"
 	"golang.org/x/crypto/scrypt"
+	"strings"
 )
 
 // Constants for record type
@@ -67,11 +70,13 @@ func (pk *ECPublicKey) toECDSA() *ecdsa.PublicKey {
 // material for a single user name. It is written and read from
 // storage in JSON format.
 type PasswordRecord struct {
-	Type           string
-	PasswordSalt   []byte
-	HashedPassword []byte
-	KeySalt        []byte
-	RSAKey         struct {
+	Type              string
+	PasswordSalt      []byte
+	HashedPassword    []byte
+	PublicKey         string
+	EncryptedPassword string
+	KeySalt           []byte
+	RSAKey struct {
 		RSAExp      []byte
 		RSAExpIV    []byte
 		RSAPrimeP   []byte
@@ -166,9 +171,53 @@ func encryptECCRecord(newRec *PasswordRecord, ecPriv *ecdsa.PrivateKey, passKey 
 	return
 }
 
+func pgpEncrypt(content string, publicKey string) (string, error) {
+	pubringBlock, err := armor.Decode(strings.NewReader(publicKey))
+	if err != nil {
+		return "", err
+	}
+
+	pubring, err := openpgp.ReadKeyRing(pubringBlock.Body)
+	if err != nil {
+		return "", err
+	}
+
+	outbuf := bytes.NewBuffer(nil)
+	w, err := armor.Encode(outbuf, "PGP MESSAGE", nil)
+	if err != nil {
+		return "", err
+	}
+
+	plaintext, err := openpgp.Encrypt(w, pubring, nil, nil, nil)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = plaintext.Write([]byte(content))
+	if err != nil {
+		return "", err
+	}
+	plaintext.Close()
+	w.Close()
+
+	return outbuf.String(), err
+}
+
 // createPasswordRec creates a new record from a username and password
-func createPasswordRec(password string, admin bool, userType string) (newRec PasswordRecord, err error) {
+func createPasswordRec(password string, admin bool, userType string, publicKey string) (newRec PasswordRecord, err error) {
 	newRec.Type = userType
+	newRec.PublicKey = publicKey
+
+	if publicKey != "" {
+		password, err = symcrypt.MakeRandomString()
+		if err != nil {
+			return newRec, err
+		}
+
+		if newRec.EncryptedPassword, err = pgpEncrypt(password, publicKey); err != nil {
+			return newRec, err
+		}
+	}
 
 	if newRec.PasswordSalt, err = symcrypt.MakeRandom(16); err != nil {
 		return
@@ -285,7 +334,7 @@ func InitFrom(path string) (records Records, err error) {
 		if len(rec.PasswordSalt) != 16 {
 			return
 		}
-		if len(rec.HashedPassword) != 16 {
+		if len(rec.HashedPassword) != 16 && len(rec.PublicKey) == 0 {
 			return
 		}
 		if len(rec.KeySalt) != 16 {
@@ -354,8 +403,8 @@ func (records *Records) WriteRecordsToDisk() error {
 }
 
 // AddNewRecord adds a new record for a given username and password.
-func (records *Records) AddNewRecord(name, password string, admin bool, userType string) (PasswordRecord, error) {
-	pr, err := createPasswordRec(password, admin, userType)
+func (records *Records) AddNewRecord(name string, password string, admin bool, userType string, publicKey string) (PasswordRecord, error) {
+	pr, err := createPasswordRec(password, admin, userType, publicKey)
 	if err != nil {
 		return pr, err
 	}
@@ -416,6 +465,12 @@ func (records *Records) ChangePassword(name, password, newPassword string) (err 
 	}
 	if pr.HashedPassword, err = hashPassword(newPassword, pr.PasswordSalt); err != nil {
 		return
+	}
+
+	if pr.PublicKey != "" {
+		if pr.EncryptedPassword, err = pgpEncrypt(newPassword, pr.PublicKey); err != nil {
+			return
+		}
 	}
 
 	pr.KeySalt = keySalt
@@ -611,8 +666,10 @@ func (pr *PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err er
 }
 
 // ValidatePassword returns an error if the password is incorrect.
-func (pr *PasswordRecord) ValidatePassword(password string) error {
-	h, err := hashPassword(password, pr.PasswordSalt)
+func (pr *PasswordRecord) ValidatePassword(password string) (err error) {
+	var h []byte
+
+	h, err = hashPassword(password, pr.PasswordSalt)
 	if err != nil {
 		return err
 	}
