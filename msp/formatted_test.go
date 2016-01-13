@@ -45,24 +45,24 @@ func TestFormatted(t *testing.T) {
 		},
 	}
 
-	db := UserDatabase(Database(map[string][][]byte{
+	db := &Database{
 		"Alice": [][]byte{[]byte("blah")},
 		"Carl":  [][]byte{[]byte("herp")},
-	}))
+	}
 
-	if query1.Ok(&db) != true {
+	if query1.Ok(db) != true {
 		t.Fatalf("Query #1 was wrong.")
 	}
 
-	if query2.Ok(&db) != false {
+	if query2.Ok(db) != false {
 		t.Fatalf("Query #2 was wrong.")
 	}
 
-	if query3.Ok(&db) != true {
+	if query3.Ok(db) != true {
 		t.Fatalf("Query #3 was wrong.")
 	}
 
-	if query4.Ok(&db) != false {
+	if query4.Ok(db) != false {
 		t.Fatalf("Query #4 was wrong.")
 	}
 

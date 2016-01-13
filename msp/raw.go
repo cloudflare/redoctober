@@ -24,8 +24,8 @@ type Layer struct {
 type Raw struct { // Represents one node in the tree.
 	NodeType
 
-	Left  *Condition
-	Right *Condition
+	Left  Condition
+	Right Condition
 }
 
 func StringToRaw(r string) (out Raw, err error) {
@@ -118,7 +118,7 @@ func StringToRaw(r string) (out Raw, err error) {
 					// Copy left and right out of slice and THEN give a pointer for them!
 					left, right := top.Conditions[i], top.Conditions[i+1] // Legal because of check 2.
 					if oper == typ {
-						built := Raw{typ, &left, &right}
+						built := Raw{typ, left, right}
 
 						top.Conditions = append(
 							top.Conditions[:i],
@@ -170,11 +170,11 @@ func StringToRaw(r string) (out Raw, err error) {
 func (r Raw) String() string {
 	out := ""
 
-	switch (*r.Left).(type) {
+	switch left := r.Left.(type) {
 	case Name:
-		out += (*r.Left).(Name).string
-	default:
-		out += "(" + (*r.Left).(Raw).String() + ")"
+		out += left.string
+	case Raw:
+		out += "(" + left.String() + ")"
 	}
 
 	if r.Type() == NodeAnd {
@@ -183,11 +183,11 @@ func (r Raw) String() string {
 		out += " | "
 	}
 
-	switch (*r.Right).(type) {
+	switch right := r.Right.(type) {
 	case Name:
-		out += (*r.Right).(Name).string
-	default:
-		out += "(" + (*r.Right).(Raw).String() + ")"
+		out += right.string
+	case Raw:
+		out += "(" + right.String() + ")"
 	}
 
 	return out
@@ -202,28 +202,28 @@ func (r Raw) Formatted() (out Formatted) {
 		out.Min = 1
 	}
 
-	switch (*r.Left).(type) {
+	switch left := r.Left.(type) {
 	case Name:
-		out.Conds = []Condition{(*r.Left).(Name)}
-	default:
-		out.Conds = []Condition{(*r.Left).(Raw).Formatted()}
+		out.Conds = []Condition{left}
+	case Raw:
+		out.Conds = []Condition{left.Formatted()}
 	}
 
-	switch (*r.Right).(type) {
+	switch right := r.Right.(type) {
 	case Name:
-		out.Conds = append(out.Conds, (*r.Right).(Name))
-	default:
-		out.Conds = append(out.Conds, (*r.Right).(Raw).Formatted())
+		out.Conds = append(out.Conds, right)
+	case Raw:
+		out.Conds = append(out.Conds, right.Formatted())
 	}
 
 	out.Compress() // Small amount of predicate compression.
 	return
 }
 
-func (r Raw) Ok(db *UserDatabase) bool {
+func (r Raw) Ok(db UserDatabase) bool {
 	if r.Type() == NodeAnd {
-		return (*r.Left).Ok(db) && (*r.Right).Ok(db)
+		return r.Left.Ok(db) && r.Right.Ok(db)
 	} else {
-		return (*r.Left).Ok(db) || (*r.Right).Ok(db)
+		return r.Left.Ok(db) || r.Right.Ok(db)
 	}
 }
