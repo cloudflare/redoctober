@@ -283,3 +283,63 @@ func (c *RemoteServer) Password(req []byte) (*core.ResponseData, error) {
 
 	return unmarshalResponseData(respBytes)
 }
+
+// Order issues an order request to the remote server
+func (c *RemoteServer) Order(req core.OrderRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("order", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
+
+// OrderOutstanding issues an order outstanding request to the remote server
+func (c *RemoteServer) OrderOutstanding(req core.OrderOutstandingRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("orderout", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
+
+// OrderInfo issues an order info request to the remote server
+func (c *RemoteServer) OrderInfo(req core.OrderInfoRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("orderinfo", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
+
+// OrderCancel issues an order cancel request to the remote server
+func (c *RemoteServer) OrderCancel(req core.OrderInfoRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("ordercancel", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
