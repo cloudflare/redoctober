@@ -118,7 +118,7 @@ type OrderRequest struct {
 	Duration string
 	Uses     string
 	Data     []byte
-	Label    string
+	Labels   []string
 }
 
 type OrderInfoRequest struct {
@@ -400,17 +400,16 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 
 	// Make sure we capture the number who have already delegated.
 	for _, delegatedUser := range s.Users {
-		for _, delegatedLabel := range s.Labels {
-			if orderKey, found := orders.FindOrder(delegatedUser, delegatedLabel); found {
-				order := orders.Orders[orderKey]
-				order.AdminsDelegated = append(order.AdminsDelegated, s.Name)
-				order.Delegated++
-				orders.Orders[orderKey] = order
+		if orderKey, found := orders.FindOrder(delegatedUser, s.Labels); found {
+			order := orders.Orders[orderKey]
+			order.AdminsDelegated = append(order.AdminsDelegated, s.Name)
 
-				// Notify the hipchat room that there was a new delegator
-				orders.NotifyDelegation(s.Name, delegatedLabel, delegatedUser, orderKey, s.Time)
+			order.Delegated++
+			orders.Orders[orderKey] = order
 
-			}
+			// Notify the hipchat room that there was a new delegator
+			orders.NotifyDelegation(s.Name, delegatedUser, orderKey, s.Time, s.Labels)
+
 		}
 	}
 
@@ -614,11 +613,9 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 	}
 
 	// Cleanup any orders that have been fulfilled and notify the room.
-	for _, label := range allLabels {
-		if orderKey, found := orders.FindOrder(s.Name, label); found {
-			delete(orders.Orders, orderKey)
-			orders.NotifyOrderFulfilled(s.Name, orderKey)
-		}
+	if orderKey, found := orders.FindOrder(s.Name, allLabels); found {
+		delete(orders.Orders, orderKey)
+		orders.NotifyOrderFulfilled(s.Name, orderKey)
 	}
 	return jsonResponse(out)
 }
@@ -767,21 +764,19 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	cache.Refresh()
 	orderNum := order.GenerateNum()
 
-	adminsDelegated, numDelegated := cache.DelegateStatus(o.Name, o.Label, owners)
+	adminsDelegated, numDelegated := cache.DelegateStatus(o.Name, o.Labels, owners)
 	duration, err := time.ParseDuration(o.Duration)
 	if err != nil {
 		jsonStatusError(err)
 	}
 	currentTime := time.Now()
-	expiryTime := currentTime.Add(duration)
 	ord := order.CreateOrder(o.Name,
-		o.Label,
 		orderNum,
 		currentTime,
-		expiryTime,
 		duration,
 		adminsDelegated,
 		owners,
+		o.Labels,
 		numDelegated)
 	orders.Orders[orderNum] = ord
 	out, err = json.Marshal(ord)
@@ -790,7 +785,7 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	altOwners := records.GetAltNamesFromName(orders.AlternateName, owners)
 
 	// Let everyone on hipchat know there is a new order.
-	orders.NotifyNewOrder(o.Name, o.Duration, o.Label, o.Uses, orderNum, altOwners)
+	orders.NotifyNewOrder(o.Name, o.Duration, o.Uses, orderNum, o.Labels, altOwners)
 	if err != nil {
 		return jsonStatusError(err)
 	}

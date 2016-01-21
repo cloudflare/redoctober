@@ -204,9 +204,9 @@ const usage = `Usage:
 	redoctober -static <path> -vaultpath <path> -addr <addr> -certs <path1>[,<path2>,...] -keys <path1>[,<path2>,...] [-ca <path>]
 
 single-cert example:
-redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert.pem -keys cert.key
+redoctober -vaultpath diskrecord.json -addr localhost:8081 -certs cert.pem -keys cert.key
 multi-cert example:
-redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
+redoctober -vaultpath diskrecord.json -addr localhost:8081 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
 `
 
 func main() {
@@ -219,7 +219,7 @@ func main() {
 
 	var staticPath = flag.String("static", "", "Path to override built-in index.html")
 	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
-	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
+	var addr = flag.String("addr", "localhost:8081", "Server and port separated by :")
 	var useSystemdSocket = flag.Bool("systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
 	var certsPathString = flag.String("certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
 	var keysPathString = flag.String("keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
@@ -227,7 +227,7 @@ func main() {
 	var hcKey = flag.String("hckey", "", "Hipchat API Key")
 	var hcRoom = flag.String("hcroom", "", "Hipchat Room Id")
 	var hcHost = flag.String("hchost", "", "Hipchat Url Base (ex: hipchat.com)")
-	var roHost = flag.String("rohost", "", "RedOctober Url Base (ex: localhost:8080)")
+	var roHost = flag.String("rohost", "", "RedOctober Url Base (ex: localhost:8081)")
 	flag.Parse()
 
 	if *vaultPath == "" || *certsPathString == "" || *keysPathString == "" || (*addr == "" && *useSystemdSocket == false) {
@@ -612,8 +612,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<input type="password" name="Password" class="form-control" id="order-user-pass" placeholder="Password" required />
 						</div>
 						<div class="col-md-6">
-							<label for="order-label">Label</label>
-							<input type="text" name="Label" class="form-control" id="order-user-label" placeholder="Label" required />
+							<label for="order-label">Labels</label>
+							<input type="text" name="Labels" class="form-control" id="order-user-label" placeholder="Labels" required />
 						</div>
 						<div class="col-md-6">
 							<label for="order-duration">Duration</label>
@@ -703,6 +703,44 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							</div>
 						</div>
 						<button type="submit" class="btn btn-primary">Order Cancel</button>
+					</div>
+				</form>
+			</div>
+		</section>
+		<section class="row">
+			<div id="orderscancel" class="col-md-6">
+				<h3>Order Link</h3>
+
+				<form id="orderlink" class="ro-orderlink" role="form" action="#" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback orderlink-feedback"></div>
+					<div class="form-group">
+						<div class="row">
+							<div class="col-md-6">
+								<label for="orderlink-delegator">Delegator</label>
+								<input type="text" name="Name" class="form-control" id="orderlink-delegator" placeholder="User name" required />
+							</div>
+							<div class="col-md-6">
+								<label for="orderlink-labels">Labels</label>
+								<input type="text" name="labels" class="form-control" id="orderlink-labels" placeholder="Labels" required />
+							</div>
+							<div class="col-md-6">
+								<label for="orderlink-duration">Duration</label>
+								<input type="text" name="duration" class="form-control" id="orderlink-duration" placeholder="1h 5m" required />
+							</div>
+							<div class="col-md-6">
+								<label for="orderlink-uses">Uses</label>
+								<input type="text" name="uses" class="form-control" id="orderlink-uses" placeholder="5" required />
+							</div>
+							<div class="col-md-6">
+								<label for="orderlink-ordernum">OrderNum</label>
+								<input type="text" name="ordernum" class="form-control" id="orderlink-ordernum" placeholder="d34db33f..." required />
+							</div>
+							<div class="col-md-6">
+								<label for="orderlink-delegatefor">Delegate For</label>
+								<input type="text" name="delegatefor" class="form-control" id="orderlink-delegatefor" placeholder="e.g. Alice, Bob" required />
+							</div>
+						</div>
+						<button type="submit" class="btn btn-primary">Create Link</button>
 					</div>
 				</form>
 			</div>
@@ -935,6 +973,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				evt.preventDefault();
 				var $form = $(evt.currentTarget),
 					data = serialize($form);
+					data.Labels = data.Labels.split(',');
+					for(var i=0, l=data.Labels.length; i<l; i++){
+						data.Labels[i] = data.Labels[i].trim();
+						if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
+					}
 
 				submit( $form, {
 					data : data,
@@ -950,23 +993,25 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				evt.preventDefault();
 				var $form = $(evt.currentTarget),
 					data = serialize($form);
-
+				alert(1);
 				submit( $form, {
 					data : data,
 					success : function(d){
 						d = window.atob(d.Response);
 						try {
 							var respData = JSON.parse(d);
-							var msgText = ""
-							alert(msgText);
+							var msgText = "";
 							for (var jj in respData) {
-								if (!jj || jj == "Admins")
+								if (!jj)
 									continue;
 								if (!respData.hasOwnProperty(jj)) {
 									continue;
 								}
-								alert(msgText);
-								msgText += "<p>"+htmlspecialchars(jj)+": "+htmlspecialchars(respData[jj])+"</p>";
+								if (typeof(respData[jj]) == "object") {
+									msgText += "<p>"+htmlspecialchars(jj)+": "+htmlspecialchars(JSON.stringify(respData[jj]))+"</p>";
+								} else {
+									msgText += "<p>"+htmlspecialchars(jj)+": "+htmlspecialchars(respData[jj])+"</p>";
+								}
 							}
 							$form.find('.feedback').empty().append(makeAlert({ type: 'success', message: msgText }));
 						} catch (e) {
@@ -1012,6 +1057,10 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					}
 				});
 			});
+			$('body').on('submit', 'form#orderlink', function(evt){
+				evt.preventDefault();
+				createLink();
+			});
 			
 			// Init from query string if possible.
 			var queryParams = document.location.search;
@@ -1049,9 +1098,20 @@ var indexHtml = []byte(`<!DOCTYPE html>
 						break;
 				}
 				if (setValue) {
-					setValue.val(value);
+					setValue.val(decodeURIComponent(value));
 				}
 			}
+			function createLink() {
+				var delegator = decodeURIComponent(document.getElementById("orderlink-delegator").value);
+				var delegatee = decodeURIComponent(document.getElementById("orderlink-delegatefor").value);
+				var duration  = decodeURIComponent(document.getElementById("orderlink-duration").value);
+				var orderNum  = decodeURIComponent(document.getElementById("orderlink-ordernum").value);
+				var labels    = decodeURIComponent(document.getElementById("orderlink-labels").value);
+				var uses      = decodeURIComponent(document.getElementById("orderlink-uses").value);
+
+				var link = "https://" + document.location.host + "?delegator="+ delegator + "&delegatee="+ delegatee + "&label=" + labels + "&ordernum=" + orderNum + "&uses=" + uses + "&duration="+ duration;
+				$('.orderlink-feedback').empty().append(makeAlert({ type: 'success', message: '<p>'+htmlspecialchars(link)+'</p>' }) );
+			 }
 			function htmlspecialchars(s) {
 				if (!isNaN(s)) {
 					return s;

@@ -22,12 +22,11 @@ type Order struct {
 	Num  string
 
 	TimeRequested     time.Time
-	ExpiryTime        time.Time
 	DurationRequested time.Duration
 	Delegated         int
 	AdminsDelegated   []string
 	Admins            []string
-	Label             string
+	Labels            []string
 }
 
 type OrderIndex struct {
@@ -47,12 +46,11 @@ type Orderer struct {
 	AlternateName string
 }
 
-func CreateOrder(name string, labels string, orderNum string, time time.Time, expiryTime time.Time, duration time.Duration, adminsDelegated, contacts []string, numDelegated int) (ord Order) {
+func CreateOrder(name, orderNum string, time time.Time, duration time.Duration, adminsDelegated, contacts, labels []string, numDelegated int) (ord Order) {
 	ord.Name = name
 	ord.Num = orderNum
-	ord.Label = labels
+	ord.Labels = labels
 	ord.TimeRequested = time
-	ord.ExpiryTime = expiryTime
 	ord.DurationRequested = duration
 	ord.AdminsDelegated = adminsDelegated
 	ord.Admins = contacts
@@ -79,13 +77,23 @@ func NewOrderer(hipchatClient hipchat.HipchatClient) (o Orderer) {
 func notify(o *Orderer, msg, color string) {
 	o.Hipchat.Notify(msg, color)
 }
-func (o *Orderer) NotifyNewOrder(name, duration, label, uses, orderNum string, owners map[string]string) {
-	n := fmt.Sprintf(NewOrder, name, label, uses, duration)
+func (o *Orderer) NotifyNewOrder(name, duration, uses, orderNum string, labels []string, owners map[string]string) {
+	labelList := ""
+	for i, label := range labels {
+		if i == 0 {
+			labelList += label
+		} else {
+			// Never include spaces in something go URI encodes. Go will
+			// add a + to the string, instead of a %20
+			labelList += "," + label
+		}
+	}
+	n := fmt.Sprintf(NewOrder, name, labelList, uses, duration)
 	notify(o, n, hipchat.RedBackground)
 	for owner, hipchatName := range owners {
 		queryParams := url.Values{
 			"delegator": {owner},
-			"label":     {label},
+			"label":     {labelList},
 			"duration":  {duration},
 			"uses":      {uses},
 			"ordernum":  {orderNum},
@@ -95,8 +103,16 @@ func (o *Orderer) NotifyNewOrder(name, duration, label, uses, orderNum string, o
 	}
 }
 
-func (o *Orderer) NotifyDelegation(delegator, label, delegatee, orderNum, duration string) {
-	n := fmt.Sprintf(NewDelegation, delegator, label, delegatee, orderNum, duration)
+func (o *Orderer) NotifyDelegation(delegator, delegatee, orderNum, duration string, labels []string) {
+	labelList := ""
+	for i, label := range labels {
+		if i == 0 {
+			labelList += label
+		} else {
+			labelList += ", " + label
+		}
+	}
+	n := fmt.Sprintf(NewDelegation, delegator, labelList, delegatee, orderNum, duration)
 	notify(o, n, hipchat.YellowBackground)
 }
 func (o *Orderer) NotifyOrderFulfilled(name, orderNum string) {
@@ -104,15 +120,24 @@ func (o *Orderer) NotifyOrderFulfilled(name, orderNum string) {
 	notify(o, n, hipchat.PurpleBackground)
 }
 
-func (o *Orderer) FindOrder(name, label string) (string, bool) {
+func (o *Orderer) FindOrder(name string, labels []string) (string, bool) {
 	for key, order := range o.Orders {
 		if name != order.Name {
 			continue
 		}
-		if label != order.Label {
-			continue
-		}
 
+		for _, ol := range order.Labels {
+			foundLabel := false
+			for _, il := range labels {
+				if il == ol {
+					foundLabel = true
+					continue
+				}
+			}
+			if !foundLabel {
+				return "", false
+			}
+		}
 		return key, true
 	}
 	return "", false

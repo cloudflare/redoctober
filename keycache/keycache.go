@@ -309,7 +309,7 @@ func (cache *Cache) DecryptShares(in [][]byte, name, user string, labels []strin
 
 // DelegateStatus will return a list of admins who have delegated to a particular user, for a particular label.
 // This is useful information to have when determining the status of an order and conveying order progress.
-func (cache *Cache) DelegateStatus(name string, label string, admins []string) (adminsDelegated []string, hasDelegated int) {
+func (cache *Cache) DelegateStatus(name string, labels, admins []string) (adminsDelegated []string, hasDelegated int) {
 	// Iterate over the admins of the ciphertext to look for users
 	// who have already delegated the label to the delegatee.
 	for _, admin := range admins {
@@ -317,23 +317,22 @@ func (cache *Cache) DelegateStatus(name string, label string, admins []string) (
 			if di.Name != admin {
 				continue
 			}
-			labelFound := false
 			nameFound := false
 			for _, user := range use.Users {
 				if user == name {
 					nameFound = true
 				}
 			}
-			for _, l := range use.Labels {
-				if l == label {
-					labelFound = true
+			for _, ol := range use.Labels {
+				for _, il := range labels {
+					if ol == il {
+						if nameFound {
+							adminsDelegated = append(adminsDelegated, admin)
+							hasDelegated++
+						}
+					}
 				}
 			}
-			if labelFound && nameFound {
-				adminsDelegated = append(adminsDelegated, admin)
-				hasDelegated++
-			}
-
 		}
 	}
 	return
