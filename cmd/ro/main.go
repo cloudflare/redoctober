@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/cmd/ro/gopass"
@@ -22,7 +23,7 @@ var owners, lefters, righters, inPath, labels, outPath, outEnv string
 
 var uses int
 
-var time, users string
+var duration, users string
 
 var pollInterval time.Duration
 
@@ -49,7 +50,7 @@ func registerFlags() {
 	flag.StringVar(&owners, "owners", "", "comma separated owner list")
 	flag.StringVar(&users, "users", "", "comma separated user list")
 	flag.IntVar(&uses, "uses", 0, "number of delegated key uses")
-	flag.StringVar(&time, "time", "0h", "duration of delegated key uses")
+	flag.StringVar(&duration, "time", "0h", "duration of delegated key uses")
 	flag.StringVar(&lefters, "left", "", "comma separated left owners")
 	flag.StringVar(&righters, "right", "", "comma separated right owners")
 	flag.StringVar(&labels, "labels", "", "comma separated labels")
@@ -104,7 +105,7 @@ func runDelegate() {
 		Name:     user,
 		Password: pswd,
 		Uses:     uses,
-		Time:     time,
+		Time:     duration,
 		Users:    processCSL(users),
 		Labels:   processCSL(labels),
 	}
@@ -217,7 +218,7 @@ func runOrder() {
 		Name:     user,
 		Password: pswd,
 		Uses:     uses,
-		Duration: time,
+		Duration: duration,
 		Labels:   processCSL(labels),
 	}
 	resp, err := roServer.Order(req)
