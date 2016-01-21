@@ -5,13 +5,14 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/cloudflare/redoctober/hipchat"
 )
 
 const (
-	NewOrder       = "%s has created an order for the label %s. requesting %s delegations for %s"
+	NewOrder       = "%s has created an order for the label %s. requesting %d delegations for %s"
 	NewOrderLink   = "@%s - https://%s?%s"
 	OrderFulfilled = "%s has had order %s fulfilled."
 	NewDelegation  = "%s has delegated the label %s to %s (per order %s) for %s"
@@ -77,7 +78,7 @@ func NewOrderer(hipchatClient hipchat.HipchatClient) (o Orderer) {
 func notify(o *Orderer, msg, color string) {
 	o.Hipchat.Notify(msg, color)
 }
-func (o *Orderer) NotifyNewOrder(name, duration, uses, orderNum string, labels []string, owners map[string]string) {
+func (o *Orderer) NotifyNewOrder(name, duration, orderNum string, labels []string, uses int, owners map[string]string) {
 	labelList := ""
 	for i, label := range labels {
 		if i == 0 {
@@ -95,7 +96,7 @@ func (o *Orderer) NotifyNewOrder(name, duration, uses, orderNum string, labels [
 			"delegator": {owner},
 			"label":     {labelList},
 			"duration":  {duration},
-			"uses":      {uses},
+			"uses":      {strconv.Itoa(uses)},
 			"ordernum":  {orderNum},
 			"delegatee": {name},
 		}.Encode()

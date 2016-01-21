@@ -116,7 +116,7 @@ type OrderRequest struct {
 	Name     string
 	Password string
 	Duration string
-	Uses     string
+	Uses     int
 	Data     []byte
 	Labels   []string
 }
@@ -757,7 +757,7 @@ func Order(jsonIn []byte) (out []byte, err error) {
 		err = errors.New("Duration required when placing an order.")
 		jsonStatusError(err)
 	}
-	if o.Uses == "" || o.Uses == "0" {
+	if o.Uses == 0 {
 		err = errors.New("Number of required uses necessary when placing an order.")
 		jsonStatusError(err)
 	}
@@ -785,7 +785,7 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	altOwners := records.GetAltNamesFromName(orders.AlternateName, owners)
 
 	// Let everyone on hipchat know there is a new order.
-	orders.NotifyNewOrder(o.Name, o.Duration, o.Uses, orderNum, o.Labels, altOwners)
+	orders.NotifyNewOrder(o.Name, o.Duration, orderNum, o.Labels, o.Uses, altOwners)
 	if err != nil {
 		return jsonStatusError(err)
 	}
