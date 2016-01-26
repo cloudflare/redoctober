@@ -374,16 +374,18 @@ func (records *Records) AddNewRecord(name, password string, admin bool, userType
 func (records *Records) ChangePassword(name, password, newPassword, hipchatName string) (err error) {
 	pr, ok := records.GetRecord(name)
 
-	if len(newPassword) == 0 {
-		if len(hipchatName) != 0 {
-			pr.AltNames["HipchatName"] = hipchatName
-		}
-		records.SetRecord(pr, name)
-		return records.WriteRecordsToDisk()
-	}
 	if !ok {
 		err = errors.New("Record not present")
 		return
+	}
+
+	if len(hipchatName) != 0 {
+		pr.AltNames["HipchatName"] = hipchatName
+	}
+
+	if len(newPassword) == 0 {
+		records.SetRecord(pr, name)
+		return records.WriteRecordsToDisk()
 	}
 
 	var keySalt []byte

@@ -58,9 +58,10 @@ type DelegateRequest struct {
 }
 
 type CreateUserRequest struct {
-	Name     string
-	Password string
-	UserType string
+	Name        string
+	Password    string
+	UserType    string
+	HipchatName string
 }
 
 type PasswordRequest struct {
@@ -113,12 +114,12 @@ type ExportRequest struct {
 }
 
 type OrderRequest struct {
-	Name     string
-	Password string
-	Duration string
-	Uses     int
-	Data     []byte
-	Labels   []string
+	Name          string
+	Password      string
+	Duration      string
+	Uses          int
+	EncryptedData []byte
+	Labels        []string
 }
 
 type OrderInfoRequest struct {
@@ -454,10 +455,13 @@ func CreateUser(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	if _, err = records.AddNewRecord(s.Name, s.Password, false, s.UserType); err != nil {
+	if _, err := records.AddNewRecord(s.Name, s.Password, false, s.UserType); err != nil {
 		return jsonStatusError(err)
 	}
 
+	if err = records.ChangePassword(s.Name, s.Password, "", s.HipchatName); err != nil {
+		return jsonStatusError(err)
+	}
 	return jsonStatusOk()
 }
 
@@ -749,7 +753,7 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	}
 
 	// Get the owners of the ciphertext.
-	owners, _, err := crypt.GetOwners(o.Data)
+	owners, _, err := crypt.GetOwners(o.EncryptedData)
 	if err != nil {
 		jsonStatusError(err)
 	}

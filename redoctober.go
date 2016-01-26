@@ -353,6 +353,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<label for="delegate-labels">Labels to allow <small>(comma separated)</small></label>
 							<input type="text" name="Labels" class="form-control" id="delegate-labels" placeholder="e.g. Blue, Red" />
 						</div>
+					</div>
+					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="delegate-labels">Slot Name</label>
 							<input type="text" name="Slot" class="form-control" id="delegate-slot" placeholder="Afternoon" />
@@ -428,6 +430,10 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<label for="create-user-pass">Password</label>
 							<input type="password" name="Password" class="form-control" id="create-user-pass" placeholder="Password" required />
 						</div>
+						<div class="col-md-6">
+							<label for="create-user-hipchatname">Hipchat Name</label>
+							<input type="text" name="HipchatName" class="form-control" id="create-hipchatname" placeholder="HipchatName" required />
+						</div>
 					</div>
 					<div class="form-group row">
 						<div class="col-md-12">
@@ -465,13 +471,15 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<div class="form-group">
 						<label for="user-pass">New password. Blank for no change.</label>
 						<input type="password" name="NewPassword" class="form-control" id="user-pass-new" placeholder="New Password"/>
+					</div>
+					<div class="form-group">
 						<label for="user-email">Hipchat Name. Blank for no change.</label>
 						<input type="text" name="HipchatName" class="form-control" id="user-hipchatname" placeholder="New Hipchat Name"/>
 					</div>
 					<button type="submit" class="btn btn-primary">Change password</button>
 				</form>
 
-				<h3>Modify user</h3>
+				<h3>Admin Controls</h3>
 
 				<form id="user-modify" class="ro-user-modify" role="form" action="/modify" method="post">
 					<div class="feedback modify-feedback"></div>
@@ -601,7 +609,6 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 				<form id="order" class="ro-user-order" role="form" action="/order" method="post">
 					<div class="feedback order-feedback"></div>
-					<div class="form-group">
 					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="order-user-admin">User name</label>
@@ -611,6 +618,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<label for="order-user-pass">Password</label>
 							<input type="password" name="Password" class="form-control" id="order-user-pass" placeholder="Password" required />
 						</div>
+					</div>
+					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="order-label">Labels</label>
 							<input type="text" name="Labels" class="form-control" id="order-user-label" placeholder="Labels" required />
@@ -619,14 +628,18 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<label for="order-duration">Duration</label>
 							<input type="text" name="Duration" class="form-control" id="order-duration" placeholder="Duration (e.g., 2h34m)" required />
 						</div>
+					</div>
+					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="order-uses">Uses</label>
-							<input type="text" name="Uses" class="form-control" id="order-uses" placeholder="Uses" required />
+							<input type="number" name="Uses" class="form-control" id="order-uses" placeholder="5" required />
 						</div>
 					</div>
-
-						<label for="owners-data">Data</label>
-						<textarea name="Data" class="form-control" id="owners-data" rows="5" required></textarea>
+					<div class="form-group row">
+						<div class="col-md-12">
+							<label for="owners-data">Encrypted Data</label>
+							<textarea name="EncryptedData" class="form-control" id="owners-data" rows="5" required></textarea>
+						</div>
 					</div>
 					<button type="submit" class="btn btn-primary">Create Order</button>
 				</form>
@@ -639,23 +652,23 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 				<form id="orderinfo" class="ro-user-order" role="form" action="/orderinfo" method="post">
 					<div style="overflow-wrap: break-word;" class="feedback orderinfo-feedback"></div>
-					<div class="form-group">
-						<div class="row">
-							<div class="col-md-6">
-								<label for="orderinfo-user-admin">User name</label>
-								<input type="text" name="Name" class="form-control" id="orderinfo-user-admin" placeholder="User name" required />
-							</div>
-							<div class="col-md-6">
-								<label for="orderinfo-user-admin">Password</label>
-								<input type="password" name="Password" class="form-control" id="orderinfo-user-pass" placeholder="Password" required />
-							</div>
-							<div class="col-md-6">
-								<label for="orderinfo-order-num">Order Num</label>
-								<input type="text" name="OrderNum" class="form-control" id="orderinfo-user-label" placeholder="Order Number" required />
-							</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderinfo-user-admin">User name</label>
+							<input type="text" name="Name" class="form-control" id="orderinfo-user-admin" placeholder="User name" required />
 						</div>
-						<button type="submit" class="btn btn-primary">Order Info</button>
+						<div class="col-md-6">
+							<label for="orderinfo-user-admin">Password</label>
+							<input type="password" name="Password" class="form-control" id="orderinfo-user-pass" placeholder="Password" required />
+						</div>
 					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderinfo-order-num">Order Number</label>
+							<input type="text" name="OrderNum" class="form-control" id="orderinfo-user-label" placeholder="Order Number" required />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Order Info</button>
 				</form>
 			</div>
 		</section>
@@ -697,50 +710,57 @@ var indexHtml = []byte(`<!DOCTYPE html>
 								<label for="ordercancel-user-admin">Password</label>
 								<input type="password" name="Password" class="form-control" id="ordercancel-user-pass" placeholder="Password" required />
 							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="row">
 							<div class="col-md-6">
-								<label for="ordercancel-order-num">Order Num</label>
+								<label for="ordercancel-order-num">Order Number</label>
 								<input type="text" name="OrderNum" class="form-control" id="ordercancel-user-label" placeholder="Order Number" required />
 							</div>
 						</div>
-						<button type="submit" class="btn btn-primary">Order Cancel</button>
 					</div>
+					<button type="submit" class="btn btn-primary">Order Cancel</button>
 				</form>
 			</div>
 		</section>
 		<section class="row">
 			<div id="orderscancel" class="col-md-6">
-				<h3>Order Link</h3>
+				<h3>Create Delegation Link</h3>
 
 				<form id="orderlink" class="ro-orderlink" role="form" action="#" method="post">
 					<div style="overflow-wrap: break-word;" class="feedback orderlink-feedback"></div>
-					<div class="form-group">
-						<div class="row">
-							<div class="col-md-6">
-								<label for="orderlink-delegator">Delegator</label>
-								<input type="text" name="Name" class="form-control" id="orderlink-delegator" placeholder="User name" required />
-							</div>
-							<div class="col-md-6">
-								<label for="orderlink-labels">Labels</label>
-								<input type="text" name="labels" class="form-control" id="orderlink-labels" placeholder="Labels" required />
-							</div>
-							<div class="col-md-6">
-								<label for="orderlink-duration">Duration</label>
-								<input type="text" name="duration" class="form-control" id="orderlink-duration" placeholder="1h 5m" required />
-							</div>
-							<div class="col-md-6">
-								<label for="orderlink-uses">Uses</label>
-								<input type="text" name="uses" class="form-control" id="orderlink-uses" placeholder="5" required />
-							</div>
-							<div class="col-md-6">
-								<label for="orderlink-ordernum">OrderNum</label>
-								<input type="text" name="ordernum" class="form-control" id="orderlink-ordernum" placeholder="d34db33f..." required />
-							</div>
-							<div class="col-md-6">
-								<label for="orderlink-delegatefor">Delegate For</label>
-								<input type="text" name="delegatefor" class="form-control" id="orderlink-delegatefor" placeholder="e.g. Alice, Bob" required />
-							</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderlink-delegator">Delegator</label>
+							<input type="text" name="Name" class="form-control" id="orderlink-delegator" placeholder="User name"/>
 						</div>
-						<button type="submit" class="btn btn-primary">Create Link</button>
+						<div class="col-md-6">
+							<label for="orderlink-labels">Labels</label>
+							<input type="text" name="labels" class="form-control" id="orderlink-labels" placeholder="Labels"/>
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderlink-duration">Duration</label>
+							<input type="text" name="duration" class="form-control" id="orderlink-duration" placeholder="1h 5m"/>
+						</div>
+						<div class="col-md-6">
+							<label for="orderlink-uses">Uses</label>
+							<input type="text" name="uses" class="form-control" id="orderlink-uses" placeholder="5"/>
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderlink-ordernum">Order Number</label>
+							<input type="text" name="ordernum" class="form-control" id="orderlink-ordernum" placeholder="d34db33f..."/>
+						</div>
+						<div class="col-md-6">
+							<label for="orderlink-delegatefor">Delegate For</label>
+							<input type="text" name="delegatefor" class="form-control" id="orderlink-delegatefor" placeholder="e.g. Alice, Bob"/>
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Create Link</button>
 					</div>
 				</form>
 			</div>
@@ -892,7 +912,13 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Change password for '+htmlspecialchars(data.Name) }) );
+						var msg = "Change password for ";
+						if (data.NewPassword != "" && data.HipchatName != "") {
+							msg = "Change Password and Hipchat Name for ";
+						} else if (data.NewPassword == "" && data.HipchatName != "") {
+							msg = "Change Hipchat Name for ";
+						}
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: msg+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -973,6 +999,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				evt.preventDefault();
 				var $form = $(evt.currentTarget),
 					data = serialize($form);
+					// Force uses to an integer
+					data.Uses = parseInt(data.Uses, 10);
 					data.Labels = data.Labels.split(',');
 					for(var i=0, l=data.Labels.length; i<l; i++){
 						data.Labels[i] = data.Labels[i].trim();
@@ -984,7 +1012,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					success : function(d){
 					d = JSON.parse(window.atob(d.Response));
 					$form.find('.feedback').empty().append(
-						makeAlert({ type: 'success', message: '<p>Order Num: '+d.Num+'</p>' }) );
+						makeAlert({ type: 'success', message: '<p>Order Number: '+d.Num+'</p>' }) );
 					}
 				});
 			});
@@ -993,7 +1021,6 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				evt.preventDefault();
 				var $form = $(evt.currentTarget),
 					data = serialize($form);
-				alert(1);
 				submit( $form, {
 					data : data,
 					success : function(d){
@@ -1035,7 +1062,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 						if (!d.hasOwnProperty(jj))
 							continue;
 						var o = d[jj];
-						ordout += o.Name + " requesting " + o.Label + " has " + o.Delegated + "\n";
+						ordout += o.Name + " requesting " + JSON.stringify(o.Labels) + " has " + o.Delegated + "\n";
 
 					}
 					$form.find('.feedback').empty().append(
