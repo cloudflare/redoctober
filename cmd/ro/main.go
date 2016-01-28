@@ -220,6 +220,7 @@ func runOrder() {
 		Uses:     uses,
 		Duration: duration,
 		Labels:   processCSL(labels),
+		Users:    processCSL(users),
 	}
 	resp, err := roServer.Order(req)
 	processError(err)

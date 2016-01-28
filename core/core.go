@@ -118,6 +118,7 @@ type OrderRequest struct {
 	Password      string
 	Duration      string
 	Uses          int
+	Users         []string
 	EncryptedData []byte
 	Labels        []string
 }
@@ -216,19 +217,19 @@ func validateName(name, password string) error {
 }
 
 // Init reads the records from disk from a given path
-func Init(ca, hcKey, hcRoom, hcHost, roHost string) error {
+func Init(path, hcKey, hcRoom, hcHost, roHost string) error {
 	var err error
 
 	defer func() {
 		if err != nil {
 			log.Printf("core.init failed: %v", err)
 		} else {
-			log.Printf("core.init success: ca=%s", ca)
+			log.Printf("core.init success: path=%s", path)
 		}
 	}()
 
-	if records, err = passvault.InitFrom(ca); err != nil {
-		err = fmt.Errorf("failed to load password vault %s: %s", ca, err)
+	if records, err = passvault.InitFrom(path); err != nil {
+		err = fmt.Errorf("failed to load password vault %s: %s", path, err)
 	}
 
 	var hipchatClient hipchat.HipchatClient
@@ -403,9 +404,20 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	for _, delegatedUser := range s.Users {
 		if orderKey, found := orders.FindOrder(delegatedUser, s.Labels); found {
 			order := orders.Orders[orderKey]
-			order.AdminsDelegated = append(order.AdminsDelegated, s.Name)
 
-			order.Delegated++
+			// Don't re-add names to the list of people who have delegated. Instead
+			// just skip them but make sure we count their delegation
+			if len(order.OwnersDelegated) == 0 {
+				order.OwnersDelegated = append(order.OwnersDelegated, s.Name)
+			} else {
+				for _, ownerName := range order.OwnersDelegated {
+					if ownerName == s.Name {
+						continue
+					}
+					order.OwnersDelegated = append(order.OwnersDelegated, s.Name)
+					order.Delegated++
+				}
+			}
 			orders.Orders[orderKey] = order
 
 			// Notify the hipchat room that there was a new delegator
@@ -768,7 +780,11 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	cache.Refresh()
 	orderNum := order.GenerateNum()
 
-	adminsDelegated, numDelegated := cache.DelegateStatus(o.Name, o.Labels, owners)
+	if len(o.Users) == 0 {
+		err = errors.New("Must specify at least one user per order.")
+		jsonStatusError(err)
+	}
+	adminsDelegated, numDelegated := cache.DelegateStatus(o.Users[0], o.Labels, owners)
 	duration, err := time.ParseDuration(o.Duration)
 	if err != nil {
 		jsonStatusError(err)
@@ -780,6 +796,7 @@ func Order(jsonIn []byte) (out []byte, err error) {
 		duration,
 		adminsDelegated,
 		owners,
+		o.Users,
 		o.Labels,
 		numDelegated)
 	orders.Orders[orderNum] = ord
@@ -789,7 +806,7 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	altOwners := records.GetAltNamesFromName(orders.AlternateName, owners)
 
 	// Let everyone on hipchat know there is a new order.
-	orders.NotifyNewOrder(o.Name, o.Duration, orderNum, o.Labels, o.Uses, altOwners)
+	orders.NotifyNewOrder(o.Duration, orderNum, o.Users, o.Labels, o.Uses, altOwners)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -851,7 +868,8 @@ func OrderInfo(jsonIn []byte) (out []byte, err error) {
 
 		return jsonResponse(out)
 	}
-	return
+
+	return jsonStatusError(errors.New("No order with that number"))
 }
 
 // OrderCancel will cancel an order given an order num
@@ -875,7 +893,7 @@ func OrderCancel(jsonIn []byte) (out []byte, err error) {
 	}
 
 	if ord, ok := orders.Orders[o.OrderNum]; ok {
-		if o.Name == ord.Name {
+		if o.Name == ord.Creator {
 			delete(orders.Orders, o.OrderNum)
 			out = []byte("Successfully removed order")
 			return jsonResponse(out)

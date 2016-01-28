@@ -430,6 +430,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<label for="create-user-pass">Password</label>
 							<input type="password" name="Password" class="form-control" id="create-user-pass" placeholder="Password" required />
 						</div>
+					</div>
+					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="create-user-hipchatname">Hipchat Name</label>
 							<input type="text" name="HipchatName" class="form-control" id="create-hipchatname" placeholder="HipchatName" required />
@@ -621,18 +623,22 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					</div>
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="order-label">Labels</label>
-							<input type="text" name="Labels" class="form-control" id="order-user-label" placeholder="Labels" required />
-						</div>
-						<div class="col-md-6">
 							<label for="order-duration">Duration</label>
 							<input type="text" name="Duration" class="form-control" id="order-duration" placeholder="Duration (e.g., 2h34m)" required />
+						</div>
+						<div class="col-md-6">
+							<label for="order-uses">Uses</label>
+							<input type="number" name="Uses" class="form-control" id="order-uses" placeholder="5" required />
 						</div>
 					</div>
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="order-uses">Uses</label>
-							<input type="number" name="Uses" class="form-control" id="order-uses" placeholder="5" required />
+							<label for="order-name-users">Users to allow <small>(comma separated)</small></label>
+							<input type="text" name="Users" class="form-control" id="order-name-users" placeholder="e.g. Alice, Bob" />
+						</div>
+						<div class="col-md-6">
+							<label for="order-label">Labels</label>
+							<input type="text" name="Labels" class="form-control" id="order-user-label" placeholder="Labels" required />
 						</div>
 					</div>
 					<div class="form-group row">
@@ -1005,6 +1011,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					for(var i=0, l=data.Labels.length; i<l; i++){
 						data.Labels[i] = data.Labels[i].trim();
 						if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
+					}
+					data.Users = data.Users.split(',');
+					for(var i=0, l=data.Users.length; i<l; i++){
+						data.Users[i] = data.Users[i].trim();
+						if (data.Users[i] == "") { data.Users.splice(i, 1); }
 					}
 
 				submit( $form, {

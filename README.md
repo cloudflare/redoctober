@@ -253,29 +253,32 @@ Example input JSON format:
 Order creates a new order and lets other users know delegations are needed.
 
 Example input JSON format:
+
     $ curl --cacert server/server.crt https://localhost:8080/order \
            -d '{"Name":"Alice","Password":"Lewis","Labels": ["Blue","Red"],\
            "Duration":"1h","Uses":5,"EncryptedData":"ABCDE=="}'
     {
-     "Admins": [
-         "Bob",
-         "Eve"
-     ],
-     "AdminsDelegated": null,
-     "Delegated": 0,
-     "DurationRequested": 3.6e+12,
-     "Labels": [
-         "blue",
-         "red"
-     ],
-     "Name": "Alice",
-     "Num": "77da1cfd8962fb9685c15c84",
-     "TimeRequested": "2016-01-25T15:58:41.961906679-08:00"
+       "Admins": [
+            "Bob",
+            "Eve"
+        ],
+        "AdminsDelegated": null,
+        "Delegated": 0,
+        "DurationRequested": 3.6e+12,
+        "Labels": [
+            "blue",
+            "red"
+        ],
+        "Name": "Alice",
+        "Num": "77da1cfd8962fb9685c15c84",
+        "TimeRequested": "2016-01-25T15:58:41.961906679-08:00",
     }
 
 ### Orders Outstanding
 
 Orders Outstanding will return a list of current order numbers
+
+Example input JSON format:
 
     $ curl --cacert server/server.crt https://localhost:8080/orderout
            -d '{"Name":"Alice","Password":"Lewis"}'
@@ -284,39 +287,45 @@ Orders Outstanding will return a list of current order numbers
             "Name":"Alice",
             "Num":"77da1cfd8962fb9685c15c84",
             "TimeRequested":"2016-01-25T15:58:41.961906679-08:00",
-	    "DurationRequested":3600000000000,
-	    "Delegated":0,"
-	    AdminsDelegated":null,
-	    "Admins":["Bob, Eve"],
-	    "Labels":["Blue","Red"]
-	}
+            "DurationRequested":3600000000000,
+            "Delegated":0,"
+            AdminsDelegated":null,
+            "Admins":["Bob, Eve"],
+            "Labels":["Blue","Red"]
+        }
     }
 
 ### Order Information
+
+Example input JSON format:
+
     $ curl --cacert server/server.crt https://localhost:8080/orderinfo
            -d '{"Name":"Alice","Password":"Lewis", \
-	   "OrderNum":"77da1cfd8962fb9685c15c84"}'
+           "OrderNum":"77da1cfd8962fb9685c15c84"}'
     {
-     "Admins": [
-         "Bob",
-         "Eve"
-     ],
-     "AdminsDelegated": null,
-     "Delegated": 0,
-     "DurationRequested": 3.6e+12,
-     "Labels": [
-         "blue",
-         "red"
-     ],
-     "Name": "Alice",
-     "Num": "77da1cfd8962fb9685c15c84",
-     "TimeRequested": "2016-01-25T15:58:41.961906679-08:00"
+        "Admins": [
+            "Bob",
+            "Eve"
+        ],
+        "AdminsDelegated": null,
+        "Delegated": 0,
+        "DurationRequested": 3.6e+12,
+        "Labels": [
+            "blue",
+            "red"
+        ],
+        "Name": "Alice",
+        "Num": "77da1cfd8962fb9685c15c84",
+        "TimeRequested": "2016-01-25T15:58:41.961906679-08:00"
     }
 
 ### Order Cancel
+
+Example input JSON format:
+
     $ curl --cacert server/server.crt https://localhost:8080/orderinfo
            -d '{"Name":"Alice","Password":"Lewis", \
-	   "OrderNum":"77da1cfd8962fb9685c15c84"}'
+           "OrderNum":"77da1cfd8962fb9685c15c84"}'
     {"Status":"ok"}
 
 ### Web interface
