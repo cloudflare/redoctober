@@ -29,10 +29,10 @@ import (
 
 var functions = map[string]func([]byte) ([]byte, error){
 	"/create":      core.Create,
+	"/create-user": core.CreateUser,
 	"/summary":     core.Summary,
 	"/purge":       core.Purge,
 	"/delegate":    core.Delegate,
-	"/create-user": core.CreateUser,
 	"/password":    core.Password,
 	"/encrypt":     core.Encrypt,
 	"/re-encrypt":  core.ReEncrypt,
@@ -40,6 +40,10 @@ var functions = map[string]func([]byte) ([]byte, error){
 	"/owners":      core.Owners,
 	"/modify":      core.Modify,
 	"/export":      core.Export,
+	"/order":       core.Order,
+	"/orderout":    core.OrdersOutstanding,
+	"/orderinfo":   core.OrderInfo,
+	"/ordercancel": core.OrderCancel,
 }
 
 type userRequest struct {
@@ -200,9 +204,9 @@ const usage = `Usage:
 	redoctober -static <path> -vaultpath <path> -addr <addr> -certs <path1>[,<path2>,...] -keys <path1>[,<path2>,...] [-ca <path>]
 
 single-cert example:
-redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert.pem -keys cert.key
+redoctober -vaultpath diskrecord.json -addr localhost:8081 -certs cert.pem -keys cert.key
 multi-cert example:
-redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
+redoctober -vaultpath diskrecord.json -addr localhost:8081 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
 `
 
 func main() {
@@ -215,11 +219,15 @@ func main() {
 
 	var staticPath = flag.String("static", "", "Path to override built-in index.html")
 	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
-	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
+	var addr = flag.String("addr", "localhost:8081", "Server and port separated by :")
 	var useSystemdSocket = flag.Bool("systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
 	var certsPathString = flag.String("certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
 	var keysPathString = flag.String("keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
 	var caPath = flag.String("ca", "", "Path of TLS CA for client authentication (optional)")
+	var hcKey = flag.String("hckey", "", "Hipchat API Key")
+	var hcRoom = flag.String("hcroom", "", "Hipchat Room Id")
+	var hcHost = flag.String("hchost", "", "Hipchat Url Base (ex: hipchat.com)")
+	var roHost = flag.String("rohost", "", "RedOctober Url Base (ex: localhost:8081)")
 	flag.Parse()
 
 	if *vaultPath == "" || *certsPathString == "" || *keysPathString == "" || (*addr == "" && *useSystemdSocket == false) {
@@ -231,7 +239,7 @@ func main() {
 	certPaths := strings.Split(*certsPathString, ",")
 	keyPaths := strings.Split(*keysPathString, ",")
 
-	if err := core.Init(*vaultPath); err != nil {
+	if err := core.Init(*vaultPath, *hcKey, *hcRoom, *hcHost, *roHost); err != nil {
 		log.Fatalf(err.Error())
 	}
 
@@ -301,6 +309,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<li><a href="#encrypt">Encrypt</a></li>
 					<li><a href="#decrypt">Decrypt</a></li>
 					<li><a href="#owners">Owners</a></li>
+					<li><a href="#orders">Order</a></li>
 				</ul>
 			</div>
 		</div>
@@ -344,6 +353,8 @@ var indexHtml = []byte(`<!DOCTYPE html>
 							<label for="delegate-labels">Labels to allow <small>(comma separated)</small></label>
 							<input type="text" name="Labels" class="form-control" id="delegate-labels" placeholder="e.g. Blue, Red" />
 						</div>
+					</div>
+					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="delegate-labels">Slot Name</label>
 							<input type="text" name="Slot" class="form-control" id="delegate-slot" placeholder="Afternoon" />
@@ -421,6 +432,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 						</div>
 					</div>
 					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="create-user-hipchatname">Hipchat Name</label>
+							<input type="text" name="HipchatName" class="form-control" id="create-hipchatname" placeholder="HipchatName" required />
+						</div>
+					</div>
+					<div class="form-group row">
 						<div class="col-md-12">
 							<label for="create-user-type">User Type</label>
 							<select name="UserType" class="form-control" id="create-user-type">
@@ -438,7 +455,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 		<section class="row">
 			<div id="change-password" class="col-md-6">
-				<h3>Change password</h3>
+				<h3>Change account</h3>
 
 				<form id="user-change-password" class="ro-user-change-password" role="form" action="/password" method="post">
 					<div class="feedback change-password-feedback"></div>
@@ -446,21 +463,25 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="user-name">User name</label>
-							<input type="text" name="Name" class="form-control" id="user-name" placeholder="User name" required />
+							<input type="text" name="Name" class="form-control" id="user-name" placeholder="User name" required/>
 						</div>
 						<div class="col-md-6">
 							<label for="user-pass">Password</label>
-							<input type="password" name="Password" class="form-control" id="user-pass" placeholder="Password" required />
+							<input type="password" name="Password" class="form-control" id="user-pass" placeholder="Password"/ required>
 						</div>
 					</div>
 					<div class="form-group">
-						<label for="user-pass">New password</label>
-						<input type="password" name="NewPassword" class="form-control" id="user-pass-new" placeholder="New password" required />
+						<label for="user-pass">New password. Blank for no change.</label>
+						<input type="password" name="NewPassword" class="form-control" id="user-pass-new" placeholder="New Password"/>
+					</div>
+					<div class="form-group">
+						<label for="user-email">Hipchat Name. Blank for no change.</label>
+						<input type="text" name="HipchatName" class="form-control" id="user-hipchatname" placeholder="New Hipchat Name"/>
 					</div>
 					<button type="submit" class="btn btn-primary">Change password</button>
 				</form>
 
-				<h3>Modify user</h3>
+				<h3>Admin Controls</h3>
 
 				<form id="user-modify" class="ro-user-modify" role="form" action="/modify" method="post">
 					<div class="feedback modify-feedback"></div>
@@ -583,6 +604,174 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				</form>
 			</div>
 		</section>
+		<hr />
+		<section class="row">
+			<div id="orders" class="col-md-6">
+				<h3>Create Order</h3>
+
+				<form id="order" class="ro-user-order" role="form" action="/order" method="post">
+					<div class="feedback order-feedback"></div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="order-user-admin">User name</label>
+							<input type="text" name="Name" class="form-control" id="order-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="order-user-pass">Password</label>
+							<input type="password" name="Password" class="form-control" id="order-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="order-duration">Duration</label>
+							<input type="text" name="Duration" class="form-control" id="order-duration" placeholder="Duration (e.g., 2h34m)" required />
+						</div>
+						<div class="col-md-6">
+							<label for="order-uses">Uses</label>
+							<input type="number" name="Uses" class="form-control" id="order-uses" placeholder="5" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="order-name-users">Users to allow <small>(comma separated)</small></label>
+							<input type="text" name="Users" class="form-control" id="order-name-users" placeholder="e.g. Alice, Bob" />
+						</div>
+						<div class="col-md-6">
+							<label for="order-label">Labels</label>
+							<input type="text" name="Labels" class="form-control" id="order-user-label" placeholder="Labels" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-12">
+							<label for="owners-data">Encrypted Data</label>
+							<textarea name="EncryptedData" class="form-control" id="owners-data" rows="5" required></textarea>
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Create Order</button>
+				</form>
+			</div>
+		</section>
+		<hr />
+		<section class="row">
+			<div id="ordersinfo" class="col-md-6">
+				<h3>Order Info</h3>
+
+				<form id="orderinfo" class="ro-user-order" role="form" action="/orderinfo" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback orderinfo-feedback"></div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderinfo-user-admin">User name</label>
+							<input type="text" name="Name" class="form-control" id="orderinfo-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="orderinfo-user-admin">Password</label>
+							<input type="password" name="Password" class="form-control" id="orderinfo-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderinfo-order-num">Order Number</label>
+							<input type="text" name="OrderNum" class="form-control" id="orderinfo-user-label" placeholder="Order Number" required />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Order Info</button>
+				</form>
+			</div>
+		</section>
+		<hr />
+		<section class="row">
+			<div id="ordersout" class="col-md-6">
+				<h3>Outstanding Orders</h3>
+
+				<form id="orderout" class="ro-user-order" role="form" action="/orderout" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback ordersout-feedback"></div>
+					<div class="form-group">
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="ordersout-user-admin">User name</label>
+							<input type="text" name="Name" class="form-control" id="ordersout-user-admin" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="ordersout-user-admin">Password</label>
+							<input type="password" name="Password" class="form-control" id="ordersout-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Outstanding Orders</button>
+				</form>
+			</div>
+		</section>
+		<section class="row">
+			<div id="orderscancel" class="col-md-6">
+				<h3>Order Cancel</h3>
+
+				<form id="ordercancel" class="ro-user-order" role="form" action="/ordercancel" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback ordercancel-feedback"></div>
+					<div class="form-group">
+						<div class="row">
+							<div class="col-md-6">
+								<label for="ordercancel-user-admin">User name</label>
+								<input type="text" name="Name" class="form-control" id="ordercancel-user-admin" placeholder="User name" required />
+							</div>
+							<div class="col-md-6">
+								<label for="ordercancel-user-admin">Password</label>
+								<input type="password" name="Password" class="form-control" id="ordercancel-user-pass" placeholder="Password" required />
+							</div>
+						</div>
+					</div>
+					<div class="form-group">
+						<div class="row">
+							<div class="col-md-6">
+								<label for="ordercancel-order-num">Order Number</label>
+								<input type="text" name="OrderNum" class="form-control" id="ordercancel-user-label" placeholder="Order Number" required />
+							</div>
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Order Cancel</button>
+				</form>
+			</div>
+		</section>
+		<section class="row">
+			<div id="orderscancel" class="col-md-6">
+				<h3>Create Delegation Link</h3>
+
+				<form id="orderlink" class="ro-orderlink" role="form" action="#" method="post">
+					<div style="overflow-wrap: break-word;" class="feedback orderlink-feedback"></div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderlink-delegator">Delegator</label>
+							<input type="text" name="Name" class="form-control" id="orderlink-delegator" placeholder="User name"/>
+						</div>
+						<div class="col-md-6">
+							<label for="orderlink-labels">Labels</label>
+							<input type="text" name="labels" class="form-control" id="orderlink-labels" placeholder="Labels"/>
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderlink-duration">Duration</label>
+							<input type="text" name="duration" class="form-control" id="orderlink-duration" placeholder="1h 5m"/>
+						</div>
+						<div class="col-md-6">
+							<label for="orderlink-uses">Uses</label>
+							<input type="text" name="uses" class="form-control" id="orderlink-uses" placeholder="5"/>
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="orderlink-ordernum">Order Number</label>
+							<input type="text" name="ordernum" class="form-control" id="orderlink-ordernum" placeholder="d34db33f..."/>
+						</div>
+						<div class="col-md-6">
+							<label for="orderlink-delegatefor">Delegate For</label>
+							<input type="text" name="delegatefor" class="form-control" id="orderlink-delegatefor" placeholder="e.g. Alice, Bob"/>
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Create Link</button>
+					</div>
+				</form>
+			</div>
+		</section>
+		<hr />
 	</div>
 
 	<footer id="footer" class="footer">
@@ -601,7 +790,6 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 			function submit( $form, options ){
 				options || (options = {});
-
 				$.ajax({
 					url: $form.attr('action'),
 					data: JSON.stringify( options.data ),
@@ -638,7 +826,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Created user: '+data.Name }) );
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Created user: '+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -699,7 +887,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Delegating '+data.Name }) );
+						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Delegating '+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -716,7 +904,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Creating '+data.Name }) );
+						$form.find('.feedback').append( makeAlert({ type: 'success', message: 'Creating '+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -730,7 +918,13 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Change password for '+data.Name }) );
+						var msg = "Change password for ";
+						if (data.NewPassword != "" && data.HipchatName != "") {
+							msg = "Change Password and Hipchat Name for ";
+						} else if (data.NewPassword == "" && data.HipchatName != "") {
+							msg = "Change Hipchat Name for ";
+						}
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: msg+htmlspecialchars(data.Name) }) );
 					}
 				});
 			});
@@ -744,7 +938,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				submit( $form, {
 					data : data,
 					success : function(d){
-						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Successfully modified '+data.ToModify }) );
+						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Successfully modified '+htmlspecialchars(data.ToModify) }) );
 					}
 				});
 			});
@@ -806,6 +1000,168 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					}
 				});
 			});
+			// Create an order
+			$('body').on('submit', 'form#order', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+					// Force uses to an integer
+					data.Uses = parseInt(data.Uses, 10);
+					data.Labels = data.Labels.split(',');
+					for(var i=0, l=data.Labels.length; i<l; i++){
+						data.Labels[i] = data.Labels[i].trim();
+						if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
+					}
+					data.Users = data.Users.split(',');
+					for(var i=0, l=data.Users.length; i<l; i++){
+						data.Users[i] = data.Users[i].trim();
+						if (data.Users[i] == "") { data.Users.splice(i, 1); }
+					}
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					d = JSON.parse(window.atob(d.Response));
+					$form.find('.feedback').empty().append(
+						makeAlert({ type: 'success', message: '<p>Order Number: '+d.Num+'</p>' }) );
+					}
+				});
+			});
+			// Get order info
+			$('body').on('submit', 'form#orderinfo', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+				submit( $form, {
+					data : data,
+					success : function(d){
+						d = window.atob(d.Response);
+						try {
+							var respData = JSON.parse(d);
+							var msgText = "";
+							for (var jj in respData) {
+								if (!jj)
+									continue;
+								if (!respData.hasOwnProperty(jj)) {
+									continue;
+								}
+								if (typeof(respData[jj]) == "object") {
+									msgText += "<p>"+htmlspecialchars(jj)+": "+htmlspecialchars(JSON.stringify(respData[jj]))+"</p>";
+								} else {
+									msgText += "<p>"+htmlspecialchars(jj)+": "+htmlspecialchars(respData[jj])+"</p>";
+								}
+							}
+							$form.find('.feedback').empty().append(makeAlert({ type: 'success', message: msgText }));
+						} catch (e) {
+							makeAlert({ type: 'failure', message: '<p>Invalid JSON returned</p>' });
+						}
+					}
+				});
+			});
+			// Get outstanding order info
+			$('body').on('submit', 'form#orderout', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					d = JSON.parse(window.atob(d.Response));
+					ordout = "";
+					for (var jj in d){
+						if (!d.hasOwnProperty(jj))
+							continue;
+						var o = d[jj];
+						ordout += o.Name + " requesting " + JSON.stringify(o.Labels) + " has " + o.Delegated + "\n";
+
+					}
+					$form.find('.feedback').empty().append(
+						makeAlert({ type: 'success', message: '<p>'+ordout+'</p>' }) );
+					}
+				});
+			});
+			$('body').on('submit', 'form#ordercancel', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+					data = serialize($form);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+					d = window.atob(d.Response);
+					$form.find('.feedback').empty().append(
+						makeAlert({ type: 'success', message: '<p>'+d+'</p>' }) );
+					}
+				});
+			});
+			$('body').on('submit', 'form#orderlink', function(evt){
+				evt.preventDefault();
+				createLink();
+			});
+			
+			// Init from query string if possible.
+			var queryParams = document.location.search;
+			var queryParts = queryParams.split('&');
+			for (var i=0; i<queryParts.length; i++) {
+				var part = queryParts[i];
+				part = part.replace("?", "");
+				var partPieces = part.split("=");
+				if (partPieces.length != 2) {
+					continue;
+				}
+				var setValue = null;
+				var key = partPieces[0];
+				var value = partPieces[1];
+				switch (key) {
+					case "delegator":
+						setValue = $("#delegate-user");
+						break;
+					case "delegatee":
+						setValue = $("#delegate-users");
+						break;
+					case "uses":
+						setValue = $("#delegate-uses");
+						break;
+					case "label":
+						setValue = $("#delegate-labels");
+						break;
+					case "duration":
+						setValue = $("#delegate-user-time");
+						break;
+					case "ordernum":
+						setValue = $("#delegate-slot");
+						break;
+					default:
+						break;
+				}
+				if (setValue) {
+					setValue.val(decodeURIComponent(value));
+				}
+			}
+			function createLink() {
+				var delegator = decodeURIComponent(document.getElementById("orderlink-delegator").value);
+				var delegatee = decodeURIComponent(document.getElementById("orderlink-delegatefor").value);
+				var duration  = decodeURIComponent(document.getElementById("orderlink-duration").value);
+				var orderNum  = decodeURIComponent(document.getElementById("orderlink-ordernum").value);
+				var labels    = decodeURIComponent(document.getElementById("orderlink-labels").value);
+				var uses      = decodeURIComponent(document.getElementById("orderlink-uses").value);
+
+				var link = "https://" + document.location.host + "?delegator="+ delegator + "&delegatee="+ delegatee + "&label=" + labels + "&ordernum=" + orderNum + "&uses=" + uses + "&duration="+ duration;
+				$('.orderlink-feedback').empty().append(makeAlert({ type: 'success', message: '<p>'+htmlspecialchars(link)+'</p>' }) );
+			 }
+			function htmlspecialchars(s) {
+				if (!isNaN(s)) {
+					return s;
+				}
+				s = s.replace('&', '&amp;');
+				s = s.replace('<', '&lt;');
+				s = s.replace('>', '&gt;');
+				s = s.replace('"', '&quot;');
+				s = s.replace("'", '&#x27;');
+				s = s.replace('/', '&#x2F;');
+				return s
+			}
 		});
 	</script>
 </body>

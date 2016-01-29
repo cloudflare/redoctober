@@ -18,7 +18,7 @@ import (
 func TestCreate(t *testing.T) {
 	createJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	respJson, err := Create(createJson)
 	if err != nil {
@@ -66,7 +66,7 @@ func TestSummary(t *testing.T) {
 		t.Fatalf("Error in summary of account with no vault, %v", s.Status)
 	}
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	// check for summary of initialized vault
 	respJson, err = Create(createJson)
@@ -220,7 +220,7 @@ func TestCreateUser(t *testing.T) {
 	createUserECCJson := []byte("{\"Name\":\"Cat\",\"Password\":\"Cheshire\",\"UserType\":\"ECC\"}")
 	createVaultJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	// Check that users cannot be created before a vault is
 	respJson, err := CreateUser(createUserJson)
@@ -292,7 +292,7 @@ func TestPassword(t *testing.T) {
 	delegateJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Olleh\",\"Time\":\"2h\",\"Uses\":1}")
 	passwordJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Olleh\",\"NewPassword\":\"Hello\"}")
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -405,7 +405,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	encryptJson2 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":2,\"Owners\":[\"Alice\",\"Bob\",\"Carol\"],\"Data\":\"SGVsbG8gSmVsbG8=\",\"Labels\":[\"blue\",\"red\"]}")
 	encryptJson3 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Minimum\":1,\"Owners\":[\"Alice\"],\"Data\":\"SGVsbG8gSmVsbG8=\"}")
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -632,7 +632,7 @@ func TestReEncrypt(t *testing.T) {
 	delegateJson7 := []byte(`{"Name":"Carol","Password":"Hello","Time":"10s","Uses":2,"Users":["Alice"],"Labels":["red"]}`)
 	encryptJson := []byte(`{"Name":"Carol","Password":"Hello","Minimum":2,"Owners":["Alice","Bob","Carol"],"Data":"SGVsbG8gSmVsbG8=","Labels":["blue"]}`)
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -812,7 +812,7 @@ func TestOwners(t *testing.T) {
 	var s ResponseData
 	var l OwnersData
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	Create(delegateJson)
 	Delegate(delegateJson2)
@@ -868,7 +868,7 @@ func TestModify(t *testing.T) {
 	modifyJson4 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"ToModify\":\"Alice\",\"Command\":\"revoke\"}")
 	modifyJson5 := []byte("{\"Name\":\"Carol\",\"Password\":\"Hello\",\"ToModify\":\"Alice\",\"Command\":\"delete\"}")
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -1059,7 +1059,7 @@ func TestStatic(t *testing.T) {
 		t.Fatalf("Error closing file, %v", err)
 	}
 
-	Init("/tmp/db1.json")
+	Init("/tmp/db1.json", "", "", "", "")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData

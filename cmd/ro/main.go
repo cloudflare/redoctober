@@ -9,10 +9,12 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/cmd/ro/gopass"
 	"github.com/cloudflare/redoctober/core"
+	"github.com/cloudflare/redoctober/order"
 )
 
 var action, user, pswd, userEnv, pswdEnv, server, caPath string
@@ -21,7 +23,9 @@ var owners, lefters, righters, inPath, labels, outPath, outEnv string
 
 var uses int
 
-var time, users string
+var duration, users string
+
+var pollInterval time.Duration
 
 type command struct {
 	Run  func()
@@ -37,6 +41,7 @@ var commandSet = map[string]command{
 	"encrypt":    command{Run: runEncrypt, Desc: "encrypt a file"},
 	"decrypt":    command{Run: runDecrypt, Desc: "decrypt a file"},
 	"re-encrypt": command{Run: runReEncrypt, Desc: "re-encrypt a file"},
+	"order":      command{Run: runOrder, Desc: "place an order for delegations"},
 }
 
 func registerFlags() {
@@ -45,7 +50,7 @@ func registerFlags() {
 	flag.StringVar(&owners, "owners", "", "comma separated owner list")
 	flag.StringVar(&users, "users", "", "comma separated user list")
 	flag.IntVar(&uses, "uses", 0, "number of delegated key uses")
-	flag.StringVar(&time, "time", "0h", "duration of delegated key uses")
+	flag.StringVar(&duration, "time", "0h", "duration of delegated key uses")
 	flag.StringVar(&lefters, "left", "", "comma separated left owners")
 	flag.StringVar(&righters, "right", "", "comma separated right owners")
 	flag.StringVar(&labels, "labels", "", "comma separated labels")
@@ -56,6 +61,7 @@ func registerFlags() {
 	flag.StringVar(&pswd, "password", "", "password")
 	flag.StringVar(&userEnv, "userenv", "RO_USER", "env variable for user name")
 	flag.StringVar(&pswdEnv, "pswdenv", "RO_PASS", "env variable for user password")
+	flag.DurationVar(&pollInterval, "poll-interval", time.Second, "interval for polling an outstanding order (set 0 to disable polling)")
 }
 
 func getUserCredentials() {
@@ -99,7 +105,7 @@ func runDelegate() {
 		Name:     user,
 		Password: pswd,
 		Uses:     uses,
-		Time:     time,
+		Time:     duration,
 		Users:    processCSL(users),
 		Labels:   processCSL(labels),
 	}
@@ -205,6 +211,34 @@ func runDecrypt() {
 	fmt.Println("Secure:", msg.Secure)
 	fmt.Println("Delegates:", msg.Delegates)
 	ioutil.WriteFile(outPath, msg.Data, 0644)
+}
+
+func runOrder() {
+	req := core.OrderRequest{
+		Name:     user,
+		Password: pswd,
+		Uses:     uses,
+		Duration: duration,
+		Labels:   processCSL(labels),
+		Users:    processCSL(users),
+	}
+	resp, err := roServer.Order(req)
+	processError(err)
+
+	var o order.Order
+	err = json.Unmarshal(resp.Response, &o)
+	processError(err)
+
+	if pollInterval > 0 {
+		for o.Delegated < 2 {
+			time.Sleep(pollInterval)
+			resp, err = roServer.OrderInfo(core.OrderInfoRequest{Name: user, Password: pswd, OrderNum: o.Num})
+			processError(err)
+			err = json.Unmarshal(resp.Response, &o)
+			processError(err)
+		}
+	}
+	fmt.Println(resp.Status)
 }
 
 func main() {

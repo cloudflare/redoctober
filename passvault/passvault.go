@@ -85,7 +85,8 @@ type PasswordRecord struct {
 		ECPrivIV []byte
 		ECPublic ECPublicKey
 	}
-	Admin bool
+	AltNames map[string]string
+	Admin    bool
 }
 
 // diskRecords is the structure used to read and write a JSON file
@@ -187,6 +188,8 @@ func createPasswordRec(password string, admin bool, userType string) (newRec Pas
 		return
 	}
 
+	newRec.AltNames = make(map[string]string)
+
 	// generate a key pair
 	switch userType {
 	case RSARecord:
@@ -273,7 +276,6 @@ func InitFrom(path string) (records Records, err error) {
 	// from the file.
 
 	records.Version = 0
-
 	if len(jsonDiskRecord) != 0 {
 		if err = json.Unmarshal(jsonDiskRecord, &records); err != nil {
 			return
@@ -281,7 +283,12 @@ func InitFrom(path string) (records Records, err error) {
 	}
 
 	err = errors.New("Format error")
-	for _, rec := range records.Passwords {
+	for k, rec := range records.Passwords {
+
+		if rec.AltNames == nil {
+			rec.AltNames = make(map[string]string)
+			records.Passwords[k] = rec
+		}
 		if len(rec.PasswordSalt) != 16 {
 			return
 		}
@@ -364,11 +371,21 @@ func (records *Records) AddNewRecord(name, password string, admin bool, userType
 }
 
 // ChangePassword changes the password for a given user.
-func (records *Records) ChangePassword(name, password, newPassword string) (err error) {
+func (records *Records) ChangePassword(name, password, newPassword, hipchatName string) (err error) {
 	pr, ok := records.GetRecord(name)
+
 	if !ok {
 		err = errors.New("Record not present")
 		return
+	}
+
+	if len(hipchatName) != 0 {
+		pr.AltNames["HipchatName"] = hipchatName
+	}
+
+	if len(newPassword) == 0 {
+		records.SetRecord(pr, name)
+		return records.WriteRecordsToDisk()
 	}
 
 	var keySalt []byte
@@ -608,6 +625,26 @@ func (pr *PasswordRecord) GetKeyRSA(password string) (key rsa.PrivateKey, err er
 	}
 
 	return
+}
+func (r *Records) GetAltNameFromName(alt, name string) (altName string, found bool) {
+	if passwordRecord, ok := r.Passwords[name]; ok {
+		if altName, ok := passwordRecord.AltNames[alt]; ok {
+			return altName, true
+		}
+	}
+	return "", false
+}
+func (r *Records) GetAltNamesFromName(alt string, names []string) map[string]string {
+	altNames := make(map[string]string)
+	for _, name := range names {
+		altName, found := r.GetAltNameFromName(alt, name)
+		if !found {
+			altName = name
+		}
+		altNames[name] = altName
+	}
+	return altNames
+
 }
 
 // ValidatePassword returns an error if the password is incorrect.

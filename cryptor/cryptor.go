@@ -524,14 +524,14 @@ func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (r
 }
 
 // Decrypt decrypts a file using the keys in the key cache.
-func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, secure bool, err error) {
+func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, labels, names []string, secure bool, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
 		return
 	}
 	if encrypted.Version != DEFAULT_VERSION && encrypted.Version != -1 {
-		return nil, nil, secure, errors.New("Unknown version")
+		return nil, nil, nil, secure, errors.New("Unknown version")
 	}
 
 	secure = encrypted.Version == -1
@@ -551,7 +551,7 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 		return
 	}
 	if encrypted.VaultId != vaultId {
-		return nil, nil, secure, errors.New("Wrong vault")
+		return nil, nil, nil, secure, errors.New("Wrong vault")
 	}
 
 	// compute HMAC
@@ -579,6 +579,7 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, names []string, 
 	aesCBC.CryptBlocks(clearData, encrypted.Data)
 
 	resp, err = padding.RemovePadding(clearData)
+	labels = encrypted.Labels
 	return
 }
 
@@ -637,7 +638,6 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, predicate string, err er
 			addedNames[name] = true
 		}
 	}
-
 	predicate = encrypted.Predicate
 
 	return
