@@ -1224,7 +1224,7 @@ func TestValidateName(t *testing.T) {
 func TestSSHSignWith(t *testing.T) {
 	delegateJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"10s\",\"Uses\":10}")
 
-	Init("memory")
+	Init("memory", "", "", "", "")
 
 	// check for summary of initialized vault with new member
 	var s ResponseData

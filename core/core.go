@@ -692,7 +692,7 @@ func SSHSignWith(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, names, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, _, names, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		return jsonStatusError(err)
 	}
