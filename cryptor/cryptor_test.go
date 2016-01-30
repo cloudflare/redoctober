@@ -123,7 +123,7 @@ func TestDuplicates(t *testing.T) {
 			t.Fatalf("%v", err)
 		}
 
-		_, _, _, _, err := c.Decrypt(resp, name)
+		_, _, _, _, _, err := c.Decrypt(resp, name)
 		if err == nil {
 			t.Fatalf("That shouldn't have worked!")
 		}
