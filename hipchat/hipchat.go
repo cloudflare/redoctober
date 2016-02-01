@@ -46,7 +46,7 @@ func (h *HipchatClient) Notify(msg, color string) error {
 		return err
 	}
 	roomId := url.QueryEscape(strconv.Itoa(h.RoomId))
-	hipchatUrl := fmt.Sprintf("https://%s/v2/room/%s/notification?auth_token=%s", h.HcHost, roomId, h.ApiKey)
+	hipchatUrl := fmt.Sprintf("https://%s/v2/room/%s/message?auth_token=%s", h.HcHost, roomId, h.ApiKey)
 	req, err := http.NewRequest("POST", hipchatUrl, bytes.NewReader(body))
 
 	req.Header.Add("Content-Type", "application/json")
