@@ -434,7 +434,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 					<div class="form-group row">
 						<div class="col-md-6">
 							<label for="create-user-hipchatname">Hipchat Name</label>
-							<input type="text" name="HipchatName" class="form-control" id="create-hipchatname" placeholder="HipchatName" required />
+							<input type="text" name="HipchatName" class="form-control" id="create-hipchatname" placeholder="HipchatName"/>
 						</div>
 					</div>
 					<div class="form-group row">
