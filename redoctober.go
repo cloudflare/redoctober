@@ -214,9 +214,9 @@ const usage = `Usage:
 	redoctober -static <path> -vaultpath <path> -addr <addr> -certs <path1>[,<path2>,...] -keys <path1>[,<path2>,...] [-ca <path>]
 
 single-cert example:
-redoctober -vaultpath diskrecord.json -addr localhost:8081 -certs cert.pem -keys cert.key
+redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert.pem -keys cert.key
 multi-cert example:
-redoctober -vaultpath diskrecord.json -addr localhost:8081 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
+redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
 `
 
 func main() {
@@ -229,7 +229,7 @@ func main() {
 
 	var staticPath = flag.String("static", "", "Path to override built-in index.html")
 	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
-	var addr = flag.String("addr", "localhost:8081", "Server and port separated by :")
+	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
 	var useSystemdSocket = flag.Bool("systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
 	var certsPathString = flag.String("certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
 	var keysPathString = flag.String("keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
@@ -237,7 +237,7 @@ func main() {
 	var hcKey = flag.String("hckey", "", "Hipchat API Key")
 	var hcRoom = flag.String("hcroom", "", "Hipchat Room Id")
 	var hcHost = flag.String("hchost", "", "Hipchat Url Base (ex: hipchat.com)")
-	var roHost = flag.String("rohost", "", "RedOctober Url Base (ex: localhost:8081)")
+	var roHost = flag.String("rohost", "", "RedOctober Url Base (ex: localhost:8080)")
 	flag.Parse()
 
 	if *vaultPath == "" || *certsPathString == "" || *keysPathString == "" || (*addr == "" && *useSystemdSocket == false) {
