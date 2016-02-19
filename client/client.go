@@ -106,6 +106,20 @@ func unmarshalResponseData(respBytes []byte) (*core.ResponseData, error) {
 	return response, nil
 }
 
+func unmarshalOwnersData(respBytes []byte) (*core.OwnersData, error) {
+	response := new(core.OwnersData)
+	err := json.Unmarshal(respBytes, response)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.Status != "ok" {
+		return nil, errors.New(response.Status)
+	}
+
+	return response, nil
+}
+
 // Create creates an admin account at the remote server
 func (c *RemoteServer) Create(req core.CreateRequest) (*core.ResponseData, error) {
 	reqBytes, err := json.Marshal(req)
@@ -282,6 +296,21 @@ func (c *RemoteServer) Password(req []byte) (*core.ResponseData, error) {
 	}
 
 	return unmarshalResponseData(respBytes)
+}
+
+// Owners issues an Owners request to the remote server
+func (c *RemoteServer) Owners(req core.OwnersRequest) (*core.OwnersData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("owners", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalOwnersData(respBytes)
 }
 
 // Order issues an order request to the remote server
