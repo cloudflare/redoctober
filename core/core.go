@@ -5,6 +5,7 @@
 package core
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/order"
 	"github.com/cloudflare/redoctober/passvault"
+	"golang.org/x/crypto/ssh"
 )
 
 var (
@@ -85,6 +87,7 @@ type EncryptRequest struct {
 	Data []byte
 
 	Labels []string
+	Usages []string
 }
 
 type ReEncryptRequest EncryptRequest
@@ -94,6 +97,14 @@ type DecryptRequest struct {
 	Password string
 
 	Data []byte
+}
+
+type SSHSignWithRequest struct {
+	Name     string
+	Password string
+
+	Data    []byte
+	TBSData []byte
 }
 
 type OwnersRequest struct {
@@ -156,6 +167,12 @@ type SummaryData struct {
 
 type DecryptWithDelegates struct {
 	Data      []byte
+	Secure    bool
+	Delegates []string
+}
+
+type SSHSignatureWithDelegates struct {
+	Signature ssh.Signature
 	Secure    bool
 	Delegates []string
 }
@@ -538,7 +555,7 @@ func Encrypt(jsonIn []byte) ([]byte, error) {
 		Predicate:  s.Predicate,
 	}
 
-	resp, err := crypt.Encrypt(s.Data, s.Labels, access)
+	resp, err := crypt.Encrypt(s.Data, s.Labels, s.Usages, access)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -567,7 +584,7 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, _, _, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, _, _, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -582,7 +599,7 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 		RightNames: s.RightOwners,
 	}
 
-	resp, err := crypt.Encrypt(data, s.Labels, access)
+	resp, err := crypt.Encrypt(data, s.Labels, usages, access)
 	if err != nil {
 		return jsonStatusError(err)
 	}
@@ -612,9 +629,25 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	data, allLabels, names, secure, err := crypt.Decrypt(s.Data, s.Name)
+	data, allLabels, names, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
+
 	if err != nil {
 		return jsonStatusError(err)
+	}
+
+	if len(usages) != 0 {
+		// a file must be marked as usable for "decrypt" before we will decrypt
+		// it for the user. If no usages are provided, we permit decryption
+		foundDecrypt := false
+		for _, usage := range usages {
+			if usage == "decrypt" {
+				foundDecrypt = true
+				break
+			}
+		}
+		if !foundDecrypt {
+			return jsonStatusError(errors.New("cannot decrypt this file"))
+		}
 	}
 
 	resp := &DecryptWithDelegates{
@@ -633,6 +666,67 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		delete(orders.Orders, orderKey)
 		orders.NotifyOrderFulfilled(s.Name, orderKey)
 	}
+	return jsonResponse(out)
+}
+
+// SSHSignWith signs a message with an SSH key
+func SSHSignWith(jsonIn []byte) ([]byte, error) {
+	var s SSHSignWithRequest
+	var err error
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.ssh-sign-with failed: user=%s %v", s.Name, err)
+		} else {
+			log.Printf("core.ssh-sign-with success: user=%s", s.Name)
+		}
+	}()
+
+	err = json.Unmarshal(jsonIn, &s)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	err = validateUser(s.Name, s.Password, false)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	data, _, names, usages, secure, err := crypt.Decrypt(s.Data, s.Name)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	// a file must be marked as usable for "sign" before we will try to sign with it
+	foundSign := false
+	for _, usage := range usages {
+		if usage == "ssh-sign-with" {
+			foundSign = true
+			break
+		}
+	}
+	if !foundSign {
+		return jsonStatusError(errors.New("cannot sign with this file"))
+	}
+
+	var signer ssh.Signer
+	signer, err = ssh.ParsePrivateKey(data)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	signature, err := signer.Sign(rand.Reader, s.TBSData)
+	resp := &SSHSignatureWithDelegates{
+		Signature: *signature,
+		Secure:    secure,
+		Delegates: names,
+	}
+
+	out, err := json.Marshal(resp)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
 	return jsonResponse(out)
 }
 

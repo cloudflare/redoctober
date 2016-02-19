@@ -29,32 +29,38 @@ import (
 // List of URLs to register and their related functions
 
 var functions = map[string]func([]byte) ([]byte, error){
-	"/create":      core.Create,
-	"/create-user": core.CreateUser,
-	"/summary":     core.Summary,
-	"/purge":       core.Purge,
-	"/delegate":    core.Delegate,
-	"/password":    core.Password,
-	"/encrypt":     core.Encrypt,
-	"/re-encrypt":  core.ReEncrypt,
-	"/decrypt":     core.Decrypt,
-	"/owners":      core.Owners,
-	"/modify":      core.Modify,
-	"/export":      core.Export,
-	"/order":       core.Order,
-	"/orderout":    core.OrdersOutstanding,
-	"/orderinfo":   core.OrderInfo,
-	"/ordercancel": core.OrderCancel,
+	"/create":        core.Create,
+	"/create-user":   core.CreateUser,
+	"/summary":       core.Summary,
+	"/purge":         core.Purge,
+	"/delegate":      core.Delegate,
+	"/password":      core.Password,
+	"/encrypt":       core.Encrypt,
+	"/re-encrypt":    core.ReEncrypt,
+	"/decrypt":       core.Decrypt,
+	"/ssh-sign-with": core.SSHSignWith,
+	"/owners":        core.Owners,
+	"/modify":        core.Modify,
+	"/export":        core.Export,
+	"/order":         core.Order,
+	"/orderout":      core.OrdersOutstanding,
+	"/orderinfo":     core.OrderInfo,
+	"/ordercancel":   core.OrderCancel,
 }
 
 type userRequest struct {
-	rt string // The request type (which will be one of the
+	// The request type (which will be one of the
 	// keys of the functions map above
-	in []byte // Arbitrary input data (depends on the core.*
+	rt string
+
+	// Arbitrary input data (depends on the core.*
 	// function called)
-	resp chan<- []byte // Channel down which a response is sent (the
+	in []byte
+
+	// Channel down which a response is sent (the
 	// data sent will depend on the core.* function
 	// called to handle this request)
+	resp chan<- []byte
 }
 
 // processRequest handles a single request receive on the JSON API for
@@ -187,10 +193,10 @@ type indexHandler struct {
 	staticPath string
 }
 
-func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
+func (handler *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 	var body io.ReadSeeker
-	if this.staticPath != "" {
-		f, err := os.Open(this.staticPath)
+	if handler.staticPath != "" {
+		f, err := os.Open(handler.staticPath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -198,7 +204,7 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 		defer f.Close()
 		body = f
 	} else {
-		body = bytes.NewReader(indexHtml)
+		body = bytes.NewReader(indexHTML)
 	}
 
 	header := w.Header()
@@ -260,7 +266,7 @@ func main() {
 	s.Serve(l)
 }
 
-var indexHtml = []byte(`<!DOCTYPE html>
+var indexHTML = []byte(`<!DOCTYPE html>
 <html lang="en">
 <head>
 	<title>Red October - Two Man Rule File Encryption &amp; Decryption</title>
@@ -532,6 +538,12 @@ var indexHtml = []byte(`<!DOCTYPE html>
 						<div class="col-md-6">
 							<label for="encrypt-labels">Labels to use <small>(comma separated)</small></label>
 							<input type="text" name="Labels" class="form-control" id="encrypt-labels" placeholder="e.g. Blue, Red" />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="encrypt-usages">Usages <small>(comma separated)</small></label>
+							<input type="text" name="Usages" class="form-control" id="encrypt-usages" placeholder="e.g. ssh-sign-with, decrypt" />
 						</div>
 					</div>
 					<div class="form-group">
@@ -939,6 +951,11 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				for(var i=0, l=data.Labels.length; i<l; i++){
 					data.Labels[i] = data.Labels[i].trim();
 					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
+				}
+				data.Usages = data.Usages.split(',');
+				for(var i=0, l=data.Usages.length; i<l; i++){
+					data.Usages[i] = data.Usages[i].trim();
+					if (data.Usages[i] == "") { data.Usages.splice(i, 1); }
 				}
 
 				// Convert data to base64.
