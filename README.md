@@ -16,7 +16,7 @@ or later to compile. Verify your go version by running `go version`:
     go version go1.4
 
 As with any Go program you do need to set the
-[GOPATH enviroment variable](http://golang.org/doc/code.html#GOPATH)
+[GOPATH environment variable](http://golang.org/doc/code.html#GOPATH)
 accordingly. With Go set up you can download and compile sources:
 
     $ go get github.com/cloudflare/redoctober
@@ -114,7 +114,7 @@ Example query:
 ### Create User
 
 Create Users creates a new user account. Allows an optional "UserType"
-to be specified which controls how the record is ecrypted. This can have
+to be specified which controls how the record is encrypted. This can have
 a value of either "RSA" or "ECC" and if none is provided will default to
 "RSA".
 
