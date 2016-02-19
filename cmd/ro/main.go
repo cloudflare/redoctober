@@ -21,7 +21,7 @@ var action, user, pswd, userEnv, pswdEnv, server, caPath string
 
 var owners, lefters, righters, inPath, labels, outPath, outEnv string
 
-var uses int
+var uses, minUsers int
 
 var duration, users string
 
@@ -42,6 +42,7 @@ var commandSet = map[string]command{
 	"decrypt":    command{Run: runDecrypt, Desc: "decrypt a file"},
 	"re-encrypt": command{Run: runReEncrypt, Desc: "re-encrypt a file"},
 	"order":      command{Run: runOrder, Desc: "place an order for delegations"},
+	"owners":     command{Run: runOwner, Desc: "show owners list"},
 }
 
 func registerFlags() {
@@ -50,6 +51,7 @@ func registerFlags() {
 	flag.StringVar(&owners, "owners", "", "comma separated owner list")
 	flag.StringVar(&users, "users", "", "comma separated user list")
 	flag.IntVar(&uses, "uses", 0, "number of delegated key uses")
+	flag.IntVar(&minUsers, "minUsers", 2, "minimum number of delegations")
 	flag.StringVar(&duration, "time", "0h", "duration of delegated key uses")
 	flag.StringVar(&lefters, "left", "", "comma separated left owners")
 	flag.StringVar(&righters, "right", "", "comma separated right owners")
@@ -131,6 +133,7 @@ func runEncrypt() {
 	req := core.EncryptRequest{
 		Name:        user,
 		Password:    pswd,
+		Minimum:     minUsers,
 		Owners:      processCSL(owners),
 		LeftOwners:  processCSL(lefters),
 		RightOwners: processCSL(righters),
@@ -239,6 +242,21 @@ func runOrder() {
 		}
 	}
 	fmt.Println(resp.Status)
+}
+
+func runOwner() {
+	inBytes, err := ioutil.ReadFile(inPath)
+	processError(err)
+
+	req := core.OwnersRequest{
+		Data: inBytes,
+	}
+
+	resp, err := roServer.Owners(req)
+	processError(err)
+
+	fmt.Println(resp.Status)
+	fmt.Println(resp)
 }
 
 func main() {
