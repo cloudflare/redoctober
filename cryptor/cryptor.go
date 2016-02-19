@@ -270,7 +270,7 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 		return
 	}
 
-	if len(access.Names) > 0 {
+	if len(access.Names) > 0 && access.Minimum > 0 {
 		// Generate a random AES key for each user and RSA/ECIES encrypt it
 		encrypted.KeySetRSA = make(map[string]SingleWrappedKey)
 
