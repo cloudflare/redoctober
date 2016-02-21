@@ -760,6 +760,16 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 	<script>
 		$(function(){
+			function removeEmpty(arr) {
+				for (var i = 0; i < arr.length; i++) {
+					arr[i] = arr[i].trim();
+					if (arr[i] === "") {
+						arr.splice(i, 1);
+						i--; // Since the list changes size we need to revist the element at this index.
+					}
+				}
+			}
+			
 			function serialize( $form ){
 				var serialized = $form.serializeArray(), data = {};
 				$.each(serialized, function(idx, item){ data[item.name] = item.value; });
@@ -854,15 +864,10 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				// Force uses to an integer
 				data.Uses = parseInt(data.Uses, 10);
 				data.Users = data.Users.split(',');
-				for(var i=0, l=data.Users.length; i<l; i++){
-					data.Users[i] = data.Users[i].trim();
-					if (data.Users[i] == "") { data.Users.splice(i, 1); }
-				}
+				removeEmpty(data.Users);
+				
 				data.Labels = data.Labels.split(',');
-				for(var i=0, l=data.Labels.length; i<l; i++){
-					data.Labels[i] = data.Labels[i].trim();
-					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
-				}
+				removeEmpty(data.Labels);
 
 				submit( $form, {
 					data : data,
@@ -931,15 +936,10 @@ var indexHtml = []byte(`<!DOCTYPE html>
 
 				data.Minimum = parseInt(data.Minimum, 10);
 				data.Owners = data.Owners.split(',');
-				for(var i=0, l=data.Owners.length; i<l; i++){
-					data.Owners[i] = data.Owners[i].trim();
-					if (data.Owners[i] == "") { data.Owners.splice(i, 1); }
-				}
+				removeEmpty(data.Owners);
+				
 				data.Labels = data.Labels.split(',');
-				for(var i=0, l=data.Labels.length; i<l; i++){
-					data.Labels[i] = data.Labels[i].trim();
-					if (data.Labels[i] == "") { data.Labels.splice(i, 1); }
-				}
+				removeEmpty(data.Labels);
 
 				// Convert data to base64.
 				data.Data = window.btoa(data.Data);
