@@ -167,6 +167,7 @@ func runReEncrypt() {
 		Name:        user,
 		Password:    pswd,
 		Owners:      processCSL(owners),
+		Minimum:     minUsers,
 		LeftOwners:  processCSL(lefters),
 		RightOwners: processCSL(righters),
 		Labels:      processCSL(labels),
