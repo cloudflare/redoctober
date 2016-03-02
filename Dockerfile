@@ -4,7 +4,7 @@ RUN ./script/generatecert
 EXPOSE 8080
 
 CMD app \
-  -addr=localhost:8080 \
+  -addr=0.0.0.0:8080 \
   -vaultpath=diskrecord.json \
   -certs=cert/server.crt \
   -keys=cert/server.pem
