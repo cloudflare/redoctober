@@ -32,7 +32,7 @@ vault, an internet address, and a certificate keypair.
 
 ### Docker
 
-***This is still a proof-of-concept, and is not yet recommended for production.***
+***This is only meant for demo purposes, and is not yet recommended for production.***
 
 The easiest way to try out Red October is via [Docker](https://www.docker.com/).
 
@@ -63,22 +63,9 @@ secure) way is to skip the
 [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority#Issuing_a_certificate)
 verification and generate a self-signed TLS certificate. Read this
 [detailed guide](http://www.akadia.com/services/ssh_test_certificate.html)
-or, alternatively, follow these insecure commands:
+or, alternatively, run this command to generate an insecure certificate:
 
-    $ mkdir cert
-    $ chmod 700 cert
-    ## Generate private key with password "password"
-    $ openssl genrsa -aes128 -passout pass:password -out cert/server.pem 2048
-    ## Remove password from private key
-    $ openssl rsa -passin pass:password -in cert/server.pem -out cert/server.pem
-    ## Generate CSR (make sure the common name CN field matches your server
-    ## address. It's set to "localhost" here.)
-    $ openssl req -new -key cert/server.pem -out cert/server.csr -subj '/C=US/ST=California/L=Everywhere/CN=localhost'
-    ## Sign the CSR and create certificate
-    $ openssl x509 -req -days 365 -in cert/server.csr -signkey cert/server.pem -out cert/server.crt
-    ## Clean up
-    $ rm cert/server.csr
-    $ chmod 600 cert/*
+    $ ./script/generatecert
 
 You're ready to run the server:
 
