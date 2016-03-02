@@ -30,6 +30,34 @@ And run the tests:
 Red October is a TLS server. It requires a local file to hold the key
 vault, an internet address, and a certificate keypair.
 
+### Docker
+
+***This is still a proof-of-concept, and is not yet recommended for production.***
+
+The easiest way to try out Red October is via [Docker](https://www.docker.com/).
+
+1. Install the [Docker Toolbox](https://www.docker.com/products/docker-toolbox).
+1. On Mac/Windows, open the Docker Quickstart Terminal/Shell. On Linux, your normal terminal is fine.
+1. Run
+
+    ```bash
+    git clone https://github.com/cloudflare/redoctober.git
+    cd redoctober
+    docker build -t redoctober .
+    docker run -i --rm -p 8080:8080 redoctober
+    ```
+
+1. Open the container address in your browser.
+    * Mac/Windows: In a new Docker Quickstart Terminal/Shell, run
+
+        ```bash
+        open "https://$(docker-machine ip):8080"
+        ```
+
+    * Linux: Go to [https://localhost:8080](https://localhost:8080) in your browser.
+
+### Manual
+
 First you need to acquire a TLS certificate. The simplest (and least
 secure) way is to skip the
 [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority#Issuing_a_certificate)
