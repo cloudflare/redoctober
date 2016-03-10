@@ -219,7 +219,21 @@ multi-cert example:
 redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert2.pem -keys cert1.key,cert2.key
 `
 
-func main() {
+var (
+	addr             string
+	caPath           string
+	certsPath        string
+	hcHost           string
+	hcKey            string
+	hcRoom           string
+	keysPath         string
+	roHost           string
+	staticPath       string
+	useSystemdSocket bool
+	vaultPath        string
+)
+
+func init() {
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, "main usage dump\n")
 		fmt.Fprint(os.Stderr, usage)
@@ -227,33 +241,37 @@ func main() {
 		os.Exit(2)
 	}
 
-	var staticPath = flag.String("static", "", "Path to override built-in index.html")
-	var vaultPath = flag.String("vaultpath", "diskrecord.json", "Path to the the disk vault")
-	var addr = flag.String("addr", "localhost:8080", "Server and port separated by :")
-	var useSystemdSocket = flag.Bool("systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
-	var certsPathString = flag.String("certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
-	var keysPathString = flag.String("keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
-	var caPath = flag.String("ca", "", "Path of TLS CA for client authentication (optional)")
-	var hcKey = flag.String("hckey", "", "Hipchat API Key")
-	var hcRoom = flag.String("hcroom", "", "Hipchat Room Id")
-	var hcHost = flag.String("hchost", "", "Hipchat Url Base (ex: hipchat.com)")
-	var roHost = flag.String("rohost", "", "RedOctober Url Base (ex: localhost:8080)")
-	flag.Parse()
+	flag.StringVar(&addr, "addr", "localhost:8080", "Server and port separated by :")
+	flag.StringVar(&caPath, "ca", "", "Path of TLS CA for client authentication (optional)")
+	flag.StringVar(&certsPath, "certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
+	flag.StringVar(&hcHost, "hchost", "", "Hipchat Url Base (ex: hipchat.com)")
+	flag.StringVar(&hcKey, "hckey", "", "Hipchat API Key")
+	flag.StringVar(&hcRoom, "hcroom", "", "Hipchat Room Id")
+	flag.StringVar(&keysPath, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
+	flag.StringVar(&roHost, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
+	flag.StringVar(&staticPath, "static", "", "Path to override built-in index.html")
+	flag.BoolVar(&useSystemdSocket, "systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
+	flag.StringVar(&vaultPath, "vaultpath", "diskrecord.json", "Path to the the disk vault")
 
-	if *vaultPath == "" || *certsPathString == "" || *keysPathString == "" || (*addr == "" && *useSystemdSocket == false) {
+	flag.Parse()
+}
+
+func main() {
+	if vaultPath == "" || certsPath == "" || keysPath == "" ||
+		(addr == "" && useSystemdSocket == false) {
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
 
-	certPaths := strings.Split(*certsPathString, ",")
-	keyPaths := strings.Split(*keysPathString, ",")
+	certPaths := strings.Split(certsPath, ",")
+	keyPaths := strings.Split(keysPath, ",")
 
-	if err := core.Init(*vaultPath, *hcKey, *hcRoom, *hcHost, *roHost); err != nil {
-		log.Fatalf(err.Error())
+	if err := core.Init(vaultPath, hcKey, hcRoom, hcHost, roHost); err != nil {
+		log.Fatal(err)
 	}
 
-	s, l, err := NewServer(*staticPath, *addr, *caPath, certPaths, keyPaths, *useSystemdSocket)
+	s, l, err := NewServer(staticPath, addr, caPath, certPaths, keyPaths, useSystemdSocket)
 	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
@@ -1079,7 +1097,7 @@ var indexHtml = []byte(`<!DOCTYPE html>
 				evt.preventDefault();
 				createLink();
 			});
-			
+
 			// Init from query string if possible.
 			var queryParams = document.location.search;
 			var queryParts = queryParams.split('&');
