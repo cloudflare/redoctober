@@ -17,4 +17,5 @@ RUN rm -rf /var/cache/apk/*
 
 EXPOSE 8080
 
-CMD ./script/docker-start
+ENTRYPOINT ["./script/docker-start"]
+CMD ["-vaultpath=diskrecord.json", "-certs=cert/server.crt", "-keys=cert/server.pem"]

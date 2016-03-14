@@ -4,8 +4,4 @@ set -e
 
 source $(dirname $0)/generatecert
 
-exec redoctober \
-  -addr=0.0.0.0:8080 \
-  -vaultpath=diskrecord.json \
-  -certs=cert/server.crt \
-  -keys=cert/server.pem
+exec redoctober -addr=0.0.0.0:8080 $@
