@@ -1,0 +1,30 @@
+#!/bin/bash
+
+set -e
+
+function cleanup {
+  echo "Cleaning up..."
+  docker kill redoctober1 > /dev/null 2>&1 || true
+  # in case the container remains
+  docker rm redoctober1 > /dev/null 2>&1 || true
+  echo "done."
+}
+
+function failure {
+  >&2 echo "FAILED"
+  cleanup
+  exit 1
+}
+
+cleanup
+
+{
+  docker build -t redoctober . > /dev/null
+
+  docker run -d -i -p 8080:8080 --name redoctober1 redoctober > /dev/null
+  curl -I -k "https://$(docker-machine ip):8080" > /dev/null
+} || failure
+
+cleanup
+
+echo "SUCCESS"

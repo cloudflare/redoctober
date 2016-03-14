@@ -3,7 +3,7 @@
 set -e
 set -x
 
-mkdir cert
+mkdir -p cert
 chmod 700 cert
 # Generate private key with password "password"
 openssl genrsa -aes128 -passout pass:password -out cert/server.pem 2048
