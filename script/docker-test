@@ -12,6 +12,7 @@ function cleanup {
 
 function failure {
   >&2 echo "FAILED"
+  docker logs redoctober1
   cleanup
   exit 1
 }
