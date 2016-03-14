@@ -44,7 +44,7 @@ The easiest way to try out Red October is via [Docker](https://www.docker.com/).
     git clone https://github.com/cloudflare/redoctober.git
     cd redoctober
     docker build -t redoctober .
-    docker run -i --rm -p 8080:8080 redoctober
+    docker run -it --rm -p 8080:8080 redoctober
     ```
 
 1. Open the container address in your browser.
