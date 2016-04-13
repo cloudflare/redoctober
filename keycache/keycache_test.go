@@ -27,7 +27,8 @@ func TestUsesFlush(t *testing.T) {
 	// Initialize keycache and delegate the user's key to it.
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 2, "", "1h")
+	duration, _ := time.ParseDuration("1h")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", "", &Usage{2, nil, []string{"alice"}, time.Now().Add(duration), false})
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -90,7 +91,8 @@ func TestTimeFlush(t *testing.T) {
 
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 10, "", "1s")
+	duration, _ := time.ParseDuration("1s")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", "", &Usage{10, nil, []string{"alice"}, time.Now().Add(duration), false})
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -129,7 +131,8 @@ func TestGoodLabel(t *testing.T) {
 
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "", "1h")
+	duration, _ := time.ParseDuration("1h")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", "", &Usage{1, []string{"red"}, []string{"alice"}, time.Now().Add(duration), false})
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -171,7 +174,8 @@ func TestBadLabel(t *testing.T) {
 
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, []string{"red"}, 1, "", "1h")
+	duration, _ := time.ParseDuration("1h")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", "", &Usage{1, []string{"red"}, nil, time.Now().Add(duration), true})
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -213,11 +217,14 @@ func TestGoodUser(t *testing.T) {
 
 	cache := NewCache()
 
+	duration, _ := time.ParseDuration("1h")
 	err = cache.AddKeyFromRecord(
-		pr, "user", "weakpassword",
-		[]string{"ci", "buildeng", "user"},
-		[]string{"red", "blue"},
-		1, "", "1h",
+		pr, "user", "weakpassword", "",
+		&Usage{
+			1, []string{"red", "blue"},
+			[]string{"ci", "buildeng", "user"},
+			time.Now().Add(duration), false,
+		},
 	)
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -260,12 +267,16 @@ func TestBadUser(t *testing.T) {
 
 	cache := NewCache()
 
+	duration, _ := time.ParseDuration("1h")
 	err = cache.AddKeyFromRecord(
-		pr, "user", "weakpassword",
-		[]string{"ci", "buildeng", "user"},
-		[]string{"red", "blue"},
-		1, "", "1h",
+		pr, "user", "weakpassword", "",
+		&Usage{
+			1, []string{"red", "blue"},
+			[]string{"ci", "buildeng", "user"},
+			time.Now().Add(duration), false,
+		},
 	)
+
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -288,6 +299,57 @@ func TestBadUser(t *testing.T) {
 
 	cache.Refresh()
 	if len(cache.UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
+	}
+}
+
+func TestAnyUser(t *testing.T) {
+	// Initialize passvault and keycache.  Delegate a key with tag and user
+	// restrictions and verify that permissible decryption is allowed.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache := NewCache()
+
+	duration, _ := time.ParseDuration("1h")
+	err = cache.AddKeyFromRecord(
+		pr, "user", "weakpassword", "",
+		&Usage{
+			1, []string{"red", "blue"},
+			nil,
+			time.Now().Add(duration), true,
+		},
+	)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	dummy := make([]byte, 16)
+	pubEncryptedKey, err := pr.EncryptKey(dummy)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{"red"}, pubEncryptedKey)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 0 {
 		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
 }

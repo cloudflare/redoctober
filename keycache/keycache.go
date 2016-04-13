@@ -31,10 +31,11 @@ type DelegateIndex struct {
 
 // Usage holds the permissions of a delegated permission
 type Usage struct {
-	Uses   int       // Number of uses delegated
-	Labels []string  // File labels allowed to decrypt
-	Users  []string  // Set of users allows to decrypt
-	Expiry time.Time // Expiration of usage
+	Uses    int       // Number of uses delegated
+	Labels  []string  // File labels allowed to decrypt
+	Users   []string  // Set of users allows to decrypt
+	Expiry  time.Time // Expiration of usage
+	AnyUser bool      // True if any user is permitted, false otherwise
 }
 
 // ActiveUser holds the information about an actively delegated key.
@@ -72,13 +73,17 @@ func (usage Usage) matchesLabel(labels []string) bool {
 }
 
 // matches returns true if this usage applies the user and label
-// an empty array of Users indicates that all users are valid
+// also returns true if the usage is marked with AnyUser set to true
+// DEPRECATED: an empty array of Users indicates that all users are valid
 func (usage Usage) matches(user string, labels []string) bool {
 	if !usage.matchesLabel(labels) {
 		return false
 	}
-	// if usage lists no users, always match
+	// DEPRECATED: if usage lists no users, always match
 	if len(usage.Users) == 0 {
+		return true
+	}
+	if usage.AnyUser {
 		return true
 	}
 	for _, validUser := range usage.Users {
@@ -173,20 +178,11 @@ func (cache *Cache) Refresh() {
 }
 
 // AddKeyFromRecord decrypts a key for a given record and adds it to the cache.
-func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, password string, users, labels []string, uses int, slot, durationString string) (err error) {
+func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, password, slot string, usage *Usage) (err error) {
 	var current ActiveUser
 
 	cache.Refresh()
-
-	// compute exipiration
-	duration, err := time.ParseDuration(durationString)
-	if err != nil {
-		return
-	}
-	current.Usage.Uses = uses
-	current.Usage.Expiry = time.Now().Add(duration)
-	current.Usage.Users = users
-	current.Usage.Labels = labels
+	current.Usage = *usage
 
 	// get decryption keys
 	switch record.Type {

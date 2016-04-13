@@ -50,11 +50,12 @@ type DelegateRequest struct {
 	Name     string
 	Password string
 
-	Uses   int
-	Time   string
-	Slot   string
-	Users  []string
-	Labels []string
+	Uses    int
+	Time    string
+	Slot    string
+	Users   []string
+	Labels  []string
+	AnyUser bool
 }
 
 type CreateUserRequest struct {
@@ -214,6 +215,26 @@ func validateName(name, password string) error {
 	}
 
 	return nil
+}
+
+// createCacheUsageFromDelegateRequest converts a DelegateRequest to a cache.Usage object.
+func createCacheUsageFromDelegateRequest(s *DelegateRequest) (*keycache.Usage, error) {
+	var u keycache.Usage
+	u.Uses = s.Uses
+	u.AnyUser = s.AnyUser
+	// copy splices
+	u.Labels = make([]string, len(s.Labels))
+	u.Users = make([]string, len(s.Users))
+	copy(u.Labels, s.Labels)
+	copy(u.Users, s.Users)
+	// compute exipiration
+	duration, err := time.ParseDuration(s.Time)
+	if err != nil {
+		return &u, err
+	}
+	u.Expiry = time.Now().Add(duration)
+	fmt.Printf("%#v\n", u)
+	return &u, nil
 }
 
 // Init reads the records from disk from a given path
@@ -396,7 +417,11 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	// add signed-in record to active set
-	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Slot, s.Time); err != nil {
+	u, err := createCacheUsageFromDelegateRequest(&s)
+	if err != nil {
+		return jsonStatusError(err)
+	}
+	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Slot, u); err != nil {
 		return jsonStatusError(err)
 	}
 
