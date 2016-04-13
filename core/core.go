@@ -402,9 +402,15 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 			return jsonStatusError(err)
 		}
 	}
+
+	// Ensure a list of Users is given or the AnyUser flag is set
+	if s.Users == nil && s.AnyUser == false {
+		err = errors.New("Must provide a list of Users or set the AnyUser flag to true")
+		return jsonStatusError(err)
+	}
+
 	// Find password record for user and verify that their password
 	// matches. If not found then add a new entry for this user.
-
 	pr, found := records.GetRecord(s.Name)
 	if found {
 		if err = pr.ValidatePassword(s.Password); err != nil {

@@ -74,14 +74,9 @@ func (usage Usage) matchesLabel(labels []string) bool {
 
 // matches returns true if this usage applies the user and label
 // also returns true if the usage is marked with AnyUser set to true
-// DEPRECATED: an empty array of Users indicates that all users are valid
 func (usage Usage) matches(user string, labels []string) bool {
 	if !usage.matchesLabel(labels) {
 		return false
-	}
-	// DEPRECATED: if usage lists no users, always match
-	if len(usage.Users) == 0 {
-		return true
 	}
 	if usage.AnyUser {
 		return true

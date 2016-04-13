@@ -56,7 +56,7 @@ func TestUsesFlush(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	key2, err := cache.DecryptKey(encKey, "user", "anybody", []string{}, pubEncryptedKey)
+	key2, err := cache.DecryptKey(encKey, "user", "alice", []string{}, pubEncryptedKey)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -66,7 +66,7 @@ func TestUsesFlush(t *testing.T) {
 	}
 
 	// Second decryption allowed.
-	_, err = cache.DecryptKey(encKey, "user", "anybody else", []string{}, pubEncryptedKey)
+	_, err = cache.DecryptKey(encKey, "user", "alice", []string{}, pubEncryptedKey)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -110,7 +110,7 @@ func TestTimeFlush(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{}, pubEncryptedKey)
+	_, err = cache.DecryptKey(dummy, "user", "alice", []string{}, pubEncryptedKey)
 	if err == nil {
 		t.Fatalf("Error in pruning expired key")
 	}
@@ -148,7 +148,7 @@ func TestGoodLabel(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
-	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{"red"}, pubEncryptedKey)
+	_, err = cache.DecryptKey(dummy, "user", "alice", []string{"red"}, pubEncryptedKey)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
