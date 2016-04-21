@@ -404,7 +404,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	// Ensure a list of Users is given or the AnyUser flag is set
-	if s.Users == nil && s.AnyUser == false {
+	if (s.Users == nil || len(s.Users) == 0) && s.AnyUser == false {
 		err = errors.New("Must provide a list of Users or set the AnyUser flag to true")
 		return jsonStatusError(err)
 	}

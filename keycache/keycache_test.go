@@ -324,7 +324,8 @@ func TestAnyUser(t *testing.T) {
 		&Usage{
 			1, []string{"red", "blue"},
 			nil,
-			time.Now().Add(duration), true,
+			time.Now().Add(duration),
+			true, // Set AnyUser flag to true
 		},
 	)
 
@@ -343,6 +344,7 @@ func TestAnyUser(t *testing.T) {
 		t.Fatalf("%v", err)
 	}
 
+	// Ensure that any user can decrypt the message
 	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{"red"}, pubEncryptedKey)
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -350,6 +352,59 @@ func TestAnyUser(t *testing.T) {
 
 	cache.Refresh()
 	if len(cache.UserKeys) != 0 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
+	}
+}
+
+func TestAnyUserNotDefaultBehavior(t *testing.T) {
+	// Initialize passvault and keycache.  Delegate a key with tag and user
+	// restrictions and verify that permissible decryption is allowed.
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	pr, err := records.AddNewRecord("user", "weakpassword", true, passvault.DefaultRecordType)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache := NewCache()
+
+	duration, _ := time.ParseDuration("1h")
+	err = cache.AddKeyFromRecord(
+		pr, "user", "weakpassword", "",
+		&Usage{
+			1, []string{"red", "blue"},
+			nil,
+			time.Now().Add(duration),
+			false, // Set AnyUser flag to false
+		},
+	)
+
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
+		t.Fatalf("Error in number of live keys")
+	}
+
+	dummy := make([]byte, 16)
+	pubEncryptedKey, err := pr.EncryptKey(dummy)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	// Ensure that any user is not able to decrypt the message
+	_, err = cache.DecryptKey(dummy, "user", "anybody", []string{"red"}, pubEncryptedKey)
+	if err == nil {
+		t.Fatalf("Should have seen a decrypt error for user 'anybody'.")
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
 }
