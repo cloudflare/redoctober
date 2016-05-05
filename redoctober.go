@@ -170,9 +170,10 @@ func NewServer(staticPath, addr, caPath string, certPaths, keyPaths []string, us
 	mux.HandleFunc("/", idxHandler.handle)
 
 	srv := http.Server{
-		Addr:      addr,
-		Handler:   mux,
-		TLSConfig: config,
+		Addr:         addr,
+		Handler:      mux,
+		TLSConfig:    config,
+		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){},
 	}
 
 	// The core package is not safe to be shared across goroutines so
