@@ -20,8 +20,6 @@ import (
 	"strings"
 	"time"
 
-	"golang.org/x/net/netutil"
-
 	"github.com/cloudflare/redoctober/core"
 	"github.com/coreos/go-systemd/activation"
 )
@@ -175,11 +173,6 @@ func NewServer(staticPath, addr, caPath string, certPaths, keyPaths []string, us
 		TLSConfig:    config,
 		TLSNextProto: map[string]func(*http.Server, *tls.Conn, http.Handler){},
 	}
-
-	// The core package is not safe to be shared across goroutines so
-	// this supervisor goroutine reads requests from the process
-	// channel and dispatches them to core for processes.
-	lstnr = netutil.LimitListener(lstnr, 1)
 
 	return &srv, lstnr, nil
 }
