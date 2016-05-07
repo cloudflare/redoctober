@@ -580,6 +580,7 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 		Names:      s.Owners,
 		LeftNames:  s.LeftOwners,
 		RightNames: s.RightOwners,
+		Predicate:  s.Predicate,
 	}
 
 	resp, err := crypt.Encrypt(data, s.Labels, access)
