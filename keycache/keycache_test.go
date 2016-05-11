@@ -371,17 +371,45 @@ func TestAnyUserNotDefaultBehavior(t *testing.T) {
 
 	cache := NewCache()
 
+	// Ensure we can't provide a nil list of Users *and* have a false AnyUser flag
 	duration, _ := time.ParseDuration("1h")
 	err = cache.AddKeyFromRecord(
 		pr, "user", "weakpassword", "",
 		&Usage{
 			1, []string{"red", "blue"},
-			nil,
+			nil, // Set a nil list of users
 			time.Now().Add(duration),
 			false, // Set AnyUser flag to false
 		},
 	)
+	if err == nil {
+		t.Fatalf("Should have seen error with Users=nil and AnyUser=false")
+	}
 
+	// Ensure we can't provide an empty list of Users either
+	err = cache.AddKeyFromRecord(
+		pr, "user", "weakpassword", "",
+		&Usage{
+			1, []string{"red", "blue"},
+			[]string{}, // Set an empty list of users
+			time.Now().Add(duration),
+			false, // Set AnyUser flag to false
+		},
+	)
+	if err == nil {
+		t.Fatalf("Should have seen error with Users=[]string{} and AnyUser=false")
+	}
+
+	// Ensure we only the specified user can decrypt when AnyUser is false
+	err = cache.AddKeyFromRecord(
+		pr, "user", "weakpassword", "",
+		&Usage{
+			1, []string{"red", "blue"},
+			[]string{"alice"}, // Set a valid list of users
+			time.Now().Add(duration),
+			false, // Set AnyUser flag to false
+		},
+	)
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -407,4 +435,16 @@ func TestAnyUserNotDefaultBehavior(t *testing.T) {
 	if len(cache.UserKeys) != 1 {
 		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
 	}
+
+	// Sanity check to make sure our user can still decrpyt
+	_, err = cache.DecryptKey(dummy, "user", "alice", []string{"red"}, pubEncryptedKey)
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cache.Refresh()
+	if len(cache.UserKeys) != 0 {
+		t.Fatalf("Error in number of live keys %v", cache.UserKeys)
+	}
+
 }

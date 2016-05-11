@@ -176,6 +176,10 @@ func (cache *Cache) Refresh() {
 func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, password, slot string, usage *Usage) (err error) {
 	var current ActiveUser
 
+	// Ensure a list of Users is given or the AnyUser flag is set
+	if (usage.Users == nil || len(usage.Users) == 0) && usage.AnyUser == false {
+		return errors.New("Must provide a list of Users or set the AnyUser flag to true")
+	}
 	cache.Refresh()
 	current.Usage = *usage
 
