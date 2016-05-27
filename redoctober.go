@@ -209,7 +209,7 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 // be started, a log.Fatal call is made.
 func initPrometheus() {
 	srv := &http.Server{
-		Addr:    net.JoinHostPort("localhost", metricsPort),
+		Addr:    net.JoinHostPort(metricsHost, metricsPort),
 		Handler: prometheus.Handler(),
 	}
 
@@ -231,6 +231,7 @@ redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert
 
 var (
 	addr             string
+	metricsHost      string
 	metricsPort      string
 	caPath           string
 	certsPath        string
@@ -259,7 +260,8 @@ func init() {
 	flag.StringVar(&hcKey, "hckey", "", "Hipchat API Key")
 	flag.StringVar(&hcRoom, "hcroom", "", "Hipchat Room Id")
 	flag.StringVar(&keysPath, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
-	flag.StringVar(&metricsPort, "metrics", "8081", "Port to use for metrics.")
+	flag.StringVar(&metricsHost, "metrics-host", "localhost", "The `host` the metrics endpoint should listen on.")
+	flag.StringVar(&metricsPort, "metrics-port", "8081", "The `port` the metrics endpoint should listen on.")
 	flag.StringVar(&roHost, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
 	flag.StringVar(&staticPath, "static", "", "Path to override built-in index.html")
 	flag.BoolVar(&useSystemdSocket, "systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
