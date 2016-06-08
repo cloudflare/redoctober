@@ -22,6 +22,7 @@ import (
 
 	"github.com/cloudflare/redoctober/core"
 	"github.com/coreos/go-systemd/activation"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // List of URLs to register and their related functions
@@ -203,6 +204,21 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 	http.ServeContent(w, r, "index.html", time.Now(), body)
 }
 
+// initPrometheus starts a goroutine with a Prometheus listener that
+// listens on localhost:metricsPort. If the Prometheus handler can't
+// be started, a log.Fatal call is made.
+func initPrometheus() {
+	srv := &http.Server{
+		Addr:    net.JoinHostPort(metricsHost, metricsPort),
+		Handler: prometheus.Handler(),
+	}
+
+	log.Printf("metrics.init start: addr=%s", srv.Addr)
+	go func() {
+		log.Fatal(srv.ListenAndServe())
+	}()
+}
+
 const usage = `Usage:
 
 	redoctober -static <path> -vaultpath <path> -addr <addr> -certs <path1>[,<path2>,...] -keys <path1>[,<path2>,...] [-ca <path>]
@@ -215,6 +231,8 @@ redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert
 
 var (
 	addr             string
+	metricsHost      string
+	metricsPort      string
 	caPath           string
 	certsPath        string
 	hcHost           string
@@ -242,6 +260,8 @@ func init() {
 	flag.StringVar(&hcKey, "hckey", "", "Hipchat API Key")
 	flag.StringVar(&hcRoom, "hcroom", "", "Hipchat Room Id")
 	flag.StringVar(&keysPath, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
+	flag.StringVar(&metricsHost, "metrics-host", "localhost", "The `host` the metrics endpoint should listen on.")
+	flag.StringVar(&metricsPort, "metrics-port", "8081", "The `port` the metrics endpoint should listen on.")
 	flag.StringVar(&roHost, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
 	flag.StringVar(&staticPath, "static", "", "Path to override built-in index.html")
 	flag.BoolVar(&useSystemdSocket, "systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
@@ -267,9 +287,12 @@ func main() {
 		log.Fatal(err)
 	}
 
+	initPrometheus()
 	s, l, err := NewServer(staticPath, addr, caPath, certPaths, keyPaths, useSystemdSocket)
 	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
-	s.Serve(l)
+
+	log.Printf("http.serve start: addr=%s", addr)
+	log.Fatal(s.Serve(l))
 }
