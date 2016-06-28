@@ -20,6 +20,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/core"
 	"github.com/coreos/go-systemd/activation"
 	"github.com/prometheus/client_golang/prometheus"
@@ -209,7 +210,7 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 // be started, a log.Fatal call is made.
 func initPrometheus() {
 	srv := &http.Server{
-		Addr:    net.JoinHostPort(metricsHost, metricsPort),
+		Addr:    net.JoinHostPort(cfg.Metrics.Host, cfg.Metrics.Port),
 		Handler: prometheus.Handler(),
 	}
 
@@ -230,22 +231,19 @@ redoctober -vaultpath diskrecord.json -addr localhost:8080 -certs cert1.pem,cert
 `
 
 var (
-	addr             string
-	metricsHost      string
-	metricsPort      string
-	caPath           string
-	certsPath        string
-	hcHost           string
-	hcKey            string
-	hcRoom           string
-	keysPath         string
-	roHost           string
-	staticPath       string
-	useSystemdSocket bool
-	vaultPath        string
+	cfg, cli  *config.Config
+	confFile  string
+	vaultPath string
 )
 
 func init() {
+	// cli contains the configuration set by the command line
+	// options, and cfg is the actual Red October config.
+	cli = config.New()
+	cfg = config.New()
+
+	var certsPath, keysPath string
+
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, "main usage dump\n")
 		fmt.Fprint(os.Stderr, usage)
@@ -253,46 +251,56 @@ func init() {
 		os.Exit(2)
 	}
 
-	flag.StringVar(&addr, "addr", "localhost:8080", "Server and port separated by :")
-	flag.StringVar(&caPath, "ca", "", "Path of TLS CA for client authentication (optional)")
+	flag.StringVar(&confFile, "f", "", "path to config file")
+	flag.StringVar(&cli.Server.Addr, "addr", "localhost:8080", "Server and port separated by :")
+	flag.StringVar(&cli.Server.CAPath, "ca", "", "Path of TLS CA for client authentication (optional)")
 	flag.StringVar(&certsPath, "certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
-	flag.StringVar(&hcHost, "hchost", "", "Hipchat Url Base (ex: hipchat.com)")
-	flag.StringVar(&hcKey, "hckey", "", "Hipchat API Key")
-	flag.StringVar(&hcRoom, "hcroom", "", "Hipchat Room Id")
+	flag.StringVar(&cli.HipChat.Host, "hchost", "", "Hipchat Url Base (ex: hipchat.com)")
+	flag.StringVar(&cli.HipChat.APIKey, "hckey", "", "Hipchat API Key")
+	flag.StringVar(&cli.HipChat.Room, "hcroom", "", "Hipchat Room Id")
 	flag.StringVar(&keysPath, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
-	flag.StringVar(&metricsHost, "metrics-host", "localhost", "The `host` the metrics endpoint should listen on.")
-	flag.StringVar(&metricsPort, "metrics-port", "8081", "The `port` the metrics endpoint should listen on.")
-	flag.StringVar(&roHost, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
-	flag.StringVar(&staticPath, "static", "", "Path to override built-in index.html")
-	flag.BoolVar(&useSystemdSocket, "systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
+	flag.StringVar(&cli.Metrics.Host, "metrics-host", "localhost", "The `host` the metrics endpoint should listen on.")
+	flag.StringVar(&cli.Metrics.Port, "metrics-port", "8081", "The `port` the metrics endpoint should listen on.")
+	flag.StringVar(&cli.UI.Root, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
+	flag.StringVar(&cli.UI.Static, "static", "", "Path to override built-in index.html")
+	flag.BoolVar(&cli.Server.Systemd, "systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
 	flag.StringVar(&vaultPath, "vaultpath", "diskrecord.json", "Path to the the disk vault")
 
 	flag.Parse()
+
+	cli.Server.CertPaths = strings.Split(certsPath, ",")
+	cli.Server.KeyPaths = strings.Split(keysPath, ",")
 }
 
 //go:generate go run generate.go
 
 func main() {
-	if vaultPath == "" || certsPath == "" || keysPath == "" ||
-		(addr == "" && useSystemdSocket == false) {
+	var err error
+	if confFile != "" {
+		cfg, err = config.Load(confFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	cfg.Merge(cli)
+
+	if vaultPath == "" || !cfg.Valid() {
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 		os.Exit(2)
 	}
 
-	certPaths := strings.Split(certsPath, ",")
-	keyPaths := strings.Split(keysPath, ",")
-
-	if err := core.Init(vaultPath, hcKey, hcRoom, hcHost, roHost); err != nil {
+	if err := core.Init(vaultPath, cfg.HipChat.APIKey, cfg.HipChat.Room, cfg.HipChat.Room, cfg.UI.Root); err != nil {
 		log.Fatal(err)
 	}
 
 	initPrometheus()
-	s, l, err := NewServer(staticPath, addr, caPath, certPaths, keyPaths, useSystemdSocket)
+	s, l, err := NewServer(cfg.UI.Static, cfg.Server.Addr, cfg.Server.CAPath,
+		cfg.Server.CertPaths, cfg.Server.KeyPaths, cfg.Server.Systemd)
 	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
 
-	log.Printf("http.serve start: addr=%s", addr)
+	log.Printf("http.serve start: addr=%s", cfg.Server.Addr)
 	log.Fatal(s.Serve(l))
 }
