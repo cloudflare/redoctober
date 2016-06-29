@@ -1,0 +1,237 @@
+package config
+
+import "testing"
+
+func (s *Server) equal(other *Server) bool {
+	if s.Addr != other.Addr {
+		return false
+	}
+
+	if s.CAPath != other.CAPath {
+		return false
+	}
+
+	if len(s.KeyPaths) != len(other.KeyPaths) {
+		return false
+	}
+
+	if len(s.CertPaths) != len(other.KeyPaths) {
+		return false
+	}
+
+	for i := range s.KeyPaths {
+		if s.KeyPaths[i] != other.KeyPaths[i] {
+			return false
+		}
+	}
+
+	for i := range s.CertPaths {
+		if s.CertPaths[i] != other.CertPaths[i] {
+			return false
+		}
+	}
+
+	if s.Systemd != other.Systemd {
+		return false
+	}
+
+	return true
+}
+
+func (ui *UI) equal(other *UI) bool {
+	if ui.Root != other.Root {
+		return false
+	}
+
+	if ui.Static != other.Static {
+		return false
+	}
+
+	return true
+}
+
+func (hc *HipChat) equal(other *HipChat) bool {
+	if hc.Host != other.Host || hc.Room != other.Room || hc.APIKey != other.APIKey {
+		return false
+	}
+
+	return true
+}
+
+func (m *Metrics) equal(other *Metrics) bool {
+	return m.Host == other.Host && m.Port == other.Port
+}
+
+func (c *Config) equal(other *Config) bool {
+	if !c.Server.equal(other.Server) {
+		return false
+	}
+
+	if !c.UI.equal(other.UI) {
+		return false
+	}
+
+	if !c.HipChat.equal(other.HipChat) {
+		return false
+	}
+
+	if !c.Metrics.equal(other.Metrics) {
+		return false
+	}
+
+	return true
+}
+
+// TestEmptyEqual makes sure two empty configurations are equal.
+func TestEmptyEqual(t *testing.T) {
+	a := New()
+	b := New()
+
+	if !a.equal(b) {
+		t.Fatal("empty configurations should be equivalent")
+	}
+}
+
+// TestMergeEmpty verifies the behaviour where merging a config into
+// an empty config results in the empty config becoming the same
+// config as the config being merged.
+func TestMergeEmpty(t *testing.T) {
+	empty := New()
+	testConfig := &Config{
+		Server: &Server{
+			Addr:      "localhost:8080",
+			CAPath:    "",
+			KeyPaths:  []string{"testdata/server.key"},
+			CertPaths: []string{"testdata/server.pem"},
+			Systemd:   true,
+		},
+		UI: &UI{
+			Root: "https://ro.example.net",
+		},
+		Metrics: &Metrics{
+			Host: "127.0.0.1",
+			Port: "8081",
+		},
+		HipChat: &HipChat{
+			Host:   "hipchat.example.net",
+			Room:   "redoctober",
+			APIKey: "i don't this key will work",
+		},
+	}
+
+	if empty.equal(testConfig) {
+
+	}
+
+	empty.Merge(testConfig)
+	if !empty.equal(testConfig) {
+		t.Fatal("merging should result in equivalent configs")
+	}
+}
+
+// TestMergeOverride verifies that merges will combine two configs.
+func TestMergeOverride(t *testing.T) {
+	config := New()
+	config.Server = &Server{
+		Addr:      "localhost:443",
+		CAPath:    "",
+		KeyPaths:  []string{"testdata/server.key"},
+		CertPaths: []string{"testdata/server.pem"},
+	}
+
+	merge := New()
+	merge.Server = &Server{
+		Addr: "localhost:8000",
+	}
+
+	expected := New()
+	expected.Server = &Server{
+		Addr:      "localhost:8000",
+		CAPath:    "",
+		KeyPaths:  []string{"testdata/server.key"},
+		CertPaths: []string{"testdata/server.pem"},
+	}
+
+	if config.equal(merge) {
+		t.Fatal("configurations shouldn't match")
+	}
+
+	if config.equal(expected) {
+		t.Fatal("configurations shouldn't match")
+	}
+
+	config.Merge(merge)
+	if !config.equal(expected) {
+		t.Fatal("configurations don't match")
+	}
+}
+
+// TestLoadFile validates loading a configuration from disk.
+func TestLoadFile(t *testing.T) {
+	goodConfig := "testdata/config.json"
+	badConfig := "testdata/bad_config.json"
+	expected := New()
+	expected.Server = &Server{
+		Addr:      "localhost:8080",
+		KeyPaths:  []string{"testdata/server.key"},
+		CertPaths: []string{"testdata/server.pem"},
+	}
+
+	_, err := Load("testdata/enoent.json")
+	if err == nil {
+		t.Fatal("attempt to load non-existent file should fail")
+	}
+
+	_, err = Load(badConfig)
+	if err == nil {
+		t.Fatal("attempt to load malformed JSON should fail")
+	}
+
+	cfg, err := Load(goodConfig)
+	if err != nil {
+		t.Fatalf("failed to load config: %s", err)
+	}
+
+	if !cfg.equal(expected) {
+		t.Fatal("loaded config is invalid")
+	}
+}
+
+// TestValid validates the Validate function.
+func TestValid(t *testing.T) {
+	config := New()
+
+	if config.Valid() {
+		t.Fatal("empty config shouldn't be valid")
+	}
+
+	// Certs and no keys is an invalid config.
+	config.Server.CertPaths = []string{"testdata/server.pem"}
+	if config.Valid() {
+		t.Fatal("config shouldn't be valid")
+	}
+
+	// Keys and no certs is an invalid config.
+	config.Server.CertPaths = nil
+	config.Server.KeyPaths = []string{"testdata/server.key"}
+	if config.Valid() {
+		t.Fatal("config shouldn't be valid")
+	}
+
+	// Key pairs but no address information is an invalid config.
+	config.Server.CertPaths = []string{"testdata/server.pem"}
+	if config.Valid() {
+		t.Fatal("config shouldn't be valid")
+	}
+
+	config.Server.Addr = "localhost:8080"
+	if !config.Valid() {
+		t.Fatal("config should be valid")
+	}
+
+	config.Server.Addr = ""
+	config.Server.Systemd = true
+	if !config.Valid() {
+		t.Fatal("config should be valid")
+	}
+}

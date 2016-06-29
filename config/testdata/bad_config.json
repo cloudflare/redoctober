@@ -1,0 +1,8 @@
+{
+    "server": {
+	"address":      "localhost:8080",
+	"private_keys": ["testdata/server.key"],
+	"certificates": ["testdata/server.pem"],
+    },
+}
+    
