@@ -98,13 +98,32 @@ func (m *Metrics) Merge(other *Metrics) {
 	setIfNotEmpty(&m.Port, other.Port)
 }
 
+// Delegations contains configuration for persisting delegations.
+type Delegations struct {
+	// Persist controls whether delegations are persisted or not.
+	Persist bool `json:"persist"`
+
+	// Policy contains the MSP predicate for delegation
+	// persistence.
+	Policy string `json:"policy"`
+}
+
+// Merge copies over non-empty settings from other into the current
+// Delegations config.
+func (d *Delegations) Merge(other *Delegations) {
+	setIfNotEmpty(&d.Policy, other.Policy)
+
+	d.Persist = d.Persist || other.Persist
+}
+
 // Config contains all the configuration options for a redoctober
 // instance.
 type Config struct {
-	Server  *Server  `json:"server"`
-	UI      *UI      `json:"ui"`
-	HipChat *HipChat `json:"hipchat"`
-	Metrics *Metrics `json:"metrics"`
+	Server      *Server      `json:"server"`
+	UI          *UI          `json:"ui"`
+	HipChat     *HipChat     `json:"hipchat"`
+	Metrics     *Metrics     `json:"metrics"`
+	Delegations *Delegations `json:"delegations"`
 }
 
 // Merge copies over the non-empty settings from other into the
@@ -114,6 +133,7 @@ func (c *Config) Merge(other *Config) {
 	c.UI.Merge(other.UI)
 	c.HipChat.Merge(other.HipChat)
 	c.Metrics.Merge(other.Metrics)
+	c.Delegations.Merge(other.Delegations)
 }
 
 // Valid ensures that the config has enough data to start a Red
@@ -135,10 +155,11 @@ func (c *Config) Valid() bool {
 // New returns a new, empty config.
 func New() *Config {
 	return &Config{
-		Server:  &Server{},
-		UI:      &UI{},
-		HipChat: &HipChat{},
-		Metrics: &Metrics{},
+		Server:      &Server{},
+		UI:          &UI{},
+		HipChat:     &HipChat{},
+		Metrics:     &Metrics{},
+		Delegations: &Delegations{},
 	}
 }
 
