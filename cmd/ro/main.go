@@ -43,6 +43,7 @@ var commandSet = map[string]command{
 	"re-encrypt": command{Run: runReEncrypt, Desc: "re-encrypt a file"},
 	"order":      command{Run: runOrder, Desc: "place an order for delegations"},
 	"owners":     command{Run: runOwner, Desc: "show owners list"},
+	"status":     command{Run: runStatus, Desc: "show Red October persistent delegation state"},
 }
 
 func registerFlags() {
@@ -254,6 +255,19 @@ func runOwner() {
 	}
 
 	resp, err := roServer.Owners(req)
+	processError(err)
+
+	fmt.Println(resp.Status)
+	fmt.Println(resp)
+}
+
+func runStatus() {
+	req := core.StatusRequest{
+		Name:     user,
+		Password: pswd,
+	}
+
+	resp, err := roServer.Status(req)
 	processError(err)
 
 	fmt.Println(resp.Status)

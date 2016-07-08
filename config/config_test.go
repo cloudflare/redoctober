@@ -247,3 +247,25 @@ func TestValid(t *testing.T) {
 		t.Fatal("config should be valid")
 	}
 }
+
+func TestHipChatValid(t *testing.T) {
+	hc := &HipChat{}
+	if hc.Valid() {
+		t.Fatal("empty hipchat config shouldn't be valid")
+	}
+
+	hc.APIKey = "test"
+	if hc.Valid() {
+		t.Fatal("invalid hipchat config shouldn't be valid")
+	}
+
+	hc.Room = "test"
+	if hc.Valid() {
+		t.Fatal("invalid hipchat config shouldn't be valid")
+	}
+
+	hc.Host = "test"
+	if !hc.Valid() {
+		t.Fatal("valid hipchat config marked as invalid")
+	}
+}

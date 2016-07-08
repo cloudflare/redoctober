@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/cryptor"
 	"github.com/cloudflare/redoctober/hipchat"
 	"github.com/cloudflare/redoctober/keycache"
@@ -129,6 +130,7 @@ type OrderInfoRequest struct {
 
 	OrderNum string
 }
+
 type OrderOutstandingRequest struct {
 	Name     string
 	Password string
@@ -139,6 +141,11 @@ type OrderCancelRequest struct {
 	Password string
 
 	OrderNum string
+}
+
+type StatusRequest struct {
+	Name     string
+	Password string
 }
 
 // These structures map the JSON responses that will be sent from the API
@@ -164,6 +171,23 @@ type OwnersData struct {
 	Status    string
 	Owners    []string
 	Predicate string
+}
+
+type StatusData struct {
+	Status string
+}
+
+// Delegation restoration and persistance configuration follows.
+
+const (
+	PDStateNeverPersist  = "disabled"
+	PDStateNotPersisting = "inactive"
+	PDStateNowPersisting = "active"
+)
+
+var restore struct {
+	Config *config.Delegations
+	State  string
 }
 
 // Helper functions that create JSON responses sent by core
@@ -217,7 +241,7 @@ func validateName(name, password string) error {
 }
 
 // Init reads the records from disk from a given path
-func Init(path, hcKey, hcRoom, hcHost, roHost string) error {
+func Init(path string, config *config.Config) error {
 	var err error
 
 	defer func() {
@@ -233,18 +257,24 @@ func Init(path, hcKey, hcRoom, hcHost, roHost string) error {
 	}
 
 	var hipchatClient hipchat.HipchatClient
-	if hcKey != "" && hcRoom != "" && hcHost != "" {
-		roomId, err := strconv.Atoi(hcRoom)
+	hc := config.HipChat
+	if hc.Valid() {
+		roomId, err := strconv.Atoi(hc.Room)
 		if err != nil {
 			return errors.New("core.init unable to use hipchat roomId provided")
 		}
+
 		hipchatClient = hipchat.HipchatClient{
-			ApiKey: hcKey,
+			ApiKey: hc.APIKey,
 			RoomId: roomId,
-			HcHost: hcHost,
-			RoHost: roHost,
+			HcHost: hc.Host,
+			RoHost: config.UI.Root,
 		}
 	}
+
+	restore.Config = config.Delegations
+	restore.State = PDStateNeverPersist
+
 	orders = order.NewOrderer(hipchatClient)
 	cache = keycache.Cache{UserKeys: make(map[keycache.DelegateIndex]keycache.ActiveUser)}
 	crypt = cryptor.New(&records, &cache)
@@ -902,4 +932,33 @@ func OrderCancel(jsonIn []byte) (out []byte, err error) {
 	}
 	err = errors.New("Invalid Order Number")
 	return jsonStatusError(err)
+}
+
+// Status returns the current delegation persistence state. In the
+// future, this may return more data.
+func Status(jsonIn []byte) (out []byte, err error) {
+	var req StatusRequest
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.status failed: user=%s %v", req.Name, err)
+		} else {
+			log.Printf("core.status success: user=%s", req.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &req); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if err := validateUser(req.Name, req.Password, false); err != nil {
+		return jsonStatusError(err)
+	}
+
+	resp := StatusData{Status: restore.State}
+	if out, err = json.Marshal(resp); err != nil {
+		return jsonStatusError(err)
+	}
+
+	return
 }
