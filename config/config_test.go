@@ -62,6 +62,10 @@ func (m *Metrics) equal(other *Metrics) bool {
 	return m.Host == other.Host && m.Port == other.Port
 }
 
+func (d *Delegations) equal(other *Delegations) bool {
+	return d.Persist == other.Persist && d.Policy == other.Policy
+}
+
 func (c *Config) equal(other *Config) bool {
 	if !c.Server.equal(other.Server) {
 		return false
@@ -76,6 +80,10 @@ func (c *Config) equal(other *Config) bool {
 	}
 
 	if !c.Metrics.equal(other.Metrics) {
+		return false
+	}
+
+	if !c.Delegations.equal(other.Delegations) {
 		return false
 	}
 
@@ -116,6 +124,10 @@ func TestMergeEmpty(t *testing.T) {
 			Host:   "hipchat.example.net",
 			Room:   "redoctober",
 			APIKey: "i don't this key will work",
+		},
+		Delegations: &Delegations{
+			Persist: true,
+			Policy:  "NONE",
 		},
 	}
 
