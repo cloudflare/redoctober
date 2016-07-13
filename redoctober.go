@@ -243,8 +243,6 @@ func init() {
 	cli = config.New()
 	cfg = config.New()
 
-	var certsPath, keysPath string
-
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, "main usage dump\n")
 		fmt.Fprint(os.Stderr, usage)
@@ -255,11 +253,11 @@ func init() {
 	flag.StringVar(&confFile, "f", "", "path to config file")
 	flag.StringVar(&cli.Server.Addr, "addr", "localhost:8080", "Server and port separated by :")
 	flag.StringVar(&cli.Server.CAPath, "ca", "", "Path of TLS CA for client authentication (optional)")
-	flag.StringVar(&certsPath, "certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
+	flag.StringVar(&cli.Server.CertPaths, "certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
 	flag.StringVar(&cli.HipChat.Host, "hchost", "", "Hipchat Url Base (ex: hipchat.com)")
 	flag.StringVar(&cli.HipChat.APIKey, "hckey", "", "Hipchat API Key")
 	flag.StringVar(&cli.HipChat.Room, "hcroom", "", "Hipchat Room Id")
-	flag.StringVar(&keysPath, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
+	flag.StringVar(&cli.Server.KeyPaths, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
 	flag.StringVar(&cli.Metrics.Host, "metrics-host", "localhost", "The `host` the metrics endpoint should listen on.")
 	flag.StringVar(&cli.Metrics.Port, "metrics-port", "8081", "The `port` the metrics endpoint should listen on.")
 	flag.StringVar(&cli.UI.Root, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
@@ -268,9 +266,6 @@ func init() {
 	flag.StringVar(&vaultPath, "vaultpath", "diskrecord.json", "Path to the the disk vault")
 
 	flag.Parse()
-
-	cli.Server.CertPaths = strings.Split(certsPath, ",")
-	cli.Server.KeyPaths = strings.Split(keysPath, ",")
 }
 
 //go:generate go run generate.go
@@ -296,8 +291,10 @@ func main() {
 	}
 
 	initPrometheus()
+	cpaths := strings.Split(cfg.Server.CertPaths, ",")
+	kpaths := strings.Split(cfg.Server.KeyPaths, ",")
 	s, l, err := NewServer(cfg.UI.Static, cfg.Server.Addr, cfg.Server.CAPath,
-		cfg.Server.CertPaths, cfg.Server.KeyPaths, cfg.Server.Systemd)
+		cpaths, kpaths, cfg.Server.Systemd)
 	if err != nil {
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
