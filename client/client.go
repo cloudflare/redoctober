@@ -372,3 +372,18 @@ func (c *RemoteServer) OrderCancel(req core.OrderInfoRequest) (*core.ResponseDat
 
 	return unmarshalResponseData(respBytes)
 }
+
+// Status returns the current delegation persistence state from the remote server.
+func (c *RemoteServer) Status(req core.StatusRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("status", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}

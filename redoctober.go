@@ -45,6 +45,7 @@ var functions = map[string]func([]byte) ([]byte, error){
 	"/orderout":    core.OrdersOutstanding,
 	"/orderinfo":   core.OrderInfo,
 	"/ordercancel": core.OrderCancel,
+	"/status":      core.Status,
 }
 
 type userRequest struct {
@@ -290,7 +291,7 @@ func main() {
 		os.Exit(2)
 	}
 
-	if err := core.Init(vaultPath, cfg.HipChat.APIKey, cfg.HipChat.Room, cfg.HipChat.Room, cfg.UI.Root); err != nil {
+	if err := core.Init(vaultPath, cfg); err != nil {
 		log.Fatal(err)
 	}
 

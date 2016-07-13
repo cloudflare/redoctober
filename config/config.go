@@ -84,6 +84,24 @@ func (hc *HipChat) Merge(other *HipChat) {
 	setIfNotEmpty(&hc.APIKey, other.APIKey)
 }
 
+// Valid returns true if the HipChat config is ready to be used for
+// HipChat notifications.
+func (hc *HipChat) Valid() bool {
+	if hc.APIKey == "" {
+		return false
+	}
+
+	if hc.Room == "" {
+		return false
+	}
+
+	if hc.Host == "" {
+		return false
+	}
+
+	return true
+}
+
 // Metrics contains the configuration for the Prometheus metrics
 // collector.
 type Metrics struct {
