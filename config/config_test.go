@@ -109,8 +109,8 @@ func TestMergeEmpty(t *testing.T) {
 		Server: &Server{
 			Addr:      "localhost:8080",
 			CAPath:    "",
-			KeyPaths:  []string{"testdata/server.key"},
-			CertPaths: []string{"testdata/server.pem"},
+			KeyPaths:  "testdata/server.key",
+			CertPaths: "testdata/server.pem",
 			Systemd:   true,
 		},
 		UI: &UI{
@@ -147,8 +147,8 @@ func TestMergeOverride(t *testing.T) {
 	config.Server = &Server{
 		Addr:      "localhost:443",
 		CAPath:    "",
-		KeyPaths:  []string{"testdata/server.key"},
-		CertPaths: []string{"testdata/server.pem"},
+		KeyPaths:  "testdata/server.key",
+		CertPaths: "testdata/server.pem",
 	}
 
 	merge := New()
@@ -160,8 +160,8 @@ func TestMergeOverride(t *testing.T) {
 	expected.Server = &Server{
 		Addr:      "localhost:8000",
 		CAPath:    "",
-		KeyPaths:  []string{"testdata/server.key"},
-		CertPaths: []string{"testdata/server.pem"},
+		KeyPaths:  "testdata/server.key",
+		CertPaths: "testdata/server.pem",
 	}
 
 	if config.equal(merge) {
@@ -185,8 +185,8 @@ func TestLoadFile(t *testing.T) {
 	expected := New()
 	expected.Server = &Server{
 		Addr:      "localhost:8080",
-		KeyPaths:  []string{"testdata/server.key"},
-		CertPaths: []string{"testdata/server.pem"},
+		KeyPaths:  "testdata/server.key",
+		CertPaths: "testdata/server.pem",
 	}
 
 	_, err := Load("testdata/enoent.json")
@@ -218,20 +218,20 @@ func TestValid(t *testing.T) {
 	}
 
 	// Certs and no keys is an invalid config.
-	config.Server.CertPaths = []string{"testdata/server.pem"}
+	config.Server.CertPaths = "testdata/server.pem"
 	if config.Valid() {
 		t.Fatal("config shouldn't be valid")
 	}
 
 	// Keys and no certs is an invalid config.
-	config.Server.CertPaths = nil
-	config.Server.KeyPaths = []string{"testdata/server.key"}
+	config.Server.CertPaths = ""
+	config.Server.KeyPaths = "testdata/server.key"
 	if config.Valid() {
 		t.Fatal("config shouldn't be valid")
 	}
 
 	// Key pairs but no address information is an invalid config.
-	config.Server.CertPaths = []string{"testdata/server.pem"}
+	config.Server.CertPaths = "testdata/server.pem"
 	if config.Valid() {
 		t.Fatal("config shouldn't be valid")
 	}

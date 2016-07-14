@@ -24,9 +24,9 @@ type Server struct {
 
 	// KeyPaths and CertPaths contains a list of paths to TLS key
 	// pairs that should be used to secure connections to the
-	// server.
-	KeyPaths  []string `json:"private_keys"`
-	CertPaths []string `json:"certificates"`
+	// server. The paths should be comma-separated.
+	KeyPaths  string `json:"private_keys"`
+	CertPaths string `json:"certificates"`
 
 	// Systemd indicates whether systemd socket activation should
 	// be used instead of a normal port listener.
