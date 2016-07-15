@@ -237,6 +237,12 @@ var (
 	vaultPath string
 )
 
+const (
+	defaultAddr        = "localhost:8080"
+	defaultMetricsHost = "localhost"
+	defaultMetricsPort = "8081"
+)
+
 func init() {
 	// cli contains the configuration set by the command line
 	// options, and cfg is the actual Red October config.
@@ -251,15 +257,15 @@ func init() {
 	}
 
 	flag.StringVar(&confFile, "f", "", "path to config file")
-	flag.StringVar(&cli.Server.Addr, "addr", "localhost:8080", "Server and port separated by :")
+	flag.StringVar(&cli.Server.Addr, "addr", defaultAddr, "Server and port separated by :")
 	flag.StringVar(&cli.Server.CAPath, "ca", "", "Path of TLS CA for client authentication (optional)")
 	flag.StringVar(&cli.Server.CertPaths, "certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
 	flag.StringVar(&cli.HipChat.Host, "hchost", "", "Hipchat Url Base (ex: hipchat.com)")
 	flag.StringVar(&cli.HipChat.APIKey, "hckey", "", "Hipchat API Key")
 	flag.StringVar(&cli.HipChat.Room, "hcroom", "", "Hipchat Room Id")
 	flag.StringVar(&cli.Server.KeyPaths, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
-	flag.StringVar(&cli.Metrics.Host, "metrics-host", "localhost", "The `host` the metrics endpoint should listen on.")
-	flag.StringVar(&cli.Metrics.Port, "metrics-port", "8081", "The `port` the metrics endpoint should listen on.")
+	flag.StringVar(&cli.Metrics.Host, "metrics-host", defaultMetricsHost, "The `host` the metrics endpoint should listen on.")
+	flag.StringVar(&cli.Metrics.Port, "metrics-port", defaultMetricsPort, "The `port` the metrics endpoint should listen on.")
 	flag.StringVar(&cli.UI.Root, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
 	flag.StringVar(&cli.UI.Static, "static", "", "Path to override built-in index.html")
 	flag.BoolVar(&cli.Server.Systemd, "systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
@@ -276,6 +282,18 @@ func main() {
 		cfg, err = config.Load(confFile)
 		if err != nil {
 			log.Fatal(err)
+		}
+
+		if cli.Server.Addr == defaultAddr && cfg.Server.Addr != "" {
+			cli.Server.Addr = ""
+		}
+
+		if cli.Metrics.Host == defaultMetricsHost && cfg.Metrics.Host != "" {
+			cli.Metrics.Host = ""
+		}
+
+		if cli.Metrics.Port == defaultMetricsPort && cfg.Metrics.Port != "" {
+			cli.Metrics.Port = ""
 		}
 	}
 	cfg.Merge(cli)
