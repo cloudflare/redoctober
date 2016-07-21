@@ -237,11 +237,21 @@ var (
 	vaultPath string
 )
 
+const (
+	defaultAddr        = "localhost:8080"
+	defaultMetricsHost = "localhost"
+	defaultMetricsPort = "8081"
+)
+
 func init() {
 	// cli contains the configuration set by the command line
 	// options, and cfg is the actual Red October config.
 	cli = config.New()
 	cfg = config.New()
+
+	cli.Server.Addr = defaultAddr
+	cli.Metrics.Host = defaultMetricsHost
+	cli.Metrics.Port = defaultMetricsPort
 
 	flag.Usage = func() {
 		fmt.Fprint(os.Stderr, "main usage dump\n")
@@ -251,18 +261,29 @@ func init() {
 	}
 
 	flag.StringVar(&confFile, "f", "", "path to config file")
-	flag.StringVar(&cli.Server.Addr, "addr", "localhost:8080", "Server and port separated by :")
-	flag.StringVar(&cli.Server.CAPath, "ca", "", "Path of TLS CA for client authentication (optional)")
-	flag.StringVar(&cli.Server.CertPaths, "certs", "", "Path(s) of TLS certificate in PEM format, comma-separated")
-	flag.StringVar(&cli.HipChat.Host, "hchost", "", "Hipchat Url Base (ex: hipchat.com)")
-	flag.StringVar(&cli.HipChat.APIKey, "hckey", "", "Hipchat API Key")
-	flag.StringVar(&cli.HipChat.Room, "hcroom", "", "Hipchat Room Id")
-	flag.StringVar(&cli.Server.KeyPaths, "keys", "", "Path(s) of TLS private key in PEM format, comma-separated, must me in the same order as the certs")
-	flag.StringVar(&cli.Metrics.Host, "metrics-host", "localhost", "The `host` the metrics endpoint should listen on.")
-	flag.StringVar(&cli.Metrics.Port, "metrics-port", "8081", "The `port` the metrics endpoint should listen on.")
-	flag.StringVar(&cli.UI.Root, "rohost", "", "RedOctober Url Base (ex: localhost:8080)")
-	flag.StringVar(&cli.UI.Static, "static", "", "Path to override built-in index.html")
-	flag.BoolVar(&cli.Server.Systemd, "systemdfds", false, "Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
+	flag.StringVar(&cli.Server.Addr, "addr", cli.Server.Addr,
+		"Server and port separated by :")
+	flag.StringVar(&cli.Server.CAPath, "ca", cli.Server.CAPath,
+		"Path of TLS CA for client authentication (optional)")
+	flag.StringVar(&cli.Server.CertPaths, "certs", cli.Server.CertPaths,
+		"Path(s) of TLS certificate in PEM format, comma-separated")
+	flag.StringVar(&cli.HipChat.Host, "hchost", cli.HipChat.Host,
+		"Hipchat Url Base (ex: hipchat.com)")
+	flag.StringVar(&cli.HipChat.APIKey, "hckey", cli.HipChat.APIKey,
+		"Hipchat API Key")
+	flag.StringVar(&cli.HipChat.Room, "hcroom", cli.HipChat.Room,
+		"Hipchat Room ID")
+	flag.StringVar(&cli.Server.KeyPaths, "keys", cli.Server.KeyPaths,
+		"Comma-separated list of PEM-encoded TLS private keys in the same order as certs")
+	flag.StringVar(&cli.Metrics.Host, "metrics-host", cli.Metrics.Host,
+		"The `host` the metrics endpoint should listen on.")
+	flag.StringVar(&cli.Metrics.Port, "metrics-port", cli.Metrics.Port,
+		"The `port` the metrics endpoint should listen on.")
+	flag.StringVar(&cli.UI.Root, "rohost", cli.UI.Root, "RedOctober URL Base (ex: localhost:8080)")
+	flag.StringVar(&cli.UI.Static, "static", cli.UI.Static,
+		"Path to override built-in index.html")
+	flag.BoolVar(&cli.Server.Systemd, "systemdfds", cli.Server.Systemd,
+		"Use systemd socket activation to listen on a file. Useful for binding privileged sockets.")
 	flag.StringVar(&vaultPath, "vaultpath", "diskrecord.json", "Path to the the disk vault")
 
 	flag.Parse()
@@ -277,8 +298,9 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+	} else {
+		cfg = cli
 	}
-	cfg.Merge(cli)
 
 	if vaultPath == "" || !cfg.Valid() {
 		fmt.Fprint(os.Stderr, usage)

@@ -1,15 +1,11 @@
+// Package config implements configuration structures for Red
+// October.
 package config
 
 import (
 	"encoding/json"
 	"io/ioutil"
 )
-
-func setIfNotEmpty(a *string, b string) {
-	if b != "" {
-		*a = b
-	}
-}
 
 // Server contains the configuration information required to start a
 // redoctober server.
@@ -33,25 +29,6 @@ type Server struct {
 	Systemd bool `json:"use_systemd,omitempty"`
 }
 
-// Merge copies over non-empty string values from other into the
-// current Server config.
-func (s *Server) Merge(other *Server) {
-	setIfNotEmpty(&s.Addr, other.Addr)
-	setIfNotEmpty(&s.CAPath, other.CAPath)
-
-	if len(other.KeyPaths) != 0 {
-		s.KeyPaths = other.KeyPaths
-	}
-
-	if len(other.CertPaths) != 0 {
-		s.CertPaths = other.CertPaths
-	}
-
-	if other.Systemd {
-		s.Systemd = true
-	}
-}
-
 // UI contains the configuration information for the WWW API.
 type UI struct {
 	// Root contains the base URL for the UI.
@@ -62,26 +39,11 @@ type UI struct {
 	Static string `json:"static"`
 }
 
-// Merge copies over non-empty string values from other into the
-// current UI config.
-func (ui *UI) Merge(other *UI) {
-	setIfNotEmpty(&ui.Root, other.Root)
-	setIfNotEmpty(&ui.Static, other.Static)
-}
-
 // HipChat contains the settings for Hipchat integration.
 type HipChat struct {
 	Host   string `json:"host"`
 	Room   string `json:"room"`
 	APIKey string `json:"api_key"`
-}
-
-// Merge copies over non-empty settings from other into the current
-// HipChat config.
-func (hc *HipChat) Merge(other *HipChat) {
-	setIfNotEmpty(&hc.Host, other.Host)
-	setIfNotEmpty(&hc.Room, other.Room)
-	setIfNotEmpty(&hc.APIKey, other.APIKey)
 }
 
 // Valid returns true if the HipChat config is ready to be used for
@@ -109,13 +71,6 @@ type Metrics struct {
 	Port string `json:"port"`
 }
 
-// Merge copies over non-empty settings from other into the current
-// Metrics config.
-func (m *Metrics) Merge(other *Metrics) {
-	setIfNotEmpty(&m.Host, other.Host)
-	setIfNotEmpty(&m.Port, other.Port)
-}
-
 // Delegations contains configuration for persisting delegations.
 type Delegations struct {
 	// Persist controls whether delegations are persisted or not.
@@ -126,14 +81,6 @@ type Delegations struct {
 	Policy string `json:"policy"`
 }
 
-// Merge copies over non-empty settings from other into the current
-// Delegations config.
-func (d *Delegations) Merge(other *Delegations) {
-	setIfNotEmpty(&d.Policy, other.Policy)
-
-	d.Persist = d.Persist || other.Persist
-}
-
 // Config contains all the configuration options for a redoctober
 // instance.
 type Config struct {
@@ -142,16 +89,6 @@ type Config struct {
 	HipChat     *HipChat     `json:"hipchat"`
 	Metrics     *Metrics     `json:"metrics"`
 	Delegations *Delegations `json:"delegations"`
-}
-
-// Merge copies over the non-empty settings from other into the
-// current Config.
-func (c *Config) Merge(other *Config) {
-	c.Server.Merge(other.Server)
-	c.UI.Merge(other.UI)
-	c.HipChat.Merge(other.HipChat)
-	c.Metrics.Merge(other.Metrics)
-	c.Delegations.Merge(other.Delegations)
 }
 
 // Valid ensures that the config has enough data to start a Red
