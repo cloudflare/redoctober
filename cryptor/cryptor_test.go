@@ -8,10 +8,14 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"io/ioutil"
+	"os"
 	"testing"
 
+	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/persist"
 )
 
 func TestHash(t *testing.T) {
@@ -83,7 +87,14 @@ func TestDuplicates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
-	c := Cryptor{&records, &cache}
+
+	cfg := &config.Delegations{Persist: false}
+	store, err := persist.New(cfg)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	c := Cryptor{&records, &cache, store}
 
 	for _, name := range names {
 		pr, err := records.AddNewRecord(name, "weakpassword", true, passvault.DefaultRecordType)
@@ -117,6 +128,207 @@ func TestDuplicates(t *testing.T) {
 			t.Fatalf("That shouldn't have worked!")
 		}
 
-		cache.FlushCache()
+		cache.Flush()
 	}
+}
+
+func TestEncryptDecrypt(t *testing.T) {
+	// Setup total names and partitions.
+	names := []string{"Alice", "Bob", "Carl"}
+	recs := make(map[string]passvault.PasswordRecord, 0)
+	left := []string{"Alice", "Bob"}
+	right := []string{"Bob", "Carl"}
+
+	// Add each user to the keycache.
+	cache := keycache.NewCache()
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	cfg := &config.Delegations{Persist: false}
+	store, err := persist.New(cfg)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	c := Cryptor{&records, &cache, store}
+
+	for _, name := range names {
+		pr, err := records.AddNewRecord(name, "weakpassword", true, passvault.DefaultRecordType)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		recs[name] = pr
+	}
+
+	// Create candidate encryption of message.
+	ac := AccessStructure{
+		LeftNames:  left,
+		RightNames: right,
+	}
+
+	resp, err := c.Encrypt([]byte("Hello World!"), []string{}, ac)
+	if err != nil {
+		t.Fatalf("Error: %s", err)
+	}
+
+	// Delegate all the things.
+	for name, pr := range recs {
+		err = cache.AddKeyFromRecord(pr, name, "weakpassword", nil, nil, 2, "", "1h")
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+	}
+
+	// (resp []byte, labels, names []string, secure bool, err error)
+	_, _, _, _, err = c.Decrypt(resp, "alice")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+}
+
+func tempName() (string, error) {
+	tmpf, err := ioutil.TempFile("", "transport_cachedkp_")
+	if err != nil {
+		return "", err
+	}
+
+	name := tmpf.Name()
+	tmpf.Close()
+	return name, nil
+}
+
+func TestRestore(t *testing.T) {
+	const testUses = 5 // How many uses to delegate for.
+
+	// Get the temporary persisted file.
+	temp, err := tempName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(temp)
+
+	// Setup total names and partitions.
+	names := []string{"Alice", "Bob", "Carl"}
+	recs := make(map[string]passvault.PasswordRecord, 0)
+
+	// Add each user to the keycache.
+	cache := keycache.NewCache()
+	records, err := passvault.InitFrom("memory")
+	if err != nil {
+		t.Fatalf("%v", err)
+	}
+
+	for _, name := range names {
+		pr, err := records.AddNewRecord(name, "weakpassword", true, passvault.DefaultRecordType)
+		if err != nil {
+			t.Fatalf("%v", err)
+		}
+
+		recs[name] = pr
+	}
+
+	alice, ok := records.GetRecord("Alice")
+	if !ok {
+		t.Fatal("Alice not found in password vault.")
+	}
+
+	carl, ok := records.GetRecord("Carl")
+	if !ok {
+		t.Fatal("Carl not found in password vault.")
+	}
+
+	// First, simulate a running Red October with persistence.
+	cfg := &config.Delegations{
+		Persist:   true,
+		Mechanism: persist.FileMechanism,
+		Location:  temp,
+		Policy:    "(Alice & Bob) | (Bob & Carl)",
+		Users:     []string{"Alice", "Bob", "Carl"},
+	}
+
+	store, err := persist.New(cfg)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	c := Cryptor{&records, &cache, store}
+	c.persist.Persist()
+
+	err = c.Delegate(alice, "Alice", "weakpassword", []string{"Bob"}, []string{},
+		testUses, "", "1h")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = c.Delegate(carl, "Carl", "weakpassword", []string{"Bob"}, []string{},
+		testUses, "", "1h")
+
+	// Next, simulate restarting that server.
+	store, err = persist.New(cfg)
+	if err != nil {
+		t.Fatal(err.Error())
+	}
+
+	c = Cryptor{&records, &cache, store}
+	if _, err := os.Stat(temp); err != nil {
+		t.Fatalf("Not persisting: %v", err)
+	}
+
+	err = c.Restore("Alice", "weakpassword", 2, "", "1h")
+	if err != ErrRestoreDelegations {
+		t.Fatal(err)
+	}
+
+	err = c.Restore("Carl", "weakpassword", 2, "", "1h")
+	if err != ErrRestoreDelegations {
+		t.Fatal(err)
+	}
+
+	status := c.persist.Status()
+	if status.State != persist.Inactive {
+		t.Fatalf("The persistent delegations should be %s, not %s",
+			persist.Inactive, status.State)
+	}
+
+	err = c.Restore("Bob", "weakpassword", 2, "", "1h")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	status = c.persist.Status()
+	if status.State != persist.Active {
+		t.Fatalf("The persistent delegations should be %s, not %s",
+			persist.Active, status.State)
+	}
+
+	if len(c.cache.UserKeys) != 2 {
+		t.Fatalf("Delegations do not seem to have been restored.")
+	}
+
+	usage, ok := c.cache.UserKeys[keycache.DelegateIndex{Name: "Alice"}]
+	if !ok {
+		t.Fatalf("Alice not found in active delegations.")
+	}
+
+	if usage.Uses != testUses {
+		t.Fatalf("Invalid number of uses in restored delegations.")
+	}
+
+	usage, ok = c.cache.UserKeys[keycache.DelegateIndex{Name: "Carl"}]
+	if !ok {
+		t.Fatalf("Carl not found in active delegations.")
+	}
+
+	if usage.Uses != testUses {
+		t.Fatalf("Invalid number of uses in restored delegations.")
+	}
+
+	_, ok = c.cache.UserKeys[keycache.DelegateIndex{Name: "Bob"}]
+	if ok {
+		t.Fatalf("Bob shouldn't be in the active delegations.")
+	}
+
 }

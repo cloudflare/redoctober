@@ -15,10 +15,12 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/msp"
 	"github.com/cloudflare/redoctober/padding"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/persist"
 	"github.com/cloudflare/redoctober/symcrypt"
 )
 
@@ -29,10 +31,25 @@ const (
 type Cryptor struct {
 	records *passvault.Records
 	cache   *keycache.Cache
+	persist persist.Store
 }
 
-func New(records *passvault.Records, cache *keycache.Cache) Cryptor {
-	return Cryptor{records, cache}
+func New(records *passvault.Records, cache *keycache.Cache, config *config.Config) (*Cryptor, error) {
+	if cache == nil {
+		cache = &keycache.Cache{UserKeys: make(map[keycache.DelegateIndex]keycache.ActiveUser)}
+	}
+
+	store, err := persist.New(config.Delegations)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &Cryptor{
+		records: records,
+		cache:   cache,
+		persist: store,
+	}
+	return c, nil
 }
 
 // AccessStructure represents different possible access structures for
@@ -525,6 +542,10 @@ func (c *Cryptor) Encrypt(in []byte, labels []string, access AccessStructure) (r
 
 // Decrypt decrypts a file using the keys in the key cache.
 func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, labels, names []string, secure bool, err error) {
+	return c.decrypt(c.cache, in, user)
+}
+
+func (c *Cryptor) decrypt(cache *keycache.Cache, in []byte, user string) (resp []byte, labels, names []string, secure bool, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
@@ -563,7 +584,7 @@ func (c *Cryptor) Decrypt(in []byte, user string) (resp []byte, labels, names []
 
 	// decrypt file key with delegate keys
 	var unwrappedKey = make([]byte, 16)
-	unwrappedKey, names, err = encrypted.unwrapKey(c.cache, user)
+	unwrappedKey, names, err = encrypted.unwrapKey(cache, user)
 	if err != nil {
 		return
 	}
@@ -641,4 +662,111 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, predicate string, err er
 	predicate = encrypted.Predicate
 
 	return
+}
+
+// LiveSummary returns a list of the users currently delegated.
+func (c *Cryptor) LiveSummary() map[string]keycache.ActiveUser {
+	return c.cache.GetSummary()
+}
+
+// Refresh purges all expired or fully-used delegations in the
+// crypto's key cache. It returns an error if the delegations
+// should have been stored, but couldn't be.
+func (c *Cryptor) Refresh() error {
+	n := c.cache.Refresh()
+	if n != 0 {
+		return c.store()
+	}
+	return nil
+}
+
+// Flush removes all delegations.
+func (c *Cryptor) Flush() error {
+	if c.cache.Flush() {
+		return c.store()
+	}
+	return nil
+}
+
+// Delegate attempts to decrypt a key for the specified user and add
+// the key to the key cache.
+func (c *Cryptor) Delegate(record passvault.PasswordRecord, name, password string, users, labels []string, uses int, slot, durationString string) (err error) {
+	err = c.cache.AddKeyFromRecord(record, name, password, users, labels, uses, slot, durationString)
+	if err != nil {
+		return err
+	}
+
+	return c.store()
+}
+
+// DelegateStatus will return a list of admins who have delegated to a particular user, for a particular label.
+// This is useful information to have when determining the status of an order and conveying order progress.
+func (c *Cryptor) DelegateStatus(name string, labels, admins []string) (adminsDelegated []string, hasDelegated int) {
+	return c.cache.DelegateStatus(name, labels, admins)
+}
+
+var persistLabels = []string{"restore"}
+
+// store serialises the key cache, encrypts it, and writes it to disk.
+func (c *Cryptor) store() error {
+	// If the store isn't currently active, we shouldn't attempt
+	// to persist the store.
+	st := c.persist.Status()
+	if st.State != persist.Active {
+		return nil
+	}
+
+	cache, err := json.Marshal(c.cache.GetSummary())
+	if err != nil {
+		return err
+	}
+
+	access := AccessStructure{
+		Names:     c.persist.Users(),
+		Predicate: c.persist.Policy(),
+	}
+
+	cache, err = c.Encrypt(cache, persistLabels, access)
+	if err != nil {
+		return err
+	}
+
+	return c.persist.Store(cache)
+}
+
+// ErrRestoreDelegations is a sentinal value returned when more
+// delegations are needed for the restore to continue.
+var ErrRestoreDelegations = errors.New("cryptor: need more delegations")
+
+// Restore delegates the named user to the persistence key cache. If
+// enough delegations are present to restore the cache, the current
+// Red October key cache is replaced with the persisted one.
+func (c *Cryptor) Restore(name, password string, uses int, slot, durationString string) error {
+	record, ok := c.records.GetRecord(name)
+	if !ok {
+		return errors.New("Missing user on disk")
+	}
+
+	err := c.persist.Delegate(record, name, password, c.persist.Users(), persistLabels, uses, slot, durationString)
+	if err != nil {
+		return err
+	}
+
+	// A failure to decrypt isn't an error, it just means there
+	// aren't enough delegations yet; the sentinal value
+	// ErrRestoreDelegations is returned to indicate this.
+	cache, _, _, _, err := c.decrypt(c.persist.Cache(), c.persist.Blob(), name)
+	if err != nil {
+		return ErrRestoreDelegations
+	}
+
+	var uk map[string]keycache.ActiveUser
+	err = json.Unmarshal(cache, &uk)
+	if err != nil {
+		return err
+	}
+
+	c.cache = keycache.NewFrom(uk)
+	c.persist.Persist()
+	return nil
 }

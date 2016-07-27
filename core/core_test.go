@@ -14,6 +14,7 @@ import (
 
 	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/persist"
 )
 
 func TestCreate(t *testing.T) {
@@ -97,9 +98,9 @@ func TestSummary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error getting status, %v", err)
 	}
-	if st.Status != PDStateNeverPersist {
+	if st.Status != persist.Disabled {
 		t.Fatalf("Persistent delegations should be '%s' but are '%s'",
-			PDStateNeverPersist, st.Status)
+			persist.Disabled, st.Status)
 	}
 
 	respJson, err = Summary(createJson)
@@ -174,7 +175,7 @@ func TestSummary(t *testing.T) {
 
 	dataLive, ok := s.Live["Bob"]
 	if !ok {
-		t.Fatalf("Error in summary of account, record missing, %v", cache.UserKeys)
+		t.Fatalf("Error in summary of account, record missing, %v", crypt.LiveSummary())
 	}
 	if dataLive.Admin != false {
 		t.Fatalf("Error in summary of account, record missing")
@@ -184,7 +185,7 @@ func TestSummary(t *testing.T) {
 	}
 
 	var s1 SummaryData
-	delegations := cache.GetSummary()
+	delegations := crypt.LiveSummary()
 	if len(delegations) == 0 {
 		t.Fatal("no delegations active")
 	}
@@ -230,7 +231,7 @@ func TestSummary(t *testing.T) {
 		t.Fatal("Bob was removed from the list of users")
 	}
 
-	delegations = cache.GetSummary()
+	delegations = crypt.LiveSummary()
 	if len(delegations) != 0 {
 		t.Fatalf("purge failed to clear delegations (%d delegations remain)", len(delegations))
 	}
@@ -470,7 +471,11 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// check summary to see if none are delegated
-	cache.Refresh()
+	err = crypt.Refresh()
+	if err != nil {
+		t.Fatalf("Error in summary: %s", err)
+	}
+
 	respJson, err = Summary(summaryJson)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -557,7 +562,11 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 
 	// verify the presence of the two delgations
-	cache.Refresh()
+	err = crypt.Refresh()
+	if err != nil {
+		t.Fatalf("Error in summary: %s", err)
+	}
+
 	var sum2 SummaryData
 	respJson, err = Summary(summaryJson)
 	if err != nil {
@@ -936,7 +945,11 @@ func TestModify(t *testing.T) {
 	}
 
 	// check summary to see if none are delegated
-	cache.Refresh()
+	err = crypt.Refresh()
+	if err != nil {
+		t.Fatalf("Error refreshing: %s", err)
+	}
+
 	respJson, err = Summary(summaryJson)
 	if err != nil {
 		t.Fatalf("Error in summary, %v", err)
@@ -1078,6 +1091,7 @@ func TestStatic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Error opening file, %v", err)
 	}
+	defer os.Remove("/tmp/db1.json")
 
 	_, err = file.Write(diskVault)
 	if err != nil {
@@ -1139,9 +1153,10 @@ func TestStatic(t *testing.T) {
 		t.Fatalf("Error in summary, %v, %v", expected, r.Response)
 	}
 
-	cache.FlushCache()
-
-	os.Remove("/tmp/db1.json")
+	err = crypt.Flush()
+	if err != nil {
+		t.Fatalf("Error flushing cache: %s", err)
+	}
 }
 
 func TestValidateName(t *testing.T) {

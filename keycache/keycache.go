@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/cloudflare/redoctober/ecdh"
@@ -94,6 +95,24 @@ func NewCache() Cache {
 	return Cache{make(map[DelegateIndex]ActiveUser)}
 }
 
+// NewFrom takes the output of GetSummary and returns a new keycache.
+func NewFrom(summary map[string]ActiveUser) *Cache {
+	cache := &Cache{make(map[DelegateIndex]ActiveUser)}
+	for di, user := range summary {
+		diSplit := strings.SplitN(di, "-", 2)
+		index := DelegateIndex{
+			Name: diSplit[0],
+		}
+
+		if len(diSplit) == 2 {
+			index.Slot = diSplit[1]
+		}
+		cache.UserKeys[index] = user
+	}
+
+	return cache
+}
+
 // setUser takes an ActiveUser and adds it to the cache.
 func (cache *Cache) setUser(in ActiveUser, name, slot string) {
 	cache.UserKeys[DelegateIndex{Name: name, Slot: slot}] = in
@@ -155,21 +174,35 @@ func (cache *Cache) GetSummary() map[string]ActiveUser {
 	return summaryData
 }
 
-// FlushCache removes all delegated keys.
-func (cache *Cache) FlushCache() {
+// FlushCache removes all delegated keys. It returns true if the cache
+// wasn't empty (i.e. there were active users removed), and false if
+// the cache was empty.
+func (cache *Cache) Flush() bool {
+	if len(cache.UserKeys) == 0 {
+		return false
+	}
+
 	for d := range cache.UserKeys {
 		delete(cache.UserKeys, d)
 	}
+
+	return true
 }
 
-// Refresh purges all expired or used up keys.
-func (cache *Cache) Refresh() {
+// Refresh purges all expired keys. It returns the number of
+// delegations that were removed.
+func (cache *Cache) Refresh() int {
+	var removed int
+
 	for d, active := range cache.UserKeys {
 		if active.Usage.Expiry.Before(time.Now()) {
 			log.Println("Record expired", d.Name, d.Slot, active.Usage.Users, active.Usage.Labels, active.Usage.Expiry)
+			removed++
 			delete(cache.UserKeys, d)
 		}
 	}
+
+	return removed
 }
 
 // AddKeyFromRecord decrypts a key for a given record and adds it to the cache.
