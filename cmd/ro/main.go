@@ -23,6 +23,8 @@ var owners, lefters, righters, inPath, labels, outPath, outEnv string
 
 var uses, minUsers int
 
+var anyUser bool
+
 var duration, users string
 
 var pollInterval time.Duration
@@ -53,6 +55,7 @@ func registerFlags() {
 	flag.StringVar(&users, "users", "", "comma separated user list")
 	flag.IntVar(&uses, "uses", 0, "number of delegated key uses")
 	flag.IntVar(&minUsers, "minUsers", 2, "minimum number of delegations")
+	flag.BoolVar(&anyUser, "anyUser", false, "whether any user can decrypt")
 	flag.StringVar(&duration, "time", "0h", "duration of delegated key uses")
 	flag.StringVar(&lefters, "left", "", "comma separated left owners")
 	flag.StringVar(&righters, "right", "", "comma separated right owners")
@@ -111,6 +114,7 @@ func runDelegate() {
 		Time:     duration,
 		Users:    processCSL(users),
 		Labels:   processCSL(labels),
+		AnyUser:  anyUser,
 	}
 	resp, err := roServer.Delegate(req)
 	processError(err)

@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/passvault"
@@ -107,7 +108,16 @@ func TestDuplicates(t *testing.T) {
 
 	// Delegate one key at a time and check that decryption fails.
 	for name, pr := range recs {
-		err = cache.AddKeyFromRecord(pr, name, "weakpassword", nil, nil, 2, "", "1h")
+		duration, _ := time.ParseDuration("1h")
+		err = cache.AddKeyFromRecord(
+			pr, name, "weakpassword", "", &keycache.Usage{
+				Uses:    2,
+				Labels:  nil,
+				Users:   nil,
+				Expiry:  time.Now().Add(duration),
+				AnyUser: true,
+			},
+		)
 		if err != nil {
 			t.Fatalf("%v", err)
 		}
