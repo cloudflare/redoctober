@@ -23,7 +23,7 @@ var owners, lefters, righters, inPath, labels, outPath, outEnv string
 
 var uses, minUsers int
 
-var duration, users string
+var duration, users, userType, hcName string
 
 var pollInterval time.Duration
 
@@ -35,15 +35,16 @@ type command struct {
 var roServer *client.RemoteServer
 
 var commandSet = map[string]command{
-	"create":     command{Run: runCreate, Desc: "create a user account"},
-	"summary":    command{Run: runSummary, Desc: "list the user and delegation summary"},
-	"delegate":   command{Run: runDelegate, Desc: "do decryption delegation"},
-	"encrypt":    command{Run: runEncrypt, Desc: "encrypt a file"},
-	"decrypt":    command{Run: runDecrypt, Desc: "decrypt a file"},
-	"re-encrypt": command{Run: runReEncrypt, Desc: "re-encrypt a file"},
-	"order":      command{Run: runOrder, Desc: "place an order for delegations"},
-	"owners":     command{Run: runOwner, Desc: "show owners list"},
-	"status":     command{Run: runStatus, Desc: "show Red October persistent delegation state"},
+	"create":      command{Run: runCreate, Desc: "create the disk vault and admin account"},
+	"create-user": command{Run: runCreateUser, Desc: "create a user account"},
+	"summary":     command{Run: runSummary, Desc: "list the user and delegation summary"},
+	"delegate":    command{Run: runDelegate, Desc: "do decryption delegation"},
+	"encrypt":     command{Run: runEncrypt, Desc: "encrypt a file"},
+	"decrypt":     command{Run: runDecrypt, Desc: "decrypt a file"},
+	"re-encrypt":  command{Run: runReEncrypt, Desc: "re-encrypt a file"},
+	"order":       command{Run: runOrder, Desc: "place an order for delegations"},
+	"owners":      command{Run: runOwner, Desc: "show owners list"},
+	"status":      command{Run: runStatus, Desc: "show Red October persistent delegation state"},
 }
 
 func registerFlags() {
@@ -62,6 +63,8 @@ func registerFlags() {
 	flag.StringVar(&outEnv, "outenv", "", "env variable for output data")
 	flag.StringVar(&user, "user", "", "username")
 	flag.StringVar(&pswd, "password", "", "password")
+	flag.StringVar(&userType, "userType", "rsa", "user key type: ecc or rsa")
+	flag.StringVar(&hcName, "hipchat-name", "", "hipchat name for user, used for notifications")
 	flag.StringVar(&userEnv, "userenv", "RO_USER", "env variable for user name")
 	flag.StringVar(&pswdEnv, "pswdenv", "RO_PASS", "env variable for user password")
 	flag.DurationVar(&pollInterval, "poll-interval", time.Second, "interval for polling an outstanding order (set 0 to disable polling)")
@@ -99,6 +102,18 @@ func runCreate() {
 		Password: pswd,
 	}
 	resp, err := roServer.Create(req)
+	processError(err)
+	fmt.Println(resp.Status)
+}
+
+func runCreateUser() {
+	req := core.CreateUserRequest{
+		Name:        user,
+		Password:    pswd,
+		UserType:    userType,
+		HipchatName: hcName,
+	}
+	resp, err := roServer.CreateUser(req)
 	processError(err)
 	fmt.Println(resp.Status)
 }
