@@ -341,3 +341,7 @@ example uses JavaScript's `btoa` and `atob` functions for string
 conversion. For dealing with files directly, using the
 [HTML5 File API](https://developer.mozilla.org/en-US/docs/Web/API/FileReader.readAsDataURL)
 would be a good option.
+
+## Vendoring
+
+Vendoring is done with [glide](https://github.com/Masterminds/glide).
