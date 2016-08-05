@@ -12,8 +12,10 @@ import (
 	"crypto/sha1"
 	"encoding/json"
 	"errors"
+	"log"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/keycache"
@@ -705,8 +707,6 @@ func (c *Cryptor) DelegateStatus(name string, labels, admins []string) (adminsDe
 	return c.cache.DelegateStatus(name, labels, admins)
 }
 
-var persistLabels = []string{"restore"}
-
 // store serialises the key cache, encrypts it, and writes it to disk.
 func (c *Cryptor) store() error {
 	// If the store isn't currently active, we shouldn't attempt
@@ -726,7 +726,7 @@ func (c *Cryptor) store() error {
 		Predicate: c.persist.Policy(),
 	}
 
-	cache, err = c.Encrypt(cache, persistLabels, access)
+	cache, err = c.Encrypt(cache, persist.Labels, access)
 	if err != nil {
 		return err
 	}
@@ -747,18 +747,24 @@ func (c *Cryptor) Restore(name, password string, uses int, slot, durationString 
 		return errors.New("Missing user on disk")
 	}
 
-	err := c.persist.Delegate(record, name, password, c.persist.Users(), persistLabels, uses, slot, durationString)
+	err := c.persist.Delegate(record, name, password, c.persist.Users(), persist.Labels, uses, slot, durationString)
 	if err != nil {
 		return err
 	}
 
-	// A failure to decrypt isn't an error, it just means there
-	// aren't enough delegations yet; the sentinal value
-	// ErrRestoreDelegations is returned to indicate this.
-	cache, _, _, _, err := c.decrypt(c.persist.Cache(), c.persist.Blob(), name)
+	// A failure to decrypt isn't a restore error, it (most often)
+	// just means there aren't enough delegations yet; the
+	// sentinal value ErrRestoreDelegations is returned to
+	// indicate this. However, the error
+	cache, _, names, _, err := c.decrypt(c.persist.Cache(), c.persist.Blob(), name)
 	if err != nil {
-		return ErrRestoreDelegations
+		if err == msp.ErrNotEnoughShares {
+			return ErrRestoreDelegations
+		}
+		return err
 	}
+
+	log.Printf("cryptor.restore success: names=%s", strings.Join(names, ","))
 
 	var uk map[string]keycache.ActiveUser
 	err = json.Unmarshal(cache, &uk)

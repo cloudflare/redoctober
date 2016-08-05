@@ -13,9 +13,12 @@ import (
 
 var defaultStore Store = &File{}
 
+// Labels are the labels that the keycache should be encrypted with.
+var Labels = []string{"restore"}
+
 const (
-	// NeverPersist indicates that the persistence store will
-	// never persist active delegations.
+	// Disabled indicates that the persistence store will never
+	// persist active delegations.
 	Disabled = "disabled"
 
 	// Inactive indicates that the persistence store requires
@@ -52,6 +55,7 @@ type Store interface {
 	Cache() *keycache.Cache
 }
 
+// FileMechanism indicates that the persistence mechanism is a file.
 const FileMechanism = "file"
 
 type mechanism func(*config.Delegations) (Store, error)
@@ -61,6 +65,8 @@ var stores = map[string]mechanism{
 	FileMechanism: newFile,
 }
 
+// New attempts to create a new persistence store from the
+// configuration.
 func New(config *config.Delegations) (Store, error) {
 	if config == nil {
 		return nil, errors.New("persist: nil configuration")
@@ -78,4 +84,6 @@ func New(config *config.Delegations) (Store, error) {
 	return constructor(config)
 }
 
+// ErrInvalidConfig is returned when the configuration is invalid for
+// the type of persistence store in use.
 var ErrInvalidConfig = errors.New("persist: invalid configuration")
