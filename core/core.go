@@ -18,12 +18,12 @@ import (
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/order"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/persist"
 )
 
 var (
-	crypt   cryptor.Cryptor
+	crypt   *cryptor.Cryptor
 	records passvault.Records
-	cache   keycache.Cache
 	orders  order.Orderer
 )
 
@@ -177,14 +177,6 @@ type StatusData struct {
 	Status string
 }
 
-// Delegation restoration and persistance configuration follows.
-
-const (
-	PDStateNeverPersist  = "disabled"
-	PDStateNotPersisting = "inactive"
-	PDStateNowPersisting = "active"
-)
-
 var restore struct {
 	Config *config.Delegations
 	State  string
@@ -199,7 +191,7 @@ func jsonStatusError(err error) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: err.Error()})
 }
 func jsonSummary() ([]byte, error) {
-	return json.Marshal(SummaryData{Status: "ok", Live: cache.GetSummary(), All: records.GetSummary()})
+	return json.Marshal(SummaryData{Status: "ok", Live: crypt.LiveSummary(), All: records.GetSummary()})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
@@ -273,11 +265,10 @@ func Init(path string, config *config.Config) error {
 	}
 
 	restore.Config = config.Delegations
-	restore.State = PDStateNeverPersist
+	restore.State = persist.Disabled
 
 	orders = order.NewOrderer(hipchatClient)
-	cache = keycache.Cache{UserKeys: make(map[keycache.DelegateIndex]keycache.ActiveUser)}
-	crypt = cryptor.New(&records, &cache)
+	crypt, err = cryptor.New(&records, nil, config)
 
 	return err
 }
@@ -320,7 +311,6 @@ func Create(jsonIn []byte) ([]byte, error) {
 func Summary(jsonIn []byte) ([]byte, error) {
 	var s SummaryRequest
 	var err error
-	cache.Refresh()
 
 	defer func() {
 		if err != nil {
@@ -329,6 +319,11 @@ func Summary(jsonIn []byte) ([]byte, error) {
 			log.Printf("core.summary success: user=%s", s.Name)
 		}
 	}()
+
+	err = crypt.Refresh()
+	if err != nil {
+		return jsonStatusError(err)
+	}
 
 	if err := json.Unmarshal(jsonIn, &s); err != nil {
 		return jsonStatusError(err)
@@ -373,7 +368,11 @@ func Purge(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	cache.FlushCache()
+	err = crypt.Flush()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
 	return jsonStatusOk()
 }
 
@@ -426,7 +425,7 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	// add signed-in record to active set
-	if err = cache.AddKeyFromRecord(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Slot, s.Time); err != nil {
+	if err = crypt.Delegate(pr, s.Name, s.Password, s.Users, s.Labels, s.Uses, s.Slot, s.Time); err != nil {
 		return jsonStatusError(err)
 	}
 
@@ -798,27 +797,32 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	// Get the owners of the ciphertext.
 	owners, _, err := crypt.GetOwners(o.EncryptedData)
 	if err != nil {
-		jsonStatusError(err)
+		return jsonStatusError(err)
 	}
 	if o.Duration == "" {
 		err = errors.New("Duration required when placing an order.")
-		jsonStatusError(err)
+		return jsonStatusError(err)
 	}
 	if o.Uses == 0 {
 		err = errors.New("Number of required uses necessary when placing an order.")
-		jsonStatusError(err)
+		return jsonStatusError(err)
 	}
-	cache.Refresh()
+
+	err = crypt.Refresh()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
 	orderNum := order.GenerateNum()
 
 	if len(o.Users) == 0 {
 		err = errors.New("Must specify at least one user per order.")
-		jsonStatusError(err)
+		return jsonStatusError(err)
 	}
-	adminsDelegated, numDelegated := cache.DelegateStatus(o.Users[0], o.Labels, owners)
+	adminsDelegated, numDelegated := crypt.DelegateStatus(o.Users[0], o.Labels, owners)
 	duration, err := time.ParseDuration(o.Duration)
 	if err != nil {
-		jsonStatusError(err)
+		return jsonStatusError(err)
 	}
 	currentTime := time.Now()
 	ord := order.CreateOrder(o.Name,

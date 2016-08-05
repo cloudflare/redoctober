@@ -77,8 +77,18 @@ type Delegations struct {
 	Persist bool `json:"persist"`
 
 	// Policy contains the MSP predicate for delegation
-	// persistence.
-	Policy string `json:"policy"`
+	// persistence, and users contains the users allowed
+	// to delegate.
+	Policy string   `json:"policy"`
+	Users  []string `json:"users"`
+
+	// Mechanism specifies the persistence mechanism to use.
+	Mechanism string `json:"mechanism"`
+
+	// Location contains location information for the persistence
+	// mechanism, such as a file path or database connection
+	// string.
+	Location string `json:"location"`
 }
 
 // Config contains all the configuration options for a redoctober
