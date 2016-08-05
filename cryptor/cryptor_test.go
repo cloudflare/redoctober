@@ -293,6 +293,11 @@ func TestRestore(t *testing.T) {
 			persist.Inactive, status.State)
 	}
 
+	err = c.Restore("Carl", "weakpassword", 0, "", "0h")
+	if err != ErrRestoreDelegations {
+		t.Fatal(err)
+	}
+
 	err = c.Restore("Bob", "weakpassword", 2, "", "1h")
 	if err != nil {
 		t.Fatal(err)
