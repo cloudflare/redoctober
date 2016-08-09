@@ -18,7 +18,6 @@ import (
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/order"
 	"github.com/cloudflare/redoctober/passvault"
-	"github.com/cloudflare/redoctober/persist"
 )
 
 var (
@@ -177,11 +176,6 @@ type StatusData struct {
 	Status string
 }
 
-var restore struct {
-	Config *config.Delegations
-	State  string
-}
-
 // Helper functions that create JSON responses sent by core
 
 func jsonStatusOk() ([]byte, error) {
@@ -263,9 +257,6 @@ func Init(path string, config *config.Config) error {
 			RoHost: config.UI.Root,
 		}
 	}
-
-	restore.Config = config.Delegations
-	restore.State = persist.Disabled
 
 	orders = order.NewOrderer(hipchatClient)
 	crypt, err = cryptor.New(&records, nil, config)
@@ -959,10 +950,45 @@ func Status(jsonIn []byte) (out []byte, err error) {
 		return jsonStatusError(err)
 	}
 
-	resp := StatusData{Status: restore.State}
+	st := crypt.Status()
+	resp := &StatusData{Status: st.State}
 	if out, err = json.Marshal(resp); err != nil {
 		return jsonStatusError(err)
 	}
 
-	return
+	return jsonResponse(out)
+}
+
+// Restore attempts a restoration of the persistence store.
+func Restore(jsonIn []byte) (out []byte, err error) {
+	var req DelegateRequest
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.restore failed: user=%s %v", req.Name, err)
+		} else {
+			log.Printf("core.restore success: user=%s", req.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &req); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if err := validateUser(req.Name, req.Password, false); err != nil {
+		return jsonStatusError(err)
+	}
+
+	err = crypt.Restore(req.Name, req.Password, req.Uses, req.Slot, req.Time)
+	if err != nil && err != cryptor.ErrRestoreDelegations {
+		return jsonStatusError(err)
+	}
+
+	st := crypt.Status()
+	resp := &StatusData{Status: st.State}
+	if out, err = json.Marshal(resp); err != nil {
+		return jsonStatusError(err)
+	}
+
+	return jsonResponse(out)
 }

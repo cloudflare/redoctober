@@ -85,8 +85,7 @@ func (f *File) Store(blob []byte) error {
 }
 
 func (f *File) Load() error {
-	in, err := ioutil.ReadFile(f.config.Location)
-	if err != nil {
+	if fi, err := os.Stat(f.config.Location); err != nil {
 		// If the file doesn't exist, it can be persisted
 		// immediately.
 		if os.IsNotExist(err) {
@@ -94,6 +93,14 @@ func (f *File) Load() error {
 			return nil
 		}
 
+		return err
+	} else if fi.Size() == 0 {
+		f.state = Active
+		return nil
+	}
+
+	in, err := ioutil.ReadFile(f.config.Location)
+	if err != nil {
 		return err
 	}
 

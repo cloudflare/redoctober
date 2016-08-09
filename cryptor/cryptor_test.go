@@ -190,7 +190,7 @@ func TestEncryptDecrypt(t *testing.T) {
 }
 
 func tempName() (string, error) {
-	tmpf, err := ioutil.TempFile("", "transport_cachedkp_")
+	tmpf, err := ioutil.TempFile("", "ro_cryptor")
 	if err != nil {
 		return "", err
 	}
@@ -287,7 +287,7 @@ func TestRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	status := c.persist.Status()
+	status := c.Status()
 	if status.State != persist.Inactive {
 		t.Fatalf("The persistent delegations should be %s, not %s",
 			persist.Inactive, status.State)
@@ -303,7 +303,7 @@ func TestRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	status = c.persist.Status()
+	status = c.Status()
 	if status.State != persist.Active {
 		t.Fatalf("The persistent delegations should be %s, not %s",
 			persist.Active, status.State)

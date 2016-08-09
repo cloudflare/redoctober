@@ -135,3 +135,33 @@ func TestFileSanity(t *testing.T) {
 	}
 
 }
+
+func TestNewFilePersists(t *testing.T) {
+	sf, err := tempName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(sf)
+
+	cfg := &config.Delegations{
+		Persist:   true,
+		Mechanism: FileMechanism,
+		Policy:    "alice & bob",
+		Users:     []string{"alice", "bob"},
+		Location:  sf,
+	}
+
+	f, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	file, ok := f.(*File)
+	if !ok {
+		t.Fatalf("persist: expected to get a *File but have %T", f)
+	}
+
+	if file.state != Active {
+		t.Fatalf("fresh store should be persisting")
+	}
+}
