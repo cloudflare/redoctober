@@ -776,3 +776,8 @@ func (c *Cryptor) Restore(name, password string, uses int, slot, durationString 
 	c.persist.Persist()
 	return nil
 }
+
+// Status returns the status of the underlying persistence store.
+func (c *Cryptor) Status() *persist.Status {
+	return c.persist.Status()
+}

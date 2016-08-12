@@ -45,6 +45,7 @@ var functions = map[string]func([]byte) ([]byte, error){
 	"/orderout":    core.OrdersOutstanding,
 	"/orderinfo":   core.OrderInfo,
 	"/ordercancel": core.OrderCancel,
+	"/restore":     core.Restore,
 	"/status":      core.Status,
 }
 

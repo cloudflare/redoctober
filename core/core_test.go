@@ -7,6 +7,7 @@ package core
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"reflect"
 	"sort"
@@ -16,6 +17,17 @@ import (
 	"github.com/cloudflare/redoctober/passvault"
 	"github.com/cloudflare/redoctober/persist"
 )
+
+func tempName(t *testing.T) string {
+	tmpf, err := ioutil.TempFile("", "ro_core")
+	if err != nil {
+		t.Fatalf("failed to get a temporary file: %s", err)
+	}
+
+	name := tmpf.Name()
+	tmpf.Close()
+	return name
+}
 
 func TestCreate(t *testing.T) {
 	createJson := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\"}")
@@ -93,8 +105,13 @@ func TestSummary(t *testing.T) {
 		t.Fatalf("Error in creating account, %v", err)
 	}
 
+	var rd ResponseData
 	var st StatusData
-	err = json.Unmarshal(respJson, &st)
+	err = json.Unmarshal(respJson, &rd)
+	if err != nil {
+		t.Fatalf("Error getting status, %v", err)
+	}
+	err = json.Unmarshal(rd.Response, &st)
 	if err != nil {
 		t.Fatalf("Error getting status, %v", err)
 	}
@@ -1086,23 +1103,15 @@ func TestStatic(t *testing.T) {
 	diskVault := []byte("{\"Version\":1,\"VaultId\":5298538957754540810,\"HmacKey\":\"Qugc5ZQ0vC7KQSgmDHTVgQ==\",\"Passwords\":{\"Alice\":{\"Type\":\"RSA\",\"PasswordSalt\":\"HrVbQ4JvEdORxWN6FrSy4w==\",\"HashedPassword\":\"nanadB0t/EmVuHyRUNtfyQ==\",\"KeySalt\":\"u0cwMmHikadpxm9wClrf3g==\",\"AESKey\":\"pOcxCYMk0l+kaEM5IHolfA==\",\"RSAKey\":{\"RSAExp\":\"yDBotK0XkaDk6rt35ciBnlyPGSXjp9ypdTH2j89CybXe2ReF6xLVZ10CCoz91UUFpbiQi2tVWFS8V7lxUehx7C6HI30Zr0iwJMXk8sgRKs2Ee3rAGCrM9vvQMO8ApKwe4kvB+PrFgnhIEgZI7zyPJPcdZnxbcVFyUC3uIivFS4Bv3jVBnrkAx71keQqrkKzu3jTquCIS3rTEm2hrgsZ3n1t/4BADvUpcMpII2Phv2Senonp1EMz9sRFsR4w9HVep8AgfUGuPTcQ/uv9R16xiHvlN80rOtWzVLpEruzGw/JTvlsshFBU5SY/zthGl9TwxWz1yZpVHYhIWhbxw34CXYczB6q19bdEPkJJldi/1coI=\",\"RSAExpIV\":\"RI9B8nzwW/CXiIU4lSYRWg==\",\"RSAPrimeP\":\"yB3TMdRhWLiZ/ayPlu/iLDHxWsuMi9pA8Ctps7WZFxVsxYEzy/s0Otzsbtgay8of72xVkO64MaudXXRjj26kVSQhS8WhPmv7xDO5ba3SsTffCA99aSr3MH+JmUoL+EDjYviUf5F1DSZniv+Ae+6x9AMbbRQqRvmdH/INW76rFbLX4VtsMpgVkAhADwCUSfNS\",\"RSAPrimePIV\":\"ZE8xe7zVqz4fTN1XWvD1Tg==\",\"RSAPrimeQ\":\"pq7rEAmXoiMWhuEpTy2pQiheLHuzcGeGm1IsgtP7TRIpHaumBAjasxhMY95ODspzehfHp8RPb3pz550g+EXpRP5bfmZkiPMGWKsFUWY7h51hm2Yg6t7yOSXxQvzseWDUjJqBXIG56su0ItD/7NT9YPnhOWAcLaV+L/D3dLdUOP3sgrfp2fcz5IWgcAHUKwLj\",\"RSAPrimeQIV\":\"po4GB9LNDJEFwVo7pd7M+w==\",\"RSAPublic\":{\"N\":23149224936745228096494487629641309516714939646787578848987096719230079441991920927625328021835418605829165905957281054739040782220661415211495551591590967025905842090248342119030961900558364831442589592519977574953153506098793781379522492850670706181134690851176026007414311463584686376540335844073069224992659463459793269384975134553539299820716318523937519020382533972574258510063896159690996712751336541794097684994088922002126390397554509324964165816682788604802958437629743951677011277308533675371215221012180522157452368867794857042597831942805118364469257052754518983480732149823871291876054393236400292711237,\"E\":65537}},\"Admin\":true},\"Bob\":{\"Type\":\"RSA\",\"PasswordSalt\":\"yqWZFNuuCRMw+snL83FcWQ==\",\"HashedPassword\":\"jYLSUIdvw8UVXhxVSS5uKQ==\",\"KeySalt\":\"ZJDOGSv9yUlJ5+83+FV6Nw==\",\"AESKey\":\"9bj4qQDJKglD9eIm7MNeag==\",\"RSAKey\":{\"RSAExp\":\"rnmHX1FgAN0KFm89Uj+O4L7/njDlQPwGHSYjGKB7qMyNPGF4jKn9ez1LI9e9jI8uE475KBhoXRmIuHdap6HtD+sH+nHugDzD3np6Dbq1MM+19PW41n9xblwx6tsNwvufCYgb2qtZd0bLXemeKBszJg2UXlTeSHkXGmjY/VAbZYbUFUNKIykiJWnQ+3HlAo7UHjjKSDI6HtiMnODwYucKH9uYdmroM3DqRUP+j+AhMctyeyOt68q6RuVyubzG0PM1/T9QqPgTIzFvg9dxk+LmPYmlv4b7Euea7KQHww4kTUlpNYondRisuA436G7EfWIJFeRShFuSVk0GvmrgN5vK+/FkdqMuikPaPV1dITFzaCU=\",\"RSAExpIV\":\"eoIov2XYwK19tpFkZyTL+Q==\",\"RSAPrimeP\":\"x9VqeHfHZBMksWNz3Bq90KyLYO0+y9tbfH17uAxQHIZbhn6RUHMXJFs4/H+TnL9s7D05HdxKNCD3ilISkhLZ/DQVD+VMvSFQ/2DL/OoKNg4UyxeGpKefJxCU9LOeXGTfN+UpGHN4Myal3PL2yi0yWCVZvX+zPks05Nqmzkmtx1Yz0IqeUaR+I1jw2y0xy+nc\",\"RSAPrimePIV\":\"h+J0h35kSaNFjBFyejmqSQ==\",\"RSAPrimeQ\":\"CUGaukdC8slcy1Qm6kBw8QYhVenJWFylPqJTvf03ATkkaxQJ8ZSK/RodXFiKCztRSx/HVw0LoGGx9RiavSxl1I+NPIiGEBXiYnLCwWjIbohEIviX0XrKEegECKZtEPxlkDGI8C5ScmUiUOoCUFODqPi1ymEPPIpqj6NZu0Q3lOXseZ7vHbCwiO7Nxznoed2V\",\"RSAPrimeQIV\":\"fglAccK/JKbbP6FKd3MoPA==\",\"RSAPublic\":{\"N\":28335031342838743289078885439639803673108967200362163631216970159249785951860249148476503896024171065194110189927394386737974335124568755441420594193064949823336810514078294805084876384362160530316962043860952904024334641317905429962254720146672817625880231384279651687169091903559644110839987019710966818515746956556387614880164417442090115347521394174077031531398826388780347541493782387177778507223791525305993050791342196579264299166530031123364885677134064847664024722422373550942639559346558112737229502294633354781474882714474174085566901518771722057743396746938093859383451665388899451851738694979184054459471,\"E\":65537}},\"Admin\":false},\"Carol\":{\"Type\":\"RSA\",\"PasswordSalt\":\"kPCA68PNIi3qODVfBHonMA==\",\"HashedPassword\":\"L05ueGkNhqRI7xo7OaG5fQ==\",\"KeySalt\":\"bUXHAjmdtpcYMNN/YzHvhA==\",\"AESKey\":\"34sh2HYt11JMd63CTC2g3Q==\",\"RSAKey\":{\"RSAExp\":\"blJ6FvmAC6ZegcR6ITdg8WDSMljcikrUp3dRGbRDgKIfK0sx7b9i/kDtp4uD7/3IuTpD/qq09k07PO10T5R9NI2OdaEUGsoKJ4wqyzP6XzC9l/KeQmU7cMTh5OHO5UcqXWBn+g1INWaWI6DNAPFKK+4jcTyy6gTQQZQKSYRvRmgN6GkjOhbsdH0eM29eZScShJy2cGemZwbx8g2x7+cebALJmnJxycq29uBZaNBq4gV2/oNXxUhAogJY8SVhgPzCgig2MAJBLK/PzzxJ2LgnBLosZkUXo4vLPKSELX0qXSkSOoC/qPXvcQGawsknqUkSaaDwB1T1MYHmcJS/wpiIRM89Qru0Oy8sy8NRApk3ef0=\",\"RSAExpIV\":\"pQnJ6tvdJkPmMkqFjwJg5g==\",\"RSAPrimeP\":\"xTwgxhDvEvMCn8W6Mqv4ogRnBXFTLbuLP8YC2exQ+RwKmUbNsjB1eBlHyYRtKwc7qoDLf/zqpMZk3yPPcQDP+szAS5mmhCgpd+ePee8vvwVR5DImDuCquMGrPNEgpg3LL1aBHMF66pfnYGob+P6GZYzJP3mhlewUlh86NDzP8YkoVlrNRZrarB1/ZmA+w2Y2\",\"RSAPrimePIV\":\"BYynxyFw7WxrpSKJ3ogwOw==\",\"RSAPrimeQ\":\"wrSXyN/gpDTvK/BMeH+04uhzGUFVbBrfo47L3i+E1QsQndJDy2yyyE1D26mFcvyiefObaD097M3ruR9Wz7WfjxmyawG8N2W/BgtHZz/Ds2ThN/T9t1XqskxnIV8l2eq9LL7SqjAyp8jUGMNVS4WODDtDngLIR6OeehfyHpgwVZRuqQMxIT3wA78SwDcWo41s\",\"RSAPrimeQIV\":\"nh42rsJHRpRyrT7DUHCSGQ==\",\"RSAPublic\":{\"N\":21157349824302424474586534982259249211803834319040688464355493234801787797103302507532796077498450217821871970018694577875997137564403612290101696297388762661598985028358214691463545987525906601624475015641369758738594698734277968689933610815708041386873182005594893971935327515126641632178583839753604241275307504709356922001828087700047657269629468786192584360390570302228520684623917906322926285597325969441240603594319235541820769758760147548185811818605055779607442920451051925838835969679126714958513824527149123555098280031335447316080110515987423541389176918537439220114191601986031091845506241054078769049741,\"E\":65537}},\"Admin\":false}}}")
 	cfg := config.New()
 
-	// TODO: create a proper temp file for this.
-	file, err := os.Create("/tmp/db1.json")
-	if err != nil {
-		t.Fatalf("Error opening file, %v", err)
-	}
-	defer os.Remove("/tmp/db1.json")
+	file := tempName(t)
+	defer os.Remove(file)
 
-	_, err = file.Write(diskVault)
+	err := ioutil.WriteFile(file, diskVault, 0644)
 	if err != nil {
 		t.Fatalf("Error writing file, %v", err)
 	}
-	err = file.Close()
-	if err != nil {
-		t.Fatalf("Error closing file, %v", err)
-	}
 
-	Init("/tmp/db1.json", cfg)
+	Init(file, cfg)
 
 	// check for summary of initialized vault with new member
 	var s ResponseData
@@ -1174,4 +1183,220 @@ func TestValidateName(t *testing.T) {
 	if err != nil {
 		t.Fatalf("No error expected when username and password provided, %v", err)
 	}
+}
+
+// Create a vault for the restore tests.
+func restoreCreateVault(t *testing.T, pstore, file string) {
+	cfg := config.New()
+	cfg.Delegations = &config.Delegations{
+		Persist:   true,
+		Mechanism: persist.FileMechanism,
+		Policy:    "Alice & Carl",
+		Users:     []string{"Alice", "Carl"},
+		Location:  pstore,
+	}
+
+	if err := Init(file, cfg); err != nil {
+		t.Fatalf("Unable to initialise core: %s", err)
+	}
+}
+
+func restoreState(t *testing.T, expected string) {
+	statusJson := []byte("{\"Name\":\"Admin\",\"Password\":\"Admin\"}")
+
+	var rd ResponseData
+	var st StatusData
+
+	if respJson, err := Status(statusJson); err != nil {
+		t.Fatalf("Failed to look up vault state: %s", err)
+	} else if err = json.Unmarshal(respJson, &rd); err != nil {
+		t.Fatalf("Error getting status, %v", err)
+	} else if err = json.Unmarshal(rd.Response, &st); err != nil {
+		t.Fatalf("Error getting status, %v", err)
+	} else if st.Status != expected {
+		t.Fatalf("Persistent delegations should be '%s' but are '%s'",
+			expected, st.Status)
+	}
+}
+
+// beforeRestartRestore contains the test sequence to run before
+// simulating a restart of the vault.
+func beforeRestartRestore(t *testing.T) {
+	adminUser := []byte("{\"Name\":\"Admin\",\"Password\":\"Admin\"}")
+	createUser := []byte("{\"Name\":\"Carl\",\"Password\":\"Hello\"}")
+
+	_, err := Create(adminUser)
+	if err != nil {
+		t.Fatalf("Unable to create new diskrecord: %s", err)
+	}
+
+	var s ResponseData
+	respJson, err := CreateUser(createUser)
+	if err != nil {
+		t.Fatalf("Error creating user: %s", err)
+	} else if err = json.Unmarshal(respJson, &s); err != nil {
+		t.Fatalf("Error creating user: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Failed to create user: %v", s)
+	}
+
+	restoreState(t, persist.Active)
+	restoreDelegateNormal(t)
+}
+
+// restoreDelegateNormal performs standard delegations against the
+// vault; the test will make sure these exist.
+func restoreDelegateNormal(t *testing.T) {
+	delegateJson1 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":2}")
+	delegateJson2 := []byte("{\"Name\":\"Bob\",\"Password\":\"Hello\",\"Time\":\"15m\",\"Uses\":3}")
+
+	var s ResponseData
+	respJson, err := Delegate(delegateJson1)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Error delegating: %s", s.Status)
+	}
+
+	respJson, err = Delegate(delegateJson2)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Error delegating: %s", s.Status)
+	}
+}
+
+func restoreGetSummary(t *testing.T) SummaryData {
+	adminUser := []byte("{\"Name\":\"Admin\",\"Password\":\"Admin\"}")
+	respJson, err := Summary(adminUser)
+	if err != nil {
+		t.Fatalf("Error retrieving vault summary: %s", err)
+	}
+
+	var s SummaryData
+	if err = json.Unmarshal(respJson, &s); err != nil {
+		t.Fatalf("Error unmarshalling summary data: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Vault returned error retrieving summary: %s", err)
+	}
+
+	return s
+}
+
+func afterRestartRestore(t *testing.T) {
+	restoreState(t, persist.Inactive)
+
+	// Ensure there are no active delegations after the restart.
+	summary := restoreGetSummary(t)
+	if len(summary.Live) != 0 {
+		t.Fatalf("There should be no live users after restart, but there are %d", len(summary.Live))
+	}
+
+	restoreDelegateRestore(t)
+}
+
+func restoreDelegateRestore(t *testing.T) {
+	delegateJsonBad := []byte("{\"Name\":\"Alice\",\"Password\":\"Hi\",\"Time\":\"5m\",\"Uses\":1}")
+	delegateJson1 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":1}")
+	delegateJson2 := []byte("{\"Name\":\"Carl\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":1}")
+	delegateJson3 := []byte("{\"Name\":\"Carl\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":1}")
+
+	var s ResponseData
+	respJson, err := Restore(delegateJsonBad)
+	if err != nil {
+		t.Fatalf("Error making restore request: %s", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	} else if s.Status != "Wrong Password" {
+		t.Fatal("Restore should fail with bad password.")
+	}
+
+	restoreState(t, persist.Inactive)
+
+	respJson, err = Restore(delegateJson1)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Error delegating: %s", s.Status)
+	}
+	restoreState(t, persist.Inactive)
+
+	// The following delegation should be lost in the restoration.
+	respJson, err = Delegate(delegateJson2)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Error delegating: %s", s.Status)
+	}
+
+	summary := restoreGetSummary(t)
+	if len(summary.Live) != 1 {
+		t.Fatalf("There should be a single live delegation, but there are %d", len(summary.Live))
+	}
+
+	respJson, err = Restore(delegateJson3)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error delegating: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Error delegating: %s", s.Status)
+	}
+	restoreState(t, persist.Active)
+
+	summary = restoreGetSummary(t)
+	if len(summary.Live) != 2 {
+		t.Fatalf("There should be two active delegations, but there are %d", len(summary.Live))
+	}
+
+	if _, ok := summary.Live["Carl"]; ok {
+		t.Fatalf("Bob shouldn't be present in the active delegations.")
+	} else if _, ok = summary.Live["Alice"]; !ok {
+		t.Fatalf("Alice should be present in the active delegations.")
+	} else if _, ok = summary.Live["Bob"]; !ok {
+		t.Fatalf("Bob should be present in the active delegations.")
+	}
+}
+
+func TestRestore(t *testing.T) {
+	pstore := tempName(t)
+	defer os.Remove(pstore)
+
+	file := tempName(t)
+	defer os.Remove(file)
+
+	// Create the vault, an admin user, and perform some delegations.
+	restoreCreateVault(t, pstore, file)
+	beforeRestartRestore(t)
+
+	// Restart the vault; this simulates restarting the Red
+	// October server.
+	restoreCreateVault(t, pstore, file)
+	afterRestartRestore(t)
 }

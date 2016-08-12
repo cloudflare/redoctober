@@ -19,7 +19,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/core"
+	"github.com/cloudflare/redoctober/persist"
 )
 
 const baseURL = "https://localhost:8080/"
@@ -41,6 +43,18 @@ var (
 	delegateInput2 = &core.DelegateRequest{
 		Name:     createUserInput2.Name,
 		Password: createUserInput2.Password,
+		Time:     "2h34m",
+		Uses:     1,
+	}
+	delegateInput3 = &core.DelegateRequest{
+		Name:     createUserInput3.Name,
+		Password: createUserInput3.Password,
+		Time:     "2h34m",
+		Uses:     1,
+	}
+	delegateInput4 = &core.DelegateRequest{
+		Name:     createVaultInput.Name,
+		Password: createVaultInput.Password,
 		Time:     "2h34m",
 		Uses:     1,
 	}
@@ -614,4 +628,261 @@ func TestPurge(t *testing.T) {
 	if err := postAndTest("purge", purgeInput, 200, "ok"); err != nil {
 		t.Fatalf("Error purging with admin user, %v", err)
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Restore tests                                                              //
+//                                                                            //
+// These need to write files to disk in order to test recovering delegations. //
+////////////////////////////////////////////////////////////////////////////////
+
+func restoreSetup(t *testing.T, configPath, vaultPath string) (cmd *exec.Cmd) {
+	const maxAttempts = 5
+
+	// Look for the redoctober binary in current directory and then in $GOPATH/bin
+	binaryPath, err := exec.LookPath("./redoctober")
+	if err != nil {
+		goPathBinary := fmt.Sprintf("%s/bin/redoctober", os.Getenv("GOPATH"))
+		binaryPath, err = exec.LookPath(goPathBinary)
+		if err != nil {
+			t.Fatalf(`Could not find redoctober binary at "./redoctober" or "%s"`, goPathBinary)
+		}
+	}
+
+	cmd = exec.Command(binaryPath, "-vaultpath", vaultPath, "-f", configPath)
+
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Error running redoctober command, %v", err)
+	}
+
+	attempts := 0
+
+	for {
+		resp, err := http.Get("http://localhost:8081")
+		if err == nil {
+			resp.Body.Close()
+			break
+		}
+
+		attempts++
+		if attempts > maxAttempts {
+			t.Fatalf("failed to start redoctober (max connection attempts exceeded)")
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	return
+}
+
+func tempName(t *testing.T) string {
+	tmpf, err := ioutil.TempFile("", "redoctober_integration")
+	if err != nil {
+		t.Fatalf("failed to get a temporary file: %s", err)
+	}
+
+	name := tmpf.Name()
+	tmpf.Close()
+	return name
+}
+
+func TestRestore(t *testing.T) {
+	// Set up the vault.
+	pstore := tempName(t)
+	defer os.Remove(pstore)
+
+	cfgPath := tempName(t)
+	defer os.Remove(cfgPath)
+
+	prepareSetup(t, pstore, cfgPath)
+
+	vaultPath := tempName(t)
+	defer os.Remove(vaultPath)
+
+	// Run the server, perform some delegations, then kill the
+	// server.
+	beforeRestartRestore(t, cfgPath, vaultPath)
+
+	// The server has restarted --- verify that the persisted
+	// delegations are available.
+	afterRestartRestore(t, cfgPath, vaultPath)
+}
+
+func prepareSetup(t *testing.T, pstore, cfgPath string) {
+	// Write the config file.
+	cfg := config.New()
+	cfg.Delegations = &config.Delegations{
+		Persist:   true,
+		Mechanism: persist.FileMechanism,
+		Policy:    "(Alice & Bill)",
+		Users:     []string{"Alice", "Bill"},
+		Location:  pstore,
+	}
+	cfg.Server = &config.Server{
+		Addr:      "localhost:8080",
+		CertPaths: "testdata/server.crt",
+		KeyPaths:  "testdata/server.pem",
+	}
+	cfg.Metrics = &config.Metrics{
+		Host: "localhost",
+		Port: "8081",
+	}
+
+	out, err := json.Marshal(cfg)
+	if err != nil {
+		t.Fatalf("failed to marshal config file: %s", err)
+	}
+
+	err = ioutil.WriteFile(cfgPath, out, 0644)
+	if err != nil {
+		t.Fatalf("failed to write config file: %s", err)
+	}
+}
+
+func restoreCheckStatus(t *testing.T, expected string) {
+	// Verify the vault is persisting.
+	statusRequest := core.StatusRequest{
+		Name:     createUserInput1.Name,
+		Password: createUserInput1.Password,
+	}
+
+	var status core.StatusData
+	var response core.ResponseData
+
+	respBytes, _, err := post("status", statusRequest)
+	if err != nil {
+		t.Fatalf("status request failed: %s", err)
+	} else if err = json.Unmarshal(respBytes, &response); err != nil {
+		t.Fatalf("failed to unmarshal status request: %s", err)
+	} else if response.Status != "ok" {
+		t.Fatalf("status request failed: %s", response.Status)
+	} else if err = json.Unmarshal(response.Response, &status); err != nil {
+		t.Fatalf("failed to unmarshal status response data: %s", err)
+	} else if status.Status != expected {
+		t.Fatalf("server delegation persistence should be %s but is %s", expected, status.Status)
+	}
+}
+
+func restoreCheckLiveCount(t *testing.T, expected int) {
+	// Verify the vault is persisting.
+	summaryRequest := core.SummaryRequest{
+		Name:     createUserInput1.Name,
+		Password: createUserInput1.Password,
+	}
+
+	var summary core.SummaryData
+	respBytes, _, err := post("summary", summaryRequest)
+	if err != nil {
+		t.Fatalf("summary request failed: %s", err)
+	} else if err = json.Unmarshal(respBytes, &summary); err != nil {
+		t.Fatalf("failed to unmarshal summary response data: %s", err)
+	} else if summary.Status != "ok" {
+		t.Fatalf("summary request failed: %s", summary.Status)
+	} else if len(summary.Live) != expected {
+		t.Fatalf("expected %d delegations to be live but have %d", expected, len(summary.Live))
+	}
+}
+
+func restoreCheckLiveUsers(t *testing.T, present, absent []string) {
+	// Verify the vault is persisting.
+	summaryRequest := core.SummaryRequest{
+		Name:     createUserInput1.Name,
+		Password: createUserInput1.Password,
+	}
+
+	var summary core.SummaryData
+	respBytes, _, err := post("summary", summaryRequest)
+	if err != nil {
+		t.Fatalf("summary request failed: %s", err)
+	} else if err = json.Unmarshal(respBytes, &summary); err != nil {
+		t.Fatalf("failed to unmarshal summary response data: %s", err)
+	} else if summary.Status != "ok" {
+		t.Fatalf("summary request failed: %s", summary.Status)
+	}
+
+	for _, user := range present {
+		if _, ok := summary.Live[user]; !ok {
+			t.Fatalf("%s should be in the active delegations, but isn't", user)
+		}
+	}
+
+	for _, user := range absent {
+		if _, ok := summary.Live[user]; ok {
+			t.Fatalf("%s shouldn't be in the active delegations, but is", user)
+		}
+	}
+}
+
+func beforeRestartRestore(t *testing.T, cfgPath, vaultPath string) {
+	cmd := restoreSetup(t, cfgPath, vaultPath)
+	defer teardown(t, cmd)
+
+	// Create a vault/admin user and 2 normal users so there is data to work with.
+	if _, _, err := post("create", createVaultInput); err != nil {
+		t.Fatalf("failed to create the vault: %s", err)
+	}
+	if _, _, err := post("create-user", createUserInput1); err != nil {
+		t.Fatalf("couldn't create user %s: %s", createUserInput1.Name, err)
+	}
+	if _, _, err := post("create-user", createUserInput2); err != nil {
+		t.Fatalf("couldn't create user %s: %s", createUserInput2.Name, err)
+	}
+	if _, _, err := post("create-user", createUserInput3); err != nil {
+		t.Fatalf("couldn't create user %s: %s", createUserInput3.Name, err)
+	}
+
+	// A newly-created vault with a valid persistence config
+	// should be persisting.
+	restoreCheckStatus(t, persist.Active)
+
+	// Delegate two users.
+	if _, _, err := post("delegate", delegateInput2); err != nil {
+		t.Fatalf("failed to delegate for %s: %s", delegateInput2.Name, err)
+	}
+	if _, _, err := post("delegate", delegateInput3); err != nil {
+		t.Fatalf("failed to delegate for %s: %s", delegateInput3.Name, err)
+	}
+
+	restoreCheckLiveCount(t, 2)
+	restoreCheckLiveUsers(t, []string{delegateInput2.Name, delegateInput3.Name},
+		[]string{createUserInput1.Name, createVaultInput.Name})
+}
+
+func afterRestartRestore(t *testing.T, cfgPath, vaultPath string) {
+	cmd := restoreSetup(t, cfgPath, vaultPath)
+	defer teardown(t, cmd)
+
+	// An existing vault with a persisted delegation store should
+	// be inactive.
+	restoreCheckStatus(t, persist.Inactive)
+
+	// Delegate a user who wasn't in the persisted delegation set.
+	if _, _, err := post("delegate", delegateInput1); err != nil {
+		t.Fatalf("Error delegating with user 1, %v", err)
+	}
+
+	restoreCheckLiveCount(t, 1)
+	restoreCheckLiveUsers(t, []string{delegateInput1.Name},
+		[]string{createUserInput2.Name, delegateInput3.Name, createVaultInput.Name})
+
+	// Begin the restoration by delegating for a single user.
+	if _, _, err := post("restore", delegateInput1); err != nil {
+		t.Fatalf("restoration by user %s failed: %s", delegateInput1.Name, err)
+	}
+
+	// The vault should not have been restored yet.
+	restoreCheckStatus(t, persist.Inactive)
+	restoreCheckLiveCount(t, 1)
+	restoreCheckLiveUsers(t, []string{delegateInput1.Name},
+		[]string{createUserInput2.Name, delegateInput3.Name, createVaultInput.Name})
+
+	// Delegate the second user, which should lead to restoring
+	// the delegations.
+	if _, _, err := post("restore", delegateInput4); err != nil {
+		t.Fatalf("restoration by user %s failed: %s", delegateInput4.Name, err)
+	}
+
+	restoreCheckStatus(t, persist.Active)
+	restoreCheckLiveCount(t, 2)
+	restoreCheckLiveUsers(t, []string{delegateInput2.Name, delegateInput3.Name},
+		[]string{createUserInput1.Name, createVaultInput.Name})
 }
