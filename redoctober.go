@@ -304,6 +304,9 @@ func main() {
 	}
 
 	if vaultPath == "" || !cfg.Valid() {
+		if !cfg.Valid() {
+			fmt.Fprintf(os.Stderr, "Invalid config.\n")
+		}
 		fmt.Fprint(os.Stderr, usage)
 		flag.PrintDefaults()
 		os.Exit(2)

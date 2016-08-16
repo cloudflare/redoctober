@@ -45,6 +45,7 @@ var commandSet = map[string]command{
 	"order":       command{Run: runOrder, Desc: "place an order for delegations"},
 	"owners":      command{Run: runOwner, Desc: "show owners list"},
 	"status":      command{Run: runStatus, Desc: "show Red October persistent delegation state"},
+	"restore":     command{Run: runRestore, Desc: "perform a restore delegation"},
 }
 
 func registerFlags() {
@@ -130,6 +131,29 @@ func runDelegate() {
 	resp, err := roServer.Delegate(req)
 	processError(err)
 	fmt.Println(resp.Status)
+}
+
+func runRestore() {
+	req := core.DelegateRequest{
+		Name:     user,
+		Password: pswd,
+		Uses:     uses,
+		Time:     duration,
+	}
+
+	resp, err := roServer.Restore(req)
+	processError(err)
+
+	if resp.Status != "ok" {
+		fmt.Fprintf(os.Stderr, "failed: %s\n", resp.Status)
+		os.Exit(1)
+	}
+
+	var st core.StatusData
+	err = json.Unmarshal(resp.Response, &st)
+	processError(err)
+
+	fmt.Println("Restore delegation complete; persistence is now", st.Status)
 }
 
 // TODO: summary response needs better formatting
