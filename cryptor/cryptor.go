@@ -742,6 +742,11 @@ var ErrRestoreDelegations = errors.New("cryptor: need more delegations")
 // enough delegations are present to restore the cache, the current
 // Red October key cache is replaced with the persisted one.
 func (c *Cryptor) Restore(name, password string, uses int, slot, durationString string) error {
+	// If the persistence store is already active, don't proceed.
+	if st := c.persist.Status(); st != nil && st.State == persist.Active {
+		return nil
+	}
+
 	record, ok := c.records.GetRecord(name)
 	if !ok {
 		return errors.New("Missing user on disk")
@@ -774,6 +779,7 @@ func (c *Cryptor) Restore(name, password string, uses int, slot, durationString 
 
 	c.cache = keycache.NewFrom(uk)
 	c.persist.Persist()
+	c.persist.Cache().Flush()
 	return nil
 }
 

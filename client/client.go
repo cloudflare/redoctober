@@ -387,3 +387,20 @@ func (c *RemoteServer) Status(req core.StatusRequest) (*core.ResponseData, error
 
 	return unmarshalResponseData(respBytes)
 }
+
+// Restore issues a restore request to the server. Note that a restore
+// request is the same as a delegation request, except that the user
+// and label lists are ignored.
+func (c *RemoteServer) Restore(req core.DelegateRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("restore", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}

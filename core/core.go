@@ -156,6 +156,7 @@ type ResponseData struct {
 
 type SummaryData struct {
 	Status string
+	State  string
 	Live   map[string]keycache.ActiveUser
 	All    map[string]passvault.Summary
 }
@@ -185,7 +186,8 @@ func jsonStatusError(err error) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: err.Error()})
 }
 func jsonSummary() ([]byte, error) {
-	return json.Marshal(SummaryData{Status: "ok", Live: crypt.LiveSummary(), All: records.GetSummary()})
+	state := crypt.Status()
+	return json.Marshal(SummaryData{Status: "ok", State: state.State, Live: crypt.LiveSummary(), All: records.GetSummary()})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
@@ -300,6 +302,7 @@ func Create(jsonIn []byte) ([]byte, error) {
 
 // Summary processes a summary request.
 func Summary(jsonIn []byte) ([]byte, error) {
+	log.Println(string(jsonIn))
 	var s SummaryRequest
 	var err error
 
@@ -979,7 +982,7 @@ func Restore(jsonIn []byte) (out []byte, err error) {
 		return jsonStatusError(err)
 	}
 
-	err = crypt.Restore(req.Name, req.Password, req.Uses, req.Slot, req.Time)
+	err = crypt.Restore(req.Name, req.Password, 1, "", req.Time)
 	if err != nil && err != cryptor.ErrRestoreDelegations {
 		return jsonStatusError(err)
 	}

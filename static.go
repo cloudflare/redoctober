@@ -29,6 +29,7 @@ const (
 					<li><a href="#delegate">Delegate</a></li>
 					<li><a href="#summary">Summary</a></li>
 					<li><a href="#admin">Admin</a></li>
+					<li><a href="#restore">Restore</a></li>
 					<li><a href="#encrypt">Encrypt</a></li>
 					<li><a href="#decrypt">Decrypt</a></li>
 					<li><a href="#owners">Owners</a></li>
@@ -109,6 +110,8 @@ const (
 				</form>
 
 				<div class="hide summary-results">
+					<h4>Delegation Persistence</h4>
+					<p class="summary-state"></p>
 					<h4>Current Delegations</h4>
 					<ul class="list-group summary-user-delegations"></ul>
 
@@ -234,6 +237,33 @@ const (
 						</div>
 					</div>
 					<button type="submit" class="btn btn-primary">Modify user</button>
+				</form>
+			</div>
+		</section>
+		<section class="row">
+			<div id="restore" class="col-md-6">
+				<h3>Restore</h3>
+
+				<form id="user-restore" class="ro-user-restore" role="form" action="/restore" method="post">
+					<div class="feedback restore-feedback"></div>
+
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="restore-user">User name</label>
+							<input type="text" name="Name" class="form-control" id="restore-user" placeholder="User name" required />
+						</div>
+						<div class="col-md-6">
+							<label for="restore-user-pass">Password</label>
+							<input type="password" name="Password" class="form-control" id="restore-user-pass" placeholder="Password" required />
+						</div>
+					</div>
+					<div class="form-group row">
+						<div class="col-md-6">
+							<label for="restore-user-time">Delegation Time <small>(e.g., 2h34m)</small></label>
+							<input type="text" name="Time" class="form-control" id="restore-user-time" placeholder="1h" required />
+						</div>
+					</div>
+					<button type="submit" class="btn btn-primary">Restore</button>
 				</form>
 			</div>
 		</section>
@@ -481,7 +511,7 @@ const (
 					</div>
 					<div class="form-group row">
 						<div class="col-md-6">
-							<label for="orderlink-ordernum">Order Number</label>
+							<label for="orderlink-ordernum">Slot Name</label>
 							<input type="text" name="ordernum" class="form-control" id="orderlink-ordernum" placeholder="d34db33f..."/>
 						</div>
 						<div class="col-md-6">
@@ -582,7 +612,9 @@ const (
 
 						$.each(data.Live, buildLiveItem);
 						$.each(data.All, buildAllItem);
-
+						$('.summary-state').replaceWith(
+							'<p>Persistence is '+data.State+'.</a>'
+						);
 						$('.summary-results').removeClass('hide');
 					}
 				})
@@ -662,6 +694,31 @@ const (
 					data : data,
 					success : function(d){
 						$form.find('.feedback').empty().append( makeAlert({ type: 'success', message: 'Successfully modified '+htmlspecialchars(data.ToModify) }) );
+					}
+				});
+			});
+
+			// Restore
+			$('body').on('submit', '#user-restore', function(evt){
+				evt.preventDefault();
+				var $form = $(evt.currentTarget),
+				data = serialize($form);
+
+				// Force 'uses' to an integer.
+				data.Uses = parseInt(data.Uses, 10);
+
+				submit( $form, {
+					data : data,
+					success : function(d){
+						console.log(d.Response);
+						response = JSON.parse(window.atob(d.Response));
+						console.log(response);
+						$form.find('.feedback')
+						     .append(makeAlert({
+							type: 'success',
+							message: 'Delegating '+htmlspecialchars(data.Name)+
+							'; persistence is currently '+response.Status
+						}));
 					}
 				});
 			});
@@ -855,6 +912,9 @@ const (
 					case "ordernum":
 						setValue = $("#delegate-slot");
 						break;
+					case "slot":
+						setValue = $("#delegate-slot");
+						break;
 					default:
 						break;
 				}
@@ -870,7 +930,7 @@ const (
 				var labels    = decodeURIComponent(document.getElementById("orderlink-labels").value);
 				var uses      = decodeURIComponent(document.getElementById("orderlink-uses").value);
 
-				var link = "https://" + document.location.host + "?delegator="+ delegator + "&delegatee="+ delegatee + "&label=" + labels + "&ordernum=" + orderNum + "&uses=" + uses + "&duration="+ duration;
+				var link = "https://" + document.location.host + "?delegator="+ delegator + "&delegatee="+ delegatee + "&label=" + labels + "&slot=" + orderNum + "&uses=" + uses + "&duration="+ duration;
 				$('.orderlink-feedback').empty().append(makeAlert({ type: 'success', message: '<p>'+htmlspecialchars(link)+'</p>' }) );
 			 }
 			function htmlspecialchars(s) {
