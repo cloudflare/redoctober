@@ -982,7 +982,7 @@ func Restore(jsonIn []byte) (out []byte, err error) {
 		return jsonStatusError(err)
 	}
 
-	err = crypt.Restore(req.Name, req.Password, req.Uses, req.Slot, req.Time)
+	err = crypt.Restore(req.Name, req.Password, 1, "", req.Time)
 	if err != nil && err != cryptor.ErrRestoreDelegations {
 		return jsonStatusError(err)
 	}

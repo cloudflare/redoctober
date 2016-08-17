@@ -262,10 +262,6 @@ const (
 							<label for="restore-user-time">Delegation Time <small>(e.g., 2h34m)</small></label>
 							<input type="text" name="Time" class="form-control" id="restore-user-time" placeholder="1h" required />
 						</div>
-						<div class="col-md-6">
-							<label for="restore-uses">Uses</label>
-							<input type="number" name="Uses" class="form-control" id="restore-uses" placeholder="5" required />
-						</div>
 					</div>
 					<button type="submit" class="btn btn-primary">Restore</button>
 				</form>
