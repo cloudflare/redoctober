@@ -995,3 +995,37 @@ func Restore(jsonIn []byte) (out []byte, err error) {
 
 	return jsonResponse(out)
 }
+
+// ResetPersisted clears the persisted user data from the server. This
+// request requires an admin.
+func ResetPersisted(jsonIn []byte) (out []byte, err error) {
+	var req PurgeRequest
+
+	defer func() {
+		if err != nil {
+			log.Printf("core.resetpersisted failed: user=%s %v", req.Name, err)
+		} else {
+			log.Printf("core.resetpersisted success: user=%s", req.Name)
+		}
+	}()
+
+	if err = json.Unmarshal(jsonIn, &req); err != nil {
+		return jsonStatusError(err)
+	}
+
+	if err := validateUser(req.Name, req.Password, true); err != nil {
+		return jsonStatusError(err)
+	}
+
+	st, err := crypt.ResetPersisted()
+	if err != nil {
+		return jsonStatusError(err)
+	}
+
+	resp := &StatusData{Status: st.State}
+	if out, err = json.Marshal(resp); err != nil {
+		return jsonStatusError(err)
+	}
+
+	return jsonResponse(out)
+}

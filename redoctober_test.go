@@ -9,6 +9,7 @@ package main
 import (
 	"bytes"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -19,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/core"
 	"github.com/cloudflare/redoctober/persist"
@@ -59,7 +61,8 @@ var (
 		Uses:     1,
 	}
 
-	encryptInput = &core.EncryptRequest{
+	encryptMessage = "Why is a raven like a writing desk?\n"
+	encryptInput   = &core.EncryptRequest{
 		Minimum:  2,
 		Name:     createVaultInput.Name,
 		Password: createVaultInput.Password,
@@ -636,6 +639,22 @@ func TestPurge(t *testing.T) {
 // These need to write files to disk in order to test recovering delegations. //
 ////////////////////////////////////////////////////////////////////////////////
 
+var (
+	restore *client.RemoteServer
+
+	// restoreSecret is the encrypted data that should be decryptable
+	// both before and after the restart.
+	restoreSecret []byte
+
+	restoreEncryptInput = &core.EncryptRequest{
+		Minimum:  2,
+		Name:     createVaultInput.Name,
+		Password: createVaultInput.Password,
+		Owners:   []string{createUserInput3.Name, createUserInput2.Name},
+		Data:     []byte(base64.StdEncoding.EncodeToString([]byte(encryptMessage))),
+	}
+)
+
 func restoreSetup(t *testing.T, configPath, vaultPath string) (cmd *exec.Cmd) {
 	const maxAttempts = 5
 
@@ -650,7 +669,6 @@ func restoreSetup(t *testing.T, configPath, vaultPath string) (cmd *exec.Cmd) {
 	}
 
 	cmd = exec.Command(binaryPath, "-vaultpath", vaultPath, "-f", configPath)
-
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Error running redoctober command, %v", err)
 	}
@@ -705,6 +723,9 @@ func TestRestore(t *testing.T) {
 	// The server has restarted --- verify that the persisted
 	// delegations are available.
 	afterRestartRestore(t, cfgPath, vaultPath)
+
+	// Verify that we can reset the persisted delegations.
+	afterRestartPurge(t, cfgPath, vaultPath)
 }
 
 func prepareSetup(t *testing.T, pstore, cfgPath string) {
@@ -736,6 +757,16 @@ func prepareSetup(t *testing.T, pstore, cfgPath string) {
 	if err != nil {
 		t.Fatalf("failed to write config file: %s", err)
 	}
+
+	// We'll have two uses: one to permit the pre-restart decryption,
+	// one to permit the post-restart decryption, and one to verify
+	// the purge functionality.
+	delegateInput1.Uses = 3
+	delegateInput2.Uses = 3
+
+	// Allow someone to decrypt.
+	delegateInput1.Users = []string{createVaultInput.Name}
+	delegateInput2.Users = []string{createVaultInput.Name}
 }
 
 func restoreCheckStatus(t *testing.T, expected string) {
@@ -816,17 +847,23 @@ func beforeRestartRestore(t *testing.T, cfgPath, vaultPath string) {
 	cmd := restoreSetup(t, cfgPath, vaultPath)
 	defer teardown(t, cmd)
 
+	srv, err := client.NewRemoteServer("localhost:8080", "testdata/server.crt")
+	if err != nil {
+		t.Fatalf("failed to set up client: %s", err)
+	}
+
 	// Create a vault/admin user and 2 normal users so there is data to work with.
-	if _, _, err := post("create", createVaultInput); err != nil {
+	if _, _, err = post("create", createVaultInput); err != nil {
 		t.Fatalf("failed to create the vault: %s", err)
 	}
-	if _, _, err := post("create-user", createUserInput1); err != nil {
+
+	if _, err = srv.CreateUser(*createUserInput1); err != nil {
 		t.Fatalf("couldn't create user %s: %s", createUserInput1.Name, err)
 	}
-	if _, _, err := post("create-user", createUserInput2); err != nil {
+	if _, err = srv.CreateUser(*createUserInput2); err != nil {
 		t.Fatalf("couldn't create user %s: %s", createUserInput2.Name, err)
 	}
-	if _, _, err := post("create-user", createUserInput3); err != nil {
+	if _, err = srv.CreateUser(*createUserInput3); err != nil {
 		t.Fatalf("couldn't create user %s: %s", createUserInput3.Name, err)
 	}
 
@@ -835,29 +872,55 @@ func beforeRestartRestore(t *testing.T, cfgPath, vaultPath string) {
 	restoreCheckStatus(t, persist.Active)
 
 	// Delegate two users.
-	if _, _, err := post("delegate", delegateInput2); err != nil {
+	if _, err = srv.Delegate(*delegateInput2); err != nil {
 		t.Fatalf("failed to delegate for %s: %s", delegateInput2.Name, err)
 	}
-	if _, _, err := post("delegate", delegateInput3); err != nil {
+	if _, err = srv.Delegate(*delegateInput3); err != nil {
 		t.Fatalf("failed to delegate for %s: %s", delegateInput3.Name, err)
 	}
 
 	restoreCheckLiveCount(t, 2)
 	restoreCheckLiveUsers(t, []string{delegateInput2.Name, delegateInput3.Name},
 		[]string{createUserInput1.Name, createVaultInput.Name})
+
+	// Encrypt a message, and make sure it can be decrypted.
+	resp, err := srv.Encrypt(*restoreEncryptInput)
+	restoreSecret = resp.Response
+
+	decryptInput := &core.DecryptRequest{
+		Name:     createVaultInput.Name,
+		Password: createVaultInput.Password,
+		Data:     restoreSecret[:],
+	}
+
+	decrypted, err := srv.DecryptIntoData(*decryptInput)
+	if err != nil {
+		t.Fatalf("failed to decrypt message: %s", err)
+	}
+
+	decryptedMessage, err := base64.StdEncoding.DecodeString(string(decrypted))
+	if string(decryptedMessage) != encryptMessage {
+		t.Fatalf("decryption produced the wrong message: want '%s' but have '%s'",
+			encryptMessage, decryptedMessage)
+	}
 }
 
 func afterRestartRestore(t *testing.T, cfgPath, vaultPath string) {
 	cmd := restoreSetup(t, cfgPath, vaultPath)
 	defer teardown(t, cmd)
 
+	srv, err := client.NewRemoteServer("localhost:8080", "testdata/server.crt")
+	if err != nil {
+		t.Fatalf("failed to set up client: %s", err)
+	}
+
 	// An existing vault with a persisted delegation store should
 	// be inactive.
 	restoreCheckStatus(t, persist.Inactive)
 
 	// Delegate a user who wasn't in the persisted delegation set.
-	if _, _, err := post("delegate", delegateInput1); err != nil {
-		t.Fatalf("Error delegating with user 1, %v", err)
+	if _, err := srv.Delegate(*delegateInput1); err != nil {
+		t.Fatalf("error delegating with user 1, %v", err)
 	}
 
 	restoreCheckLiveCount(t, 1)
@@ -865,7 +928,7 @@ func afterRestartRestore(t *testing.T, cfgPath, vaultPath string) {
 		[]string{createUserInput2.Name, delegateInput3.Name, createVaultInput.Name})
 
 	// Begin the restoration by delegating for a single user.
-	if _, _, err := post("restore", delegateInput1); err != nil {
+	if _, err := srv.Restore(*delegateInput1); err != nil {
 		t.Fatalf("restoration by user %s failed: %s", delegateInput1.Name, err)
 	}
 
@@ -877,12 +940,56 @@ func afterRestartRestore(t *testing.T, cfgPath, vaultPath string) {
 
 	// Delegate the second user, which should lead to restoring
 	// the delegations.
-	if _, _, err := post("restore", delegateInput4); err != nil {
-		t.Fatalf("restoration by user %s failed: %s", delegateInput4.Name, err)
+	if _, err := srv.Restore(*delegateInput4); err != nil {
+		t.Fatalf("restoration by user %s failed: %s", delegateInput1.Name, err)
 	}
 
 	restoreCheckStatus(t, persist.Active)
 	restoreCheckLiveCount(t, 2)
 	restoreCheckLiveUsers(t, []string{delegateInput2.Name, delegateInput3.Name},
 		[]string{createUserInput1.Name, createVaultInput.Name})
+
+	decryptInput := &core.DecryptRequest{
+		Name:     createVaultInput.Name,
+		Password: createVaultInput.Password,
+		Data:     restoreSecret[:],
+	}
+
+	decrypted, err := srv.DecryptIntoData(*decryptInput)
+	if err != nil {
+		t.Fatalf("failed to decrypt message: %s", err)
+	}
+
+	decryptedMessage, err := base64.StdEncoding.DecodeString(string(decrypted))
+	if string(decryptedMessage) != encryptMessage {
+		t.Fatalf("decryption produced the wrong message: want '%s' but have '%s'",
+			encryptMessage, decryptedMessage)
+	}
+}
+
+func afterRestartPurge(t *testing.T, cfgPath, vaultPath string) {
+	cmd := restoreSetup(t, cfgPath, vaultPath)
+	defer teardown(t, cmd)
+
+	srv, err := client.NewRemoteServer("localhost:8080", "testdata/server.crt")
+	if err != nil {
+		t.Fatalf("failed to set up client: %s", err)
+	}
+
+	// An existing vault with a persisted delegation store should
+	// be inactive.
+	restoreCheckStatus(t, persist.Inactive)
+
+	resp, err := srv.ResetPersisted(core.PurgeRequest{Name: createVaultInput.Name, Password: createVaultInput.Password})
+	if err != nil {
+		t.Fatalf("failed to reset persisted delegations: %s", err)
+	}
+
+	if resp.Status != "ok" {
+		t.Fatalf("failed to reset persisted delegations: %s", resp.Status)
+	}
+
+	// An existing vault whose persistence store has been reset
+	// should be active.
+	restoreCheckStatus(t, persist.Active)
 }

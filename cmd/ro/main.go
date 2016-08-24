@@ -35,17 +35,18 @@ type command struct {
 var roServer *client.RemoteServer
 
 var commandSet = map[string]command{
-	"create":      command{Run: runCreate, Desc: "create the disk vault and admin account"},
-	"create-user": command{Run: runCreateUser, Desc: "create a user account"},
-	"summary":     command{Run: runSummary, Desc: "list the user and delegation summary"},
-	"delegate":    command{Run: runDelegate, Desc: "do decryption delegation"},
-	"encrypt":     command{Run: runEncrypt, Desc: "encrypt a file"},
-	"decrypt":     command{Run: runDecrypt, Desc: "decrypt a file"},
-	"re-encrypt":  command{Run: runReEncrypt, Desc: "re-encrypt a file"},
-	"order":       command{Run: runOrder, Desc: "place an order for delegations"},
-	"owners":      command{Run: runOwner, Desc: "show owners list"},
-	"status":      command{Run: runStatus, Desc: "show Red October persistent delegation state"},
-	"restore":     command{Run: runRestore, Desc: "perform a restore delegation"},
+	"create":          command{Run: runCreate, Desc: "create the disk vault and admin account"},
+	"create-user":     command{Run: runCreateUser, Desc: "create a user account"},
+	"summary":         command{Run: runSummary, Desc: "list the user and delegation summary"},
+	"delegate":        command{Run: runDelegate, Desc: "do decryption delegation"},
+	"encrypt":         command{Run: runEncrypt, Desc: "encrypt a file"},
+	"decrypt":         command{Run: runDecrypt, Desc: "decrypt a file"},
+	"re-encrypt":      command{Run: runReEncrypt, Desc: "re-encrypt a file"},
+	"order":           command{Run: runOrder, Desc: "place an order for delegations"},
+	"owners":          command{Run: runOwner, Desc: "show owners list"},
+	"status":          command{Run: runStatus, Desc: "show Red October persistent delegation state"},
+	"restore":         command{Run: runRestore, Desc: "perform a restore delegation"},
+	"reset-persisted": command{Run: runResetPersisted, Desc: "reset the persisted delegations"},
 }
 
 func registerFlags() {
@@ -307,6 +308,19 @@ func runStatus() {
 	}
 
 	resp, err := roServer.Status(req)
+	processError(err)
+
+	fmt.Println(resp.Status)
+	fmt.Println(resp)
+}
+
+func runResetPersisted() {
+	req := core.PurgeRequest{
+		Name:     user,
+		Password: pswd,
+	}
+
+	resp, err := roServer.ResetPersisted(req)
 	processError(err)
 
 	fmt.Println(resp.Status)

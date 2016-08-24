@@ -777,7 +777,13 @@ func (c *Cryptor) Restore(name, password string, uses int, slot, durationString 
 		return err
 	}
 
-	c.cache = keycache.NewFrom(uk)
+	rcache := keycache.NewFrom(uk)
+	err = rcache.Restore()
+	if err != nil {
+		return err
+	}
+
+	c.cache = rcache
 	c.persist.Persist()
 	c.persist.Cache().Flush()
 	return nil
@@ -786,4 +792,11 @@ func (c *Cryptor) Restore(name, password string, uses int, slot, durationString 
 // Status returns the status of the underlying persistence store.
 func (c *Cryptor) Status() *persist.Status {
 	return c.persist.Status()
+}
+
+// ResetPersisted clears any persisted delegations and returns the
+// vault to an active delegation state if configured.
+func (c *Cryptor) ResetPersisted() (*persist.Status, error) {
+	err := c.persist.Purge()
+	return c.persist.Status(), err
 }

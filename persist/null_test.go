@@ -55,6 +55,10 @@ func TestNewNull(t *testing.T) {
 	}
 
 	if cache := store.Cache(); len(cache.UserKeys) != 0 {
-		t.Fatal("persist: Null Cache should return an empty cache")
+		t.Fatal("persist: Null Cache() should return an empty cache")
+	}
+
+	if store.Purge() != nil {
+		t.Fatal("persist: Null Purge() shouldn't return an error")
 	}
 }
