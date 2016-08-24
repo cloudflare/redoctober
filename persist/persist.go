@@ -53,6 +53,8 @@ type Store interface {
 	// This is not the main keycache. This is the keycache for
 	// users that can decrypt the store.
 	Cache() *keycache.Cache
+	// Purge clears the persisted keys.
+	Purge() error
 }
 
 // FileMechanism indicates that the persistence mechanism is a file.

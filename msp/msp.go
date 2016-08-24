@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"crypto/rand"
 	"errors"
+	"fmt"
 	"strings"
 )
 
@@ -191,7 +192,7 @@ func (m MSP) DistributeShares(sec []byte, db UserDatabase) (map[string][][]byte,
 		case Name:
 			name := cond.string
 			if !db.ValidUser(name) {
-				return nil, errors.New("Unknown user in predicate.")
+				return nil, fmt.Errorf("Unknown user '%s' in predicate.", name)
 			}
 
 			out[name] = append(out[name], share)

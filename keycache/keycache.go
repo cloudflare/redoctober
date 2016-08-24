@@ -11,6 +11,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha1"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"log"
@@ -44,6 +45,7 @@ type ActiveUser struct {
 	AltNames map[string]string
 	Admin    bool
 	Type     string
+	Key      []byte
 
 	rsaKey rsa.PrivateKey
 	eccKey *ecdsa.PrivateKey
@@ -225,8 +227,16 @@ func (cache *Cache) AddKeyFromRecord(record passvault.PasswordRecord, name, pass
 	switch record.Type {
 	case passvault.RSARecord:
 		current.rsaKey, err = record.GetKeyRSA(password)
+		if err != nil {
+			return
+		}
+		current.Key = x509.MarshalPKCS1PrivateKey(&current.rsaKey)
 	case passvault.ECCRecord:
 		current.eccKey, err = record.GetKeyECC(password)
+		if err != nil {
+			return
+		}
+		current.Key, err = x509.MarshalECPrivateKey(current.eccKey)
 	default:
 		err = errors.New("Unknown record type")
 	}
@@ -369,4 +379,32 @@ func (cache *Cache) DelegateStatus(name string, labels, admins []string) (admins
 		}
 	}
 	return
+}
+
+// Restore unmarshals the private key stored in the delegator to the
+// appropriate private structure.
+func (cache *Cache) Restore() (err error) {
+	for index, uk := range cache.UserKeys {
+		if len(uk.Key) == 0 {
+			return errors.New("keycache: no private key in active user")
+		}
+
+		rsaPriv, err := x509.ParsePKCS1PrivateKey(uk.Key)
+		if err == nil {
+			uk.rsaKey = *rsaPriv
+			cache.UserKeys[index] = uk
+			continue
+		}
+
+		ecPriv, err := x509.ParseECPrivateKey(uk.Key)
+		if err == nil {
+			uk.eccKey = ecPriv
+			cache.UserKeys[index] = uk
+			continue
+		}
+
+		return err
+	}
+
+	return nil
 }

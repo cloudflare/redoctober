@@ -8,6 +8,11 @@ import (
 	"github.com/cloudflare/redoctober/config"
 )
 
+func fexists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}
+
 func TestFileConfig(t *testing.T) {
 	cfg := &config.Delegations{
 		Persist: false,
@@ -162,6 +167,99 @@ func TestNewFilePersists(t *testing.T) {
 	}
 
 	if file.state != Active {
+		t.Fatalf("fresh store should be persisting")
+	}
+}
+
+func TestActivePurge(t *testing.T) {
+	sf, err := tempName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(sf)
+
+	cfg := &config.Delegations{
+		Persist:   true,
+		Mechanism: FileMechanism,
+		Policy:    "alice & bob",
+		Users:     []string{"alice", "bob"},
+		Location:  sf,
+	}
+
+	f, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, ok := f.(*File)
+	if !ok {
+		t.Fatalf("persist: expected to get a *File but have %T", f)
+	}
+
+	const expected = "test data"
+	if err = f.Store([]byte(expected)); err != nil {
+		t.Fatal(err)
+	}
+
+	if !fexists(sf) {
+		t.Fatalf("persist: file store wasn't written to disk")
+	}
+
+	err = f.Purge()
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	if fexists(sf) {
+		t.Fatalf("persist: store should have been removed during purge")
+	}
+}
+
+func TestInactivePurge(t *testing.T) {
+	sf, err := tempName()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(sf)
+
+	cfg := &config.Delegations{
+		Persist:   true,
+		Mechanism: FileMechanism,
+		Policy:    "alice & bob",
+		Users:     []string{"alice", "bob"},
+		Location:  sf,
+	}
+
+	const expected = "test data"
+	err = ioutil.WriteFile(sf, []byte(expected), 0644)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	f, err := New(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	file, ok := f.(*File)
+	if !ok {
+		t.Fatalf("persist: expected to get a *File but have %T", f)
+	}
+
+	if err = f.Store([]byte(expected)); err != nil {
+		t.Fatal(err)
+	}
+
+	err = f.Purge()
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	if fexists(sf) {
+		t.Fatalf("persist: store should have been removed during purge")
+	}
+
+	if file.Status().State != Active {
 		t.Fatalf("fresh store should be persisting")
 	}
 }

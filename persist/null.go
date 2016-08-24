@@ -57,3 +57,7 @@ func (n *Null) Cache() *keycache.Cache {
 	cache := keycache.NewCache()
 	return &cache
 }
+
+func (n *Null) Purge() error {
+	return nil
+}

@@ -127,3 +127,12 @@ func (f *File) Status() *Status {
 		Summary: f.cache.GetSummary(),
 	}
 }
+
+func (f *File) Purge() error {
+	f.state = Active
+	f.blob = nil
+	if err := os.Remove(f.config.Location); err != nil {
+		return err
+	}
+	return nil
+}

@@ -1306,10 +1306,11 @@ func afterRestartRestore(t *testing.T) {
 }
 
 func restoreDelegateRestore(t *testing.T) {
-	delegateJsonBad := []byte("{\"Name\":\"Alice\",\"Password\":\"Hi\",\"Time\":\"5m\",\"Uses\":1}")
-	delegateJson1 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":1}")
-	delegateJson2 := []byte("{\"Name\":\"Carl\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":1}")
-	delegateJson3 := []byte("{\"Name\":\"Carl\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":1}")
+	adminUser := []byte("{\"Name\":\"Admin\",\"Password\":\"Admin\"}")
+	delegateJsonBad := []byte("{\"Name\":\"Alice\",\"Password\":\"Hi\",\"Time\":\"5m\",\"Uses\":3}")
+	delegateJson1 := []byte("{\"Name\":\"Alice\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":3}")
+	delegateJson2 := []byte("{\"Name\":\"Carl\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":3}")
+	delegateJson3 := []byte("{\"Name\":\"Carl\",\"Password\":\"Hello\",\"Time\":\"5m\",\"Uses\":3}")
 
 	var s ResponseData
 	respJson, err := Restore(delegateJsonBad)
@@ -1382,6 +1383,19 @@ func restoreDelegateRestore(t *testing.T) {
 	} else if _, ok = summary.Live["Bob"]; !ok {
 		t.Fatalf("Bob should be present in the active delegations.")
 	}
+
+	respJson, err = ResetPersisted(adminUser)
+	if err != nil {
+		t.Fatalf("Resetting persisted delegations failed: %s", err)
+	}
+
+	err = json.Unmarshal(respJson, &s)
+	if err != nil {
+		t.Fatalf("Error resetting persisted delegations: %s", err)
+	} else if s.Status != "ok" {
+		t.Fatalf("Error resetting persisted delegations: %s", s.Status)
+	}
+	restoreState(t, persist.Active)
 }
 
 func TestRestore(t *testing.T) {

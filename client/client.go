@@ -404,3 +404,20 @@ func (c *RemoteServer) Restore(req core.DelegateRequest) (*core.ResponseData, er
 
 	return unmarshalResponseData(respBytes)
 }
+
+// ResetPersisted issues a persisted delegation reset request,
+// clearing out any persisted delegations. This must be done by an
+// admin user.
+func (c *RemoteServer) ResetPersisted(req core.PurgeRequest) (*core.ResponseData, error) {
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respBytes, err := c.doAction("reset-persisted", reqBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return unmarshalResponseData(respBytes)
+}
