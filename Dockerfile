@@ -7,10 +7,12 @@ RUN apt-get update && \
     apt-get install -y openssl runit
 
 COPY . /go/src/github.com/cloudflare/redoctober
-RUN go get github.com/cloudflare/redoctober/...
+RUN go install github.com/cloudflare/redoctober
 
 EXPOSE 8080 8081
-ENV RO_DATA=/var/lib/redoctober/data \
+ENV RO_CERTS=/var/lib/redoctober/data/server.crt \
+    RO_KEYS=/var/lib/redoctober/data/server.pem \
+    RO_DATA=/var/lib/redoctober/data \
     RO_CERTPASSWD=password \
     RO_COMMONNAME=localhost
 
