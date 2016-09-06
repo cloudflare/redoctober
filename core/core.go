@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/cloudflare/redoctober/config"
@@ -302,7 +303,6 @@ func Create(jsonIn []byte) ([]byte, error) {
 
 // Summary processes a summary request.
 func Summary(jsonIn []byte) ([]byte, error) {
-	log.Println(string(jsonIn))
 	var s SummaryRequest
 	var err error
 
@@ -398,12 +398,18 @@ func Delegate(jsonIn []byte) ([]byte, error) {
 	}
 
 	// Make sure the user we are delegating to exists
+	var invalidUsers []string
 	for _, user := range s.Users {
 		if _, ok := records.GetRecord(user); !ok {
-			err = errors.New("User not present")
-			return jsonStatusError(err)
+			invalidUsers = append(invalidUsers, user)
 		}
 	}
+
+	if len(invalidUsers) != 0 {
+		err = fmt.Errorf("User(s) not present: %s", strings.Join(invalidUsers, ", "))
+		return jsonStatusError(err)
+	}
+
 	// Find password record for user and verify that their password
 	// matches. If not found then add a new entry for this user.
 
