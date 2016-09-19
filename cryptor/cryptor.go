@@ -328,7 +328,7 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 					encrypted.KeySet = append(encrypted.KeySet, out)
 				}
 			}
-		} else if access.Minimum > 3 {
+		} else if access.Minimum > 2 {
 			err = errors.New("Encryption to a list of owners with minimum > 2 is not implemented")
 			return err
 		}
