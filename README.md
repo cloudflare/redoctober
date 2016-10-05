@@ -30,27 +30,42 @@ And run the tests:
 Red October is a TLS server. It requires a local file to hold the key
 vault, an internet address, and a certificate keypair.
 
+### Docker
+
+***This is only meant for demo purposes, and is not yet recommended for production.***
+
+The easiest way to try out Red October is via [Docker](https://www.docker.com/).
+
+1. Install the [Docker Toolbox](https://www.docker.com/products/docker-toolbox).
+1. On Mac/Windows, open the Docker Quickstart Terminal/Shell. On Linux, your normal terminal is fine.
+1. Run
+
+    ```bash
+    git clone https://github.com/cloudflare/redoctober.git
+    cd redoctober
+    docker build -t redoctober .
+    docker run -it --rm -p 8080:8080 redoctober
+    ```
+
+1. Open the container address in your browser.
+    * Mac/Windows: In a new Docker Quickstart Terminal/Shell, run
+
+        ```bash
+        open "https://$(docker-machine ip):8080"
+        ```
+
+    * Linux: Go to [https://localhost:8080](https://localhost:8080) in your browser.
+
+### Manual
+
 First you need to acquire a TLS certificate. The simplest (and least
 secure) way is to skip the
 [Certificate Authority](https://en.wikipedia.org/wiki/Certificate_authority#Issuing_a_certificate)
 verification and generate a self-signed TLS certificate. Read this
 [detailed guide](http://www.akadia.com/services/ssh_test_certificate.html)
-or, alternatively, follow these insecure commands:
+or, alternatively, run this command to generate an insecure certificate:
 
-    $ mkdir cert
-    $ chmod 700 cert
-    ## Generate private key with password "password"
-    $ openssl genrsa -aes128 -passout pass:password -out cert/server.pem 2048
-    ## Remove password from private key
-    $ openssl rsa -passin pass:password -in cert/server.pem -out cert/server.pem
-    ## Generate CSR (make sure the common name CN field matches your server
-    ## address. It's set to "localhost" here.)
-    $ openssl req -new -key cert/server.pem -out cert/server.csr -subj '/C=US/ST=California/L=Everywhere/CN=localhost'
-    ## Sign the CSR and create certificate
-    $ openssl x509 -req -days 365 -in cert/server.csr -signkey cert/server.pem -out cert/server.crt
-    ## Clean up
-    $ rm cert/server.csr
-    $ chmod 600 cert/*
+    $ ./script/generatecert
 
 You're ready to run the server:
 
