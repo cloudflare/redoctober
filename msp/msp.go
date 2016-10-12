@@ -214,7 +214,7 @@ func (m MSP) DistributeShares(sec []byte, db UserDatabase) (map[string][][]byte,
 
 // ErrNotEnoughShares is returned if there aren't enough shares to
 // decrypt the secret.
-var ErrNotEnoughShares = errors.New("Not enough shares to recover.")
+var ErrNotEnoughShares = errors.New("not enough shares to recover")
 
 // RecoverSecret takes a user database storing secret shares as input and returns the original secret.
 func (m MSP) RecoverSecret(db UserDatabase) ([]byte, error) {

@@ -8,12 +8,16 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/cmd/ro/gopass"
 	"github.com/cloudflare/redoctober/core"
+	"github.com/cloudflare/redoctober/cryptor"
+	"github.com/cloudflare/redoctober/msp"
 	"github.com/cloudflare/redoctober/order"
 )
 
@@ -244,11 +248,39 @@ func runDecrypt() {
 	}
 
 	resp, err := roServer.Decrypt(req)
-	processError(err)
-	if resp.Status != "ok" {
-		log.Fatal("response status error:", resp.Status)
-		return
+	if err != nil {
+		switch err.Error() {
+		case cryptor.ErrNotEnoughDelegations.Error(),
+			msp.ErrNotEnoughShares.Error(),
+			"Need more delegated keys":
+			// retry forever unless keyboard interrupt
+			sigChan := make(chan os.Signal, 1)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+			for i := 0; i < 20; i++ {
+				resp, err = roServer.Decrypt(req)
+				if err == nil {
+					break
+				}
+				log.Println("retry after 30 seconds due to error: ", err)
+
+				select {
+				case <-sigChan:
+					log.Fatal("process is interrupted")
+					return
+
+				case <-time.After(30 * time.Second):
+				}
+			}
+		default:
+			processError(err)
+		}
 	}
+
+	if resp == nil {
+		log.Fatal("response status error:", resp.Status)
+	}
+
 	fmt.Println("Response Status:", resp.Status)
 	var msg core.DecryptWithDelegates
 	err = json.Unmarshal(resp.Response, &msg)

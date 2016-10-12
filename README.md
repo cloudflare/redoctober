@@ -198,7 +198,7 @@ Example query:
 
 If there aren't enough keys delegated you'll see:
 
-    {"Status":"Need more delegated keys"}
+    {"Status":"need more delegated keys"}
 
 ### Owners
 
