@@ -401,6 +401,68 @@ func TestDecrypt(t *testing.T) {
 	}
 }
 
+func TestReEncrypt(t *testing.T) {
+	cmd := setup(t)
+	defer teardown(t, cmd)
+
+	// Create a vault/admin user and 2 normal users so there is data to work with.
+	if _, _, err := post("create", createVaultInput); err != nil {
+		t.Fatalf("Error creating vault, %v", err)
+	}
+	if _, _, err := post("create-user", createUserInput1); err != nil {
+		t.Fatalf("Error creating user 1, %v", err)
+	}
+	if _, _, err := post("create-user", createUserInput2); err != nil {
+		t.Fatalf("Error creating user 2, %v", err)
+	}
+	if _, _, err := post("create-user", createUserInput3); err != nil {
+		t.Fatalf("Error creating user 2, %v", err)
+	}
+
+	// Use a copy of encryptInput because we will be modifying the struct.
+	encryptInput2 := *encryptInput
+
+	srv, err := client.NewRemoteServer("localhost:8080", "testdata/server.crt")
+	if err != nil {
+		t.Fatalf("failed to set up client: %s", err)
+	}
+
+	resp, err := srv.Encrypt(encryptInput2)
+	if err != nil {
+		t.Fatalf("failed to encrypt data: %s", err)
+	}
+
+	if resp.Status != "ok" {
+		t.Fatalf("failed to encrypt data: %s", resp.Status)
+	}
+
+	encryptInput2.Owners = append(encryptInput2.Owners, createUserInput3.Name)
+	encryptInput2.Data = resp.Response
+
+	resp, err = srv.Delegate(*delegateInput1)
+	if err != nil {
+		t.Fatalf("failed to delegate: %s", err)
+	} else if resp.Status != "ok" {
+		t.Fatalf("failed to delegate: %s", err)
+	}
+
+	resp, err = srv.Delegate(*delegateInput2)
+	if err != nil {
+		t.Fatalf("failed to delegate: %s", err)
+	} else if resp.Status != "ok" {
+		t.Fatalf("failed to delegate: %s", err)
+	}
+
+	resp, err = srv.ReEncrypt(core.ReEncryptRequest(encryptInput2))
+	if err != nil {
+		t.Fatalf("failed to encrypt data: %s", err)
+	}
+
+	if resp.Status != "ok" {
+		t.Fatalf("failed to re-encrypt data: %s", resp.Status)
+	}
+}
+
 // Test that the /owners API endpoint works and returns data in the correct format.
 func TestOwners(t *testing.T) {
 	cmd := setup(t)
