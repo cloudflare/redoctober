@@ -385,7 +385,7 @@ func TestDecrypt(t *testing.T) {
 	}
 
 	// Check the first decrypt command (where not enough owners have decrypted yet).
-	if err := postAndTest("decrypt", decryptInput, 200, "Need more delegated keys"); err != nil {
+	if err := postAndTest("decrypt", decryptInput, 200, "need more delegated keys"); err != nil {
 		t.Fatalf("Error decrypting data, %v", err)
 	}
 

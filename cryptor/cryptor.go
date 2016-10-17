@@ -456,7 +456,7 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 		}
 
 		if !fullMatch {
-			err = errors.New("Need more delegated keys")
+			err = ErrNotEnoughDelegations
 			return
 		}
 
@@ -737,6 +737,9 @@ func (c *Cryptor) store() error {
 // ErrRestoreDelegations is a sentinal value returned when more
 // delegations are needed for the restore to continue.
 var ErrRestoreDelegations = errors.New("cryptor: need more delegations")
+
+// ErrNotEnoughDelegations is a error returned by Decrypt.
+var ErrNotEnoughDelegations = errors.New("need more delegated keys")
 
 // Restore delegates the named user to the persistence key cache. If
 // enough delegations are present to restore the cache, the current

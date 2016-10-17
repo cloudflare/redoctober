@@ -8,11 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
-	"time"
 
-	"github.com/cloudflare/backoff"
 	"github.com/cloudflare/redoctober/core"
 )
 
@@ -62,17 +59,9 @@ func (c *RemoteServer) getURL(path string) string {
 func (c *RemoteServer) doAction(action string, req []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(req)
 	url := c.getURL("/" + action)
-	b := backoff.Backoff{}
-	var resp *http.Response
-	var err error
-	for {
-		resp, err = c.client.Post(url, "application/json", buf)
-		if err == nil {
-			break
-		}
-		delay := b.Duration()
-		log.Printf("Request to server failed. Will try again in %s", delay)
-		<-time.After(delay)
+	resp, err := c.client.Post(url, "application/json", buf)
+	if err != nil {
+		return nil, err
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
