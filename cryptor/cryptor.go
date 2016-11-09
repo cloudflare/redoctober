@@ -2,7 +2,6 @@
 // vault and key cache.
 //
 // Copyright (c) 2013 CloudFlare, Inc.
-
 package cryptor
 
 import (
@@ -386,7 +385,7 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 			return err
 		}
 
-		for name, _ := range shareSet {
+		for name := range shareSet {
 			encrypted.KeySetRSA[name], err = generateRandomKey(name)
 			if err != nil {
 				return err
@@ -396,7 +395,7 @@ func (encrypted *EncryptedData) wrapKey(records *passvault.Records, clearKey []b
 				return err
 			}
 
-			for i, _ := range shareSet[name] {
+			for i := range shareSet[name] {
 				tmp := make([]byte, 16)
 				crypt.Encrypt(tmp, shareSet[name][i])
 				shareSet[name][i] = tmp
@@ -470,25 +469,24 @@ func (encrypted *EncryptedData) unwrapKey(cache *keycache.Cache, user string) (u
 			names = append(names, name)
 		}
 		return
-	} else {
-		var sss msp.MSP
-		sss, err = msp.StringToMSP(encrypted.Predicate)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		db := UserDatabase{
-			names:    &names,
-			cache:    cache,
-			user:     user,
-			labels:   encrypted.Labels,
-			keySet:   encrypted.KeySetRSA,
-			shareSet: encrypted.ShareSet,
-		}
-		unwrappedKey, err = sss.RecoverSecret(&db)
-
-		return
 	}
+	var sss msp.MSP
+	sss, err = msp.StringToMSP(encrypted.Predicate)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	db := UserDatabase{
+		names:    &names,
+		cache:    cache,
+		user:     user,
+		labels:   encrypted.Labels,
+		keySet:   encrypted.KeySetRSA,
+		shareSet: encrypted.ShareSet,
+	}
+	unwrappedKey, err = sss.RecoverSecret(&db)
+
+	return
 }
 
 // Encrypt encrypts data with the keys associated with names. This
@@ -655,7 +653,7 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, predicate string, err er
 		}
 	}
 
-	for name, _ := range encrypted.ShareSet { // names from the secret splitting method
+	for name := range encrypted.ShareSet { // names from the secret splitting method
 		if !addedNames[name] {
 			names = append(names, name)
 			addedNames[name] = true

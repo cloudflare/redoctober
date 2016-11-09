@@ -961,6 +961,10 @@ func beforeRestartRestore(t *testing.T, cfgPath, vaultPath string) {
 	}
 
 	decryptedMessage, err := base64.StdEncoding.DecodeString(string(decrypted))
+	if err != nil {
+		t.Fatalf("DecodeString failed: %s", err)
+	}
+
 	if string(decryptedMessage) != encryptMessage {
 		t.Fatalf("decryption produced the wrong message: want '%s' but have '%s'",
 			encryptMessage, decryptedMessage)
@@ -1023,6 +1027,9 @@ func afterRestartRestore(t *testing.T, cfgPath, vaultPath string) {
 	}
 
 	decryptedMessage, err := base64.StdEncoding.DecodeString(string(decrypted))
+	if err != nil {
+		t.Fatalf("DecodeString failed: %s", err)
+	}
 	if string(decryptedMessage) != encryptMessage {
 		t.Fatalf("decryption produced the wrong message: want '%s' but have '%s'",
 			encryptMessage, decryptedMessage)

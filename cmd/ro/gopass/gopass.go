@@ -1,12 +1,12 @@
 // Author: johnsiilver@gmail.com (John Doak)
 
 /*
-gopass is a library for getting hidden input from a terminal.
+Package gopass is a library for getting hidden input from a terminal.
 
 This library's main use is to allow a user to enter a password at the
 command line without having it echoed to the screen.
 
-The libary currently supports unix systems by manipulating stty.
+The library currently supports unix systems by manipulating stty.
 
 This code is based upon code by RogerV in the golang-nuts thread:
 https://groups.google.com/group/golang-nuts/browse_thread/thread/40cc41e9d9fc9247
@@ -24,7 +24,7 @@ import (
 
 const (
 	sttyArg0   = "/bin/stty"
-	exec_cwdir = ""
+	execCwdir = ""
 )
 
 // Tells the terminal to turn echo off.
@@ -33,7 +33,7 @@ var sttyArgvEOff []string = []string{"stty", "-echo"}
 // Tells the terminal to turn echo on.
 var sttyArgvEOn []string = []string{"stty", "echo"}
 
-var ws syscall.WaitStatus = 0
+var ws syscall.WaitStatus
 
 // GetPass gets input hidden from the terminal from a user.
 // This is accomplished by turning off terminal echo,
@@ -82,7 +82,7 @@ func GetPass(prompt string) (passwd string, err error) {
 }
 
 func echoOff(fd []uintptr) (int, error) {
-	pid, err := syscall.ForkExec(sttyArg0, sttyArgvEOff, &syscall.ProcAttr{Dir: exec_cwdir, Files: fd})
+	pid, err := syscall.ForkExec(sttyArg0, sttyArgvEOff, &syscall.ProcAttr{Dir: execCwdir, Files: fd})
 	if err != nil {
 		return 0, fmt.Errorf("failed turning off console echo for password entry:\n\t%s", err)
 	}
@@ -92,7 +92,7 @@ func echoOff(fd []uintptr) (int, error) {
 // echoOn turns back on the terminal echo.
 func echoOn(fd []uintptr) {
   // Turn on the terminal echo.
-  pid, e := syscall.ForkExec(sttyArg0, sttyArgvEOn, &syscall.ProcAttr{Dir: exec_cwdir, Files: fd})
+  pid, e := syscall.ForkExec(sttyArg0, sttyArgvEOn, &syscall.ProcAttr{Dir: execCwdir, Files: fd})
   if e == nil {
     syscall.Wait4(pid, &ws, 0, nil)
   }

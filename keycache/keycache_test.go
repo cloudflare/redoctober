@@ -65,7 +65,7 @@ func TestUsesFlush(t *testing.T) {
 	}
 
 	if bytes.Equal(key, key2) {
-		t.Fatalf("cache.DecryptKey didnt decrypt the right key!")
+		t.Fatal("cache.DecryptKey didnt decrypt the right key!")
 	}
 
 	// Second decryption allowed.
