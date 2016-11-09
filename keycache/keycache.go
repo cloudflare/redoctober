@@ -2,7 +2,6 @@
 // for the Red October server.
 //
 // Copyright (c) 2013 CloudFlare, Inc.
-
 package keycache
 
 import (

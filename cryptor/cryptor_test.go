@@ -310,30 +310,30 @@ func TestRestore(t *testing.T) {
 	}
 
 	if len(c.cache.UserKeys) != 2 {
-		t.Fatalf("Delegations do not seem to have been restored.")
+		t.Fatal("Delegations do not seem to have been restored.")
 	}
 
 	usage, ok := c.cache.UserKeys[keycache.DelegateIndex{Name: "Alice"}]
 	if !ok {
-		t.Fatalf("Alice not found in active delegations.")
+		t.Fatal("Alice not found in active delegations.")
 	}
 
 	if usage.Uses != testUses {
-		t.Fatalf("Invalid number of uses in restored delegations.")
+		t.Fatal("Invalid number of uses in restored delegations.")
 	}
 
 	usage, ok = c.cache.UserKeys[keycache.DelegateIndex{Name: "Carl"}]
 	if !ok {
-		t.Fatalf("Carl not found in active delegations.")
+		t.Fatal("Carl not found in active delegations.")
 	}
 
 	if usage.Uses != testUses {
-		t.Fatalf("Invalid number of uses in restored delegations.")
+		t.Fatal("Invalid number of uses in restored delegations.")
 	}
 
 	_, ok = c.cache.UserKeys[keycache.DelegateIndex{Name: "Bob"}]
 	if ok {
-		t.Fatalf("Bob shouldn't be in the active delegations.")
+		t.Fatal("Bob shouldn't be in the active delegations.")
 	}
 
 }

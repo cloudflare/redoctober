@@ -24,9 +24,8 @@ func (d *Database) GetShare(name string) ([][]byte, error) {
 
 	if ok {
 		return out, nil
-	} else {
-		return nil, errors.New("Not found!")
 	}
+	return nil, errors.New("Not found!")
 }
 
 func TestMSP(t *testing.T) {
