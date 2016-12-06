@@ -94,7 +94,7 @@ func TestTimeFlush(t *testing.T) {
 
 	cache := NewCache()
 
-	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 10, "", "1s")
+	err = cache.AddKeyFromRecord(pr, "user", "weakpassword", nil, nil, 10, "", "10s")
 	if err != nil {
 		t.Fatalf("%v", err)
 	}
@@ -104,7 +104,7 @@ func TestTimeFlush(t *testing.T) {
 		t.Fatalf("Error in number of live keys")
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(11 * time.Second)
 
 	dummy := make([]byte, 16)
 	pubEncryptedKey, err := pr.EncryptKey(dummy)
@@ -312,7 +312,7 @@ func TestRefresh(t *testing.T) {
 		pr, "user", "weakpassword",
 		[]string{"ci", "buildeng", "user"},
 		[]string{"red", "blue"},
-		1, "", "1s",
+		1, "", "10s",
 	)
 	if err != nil {
 		t.Fatalf("%v", err)
@@ -323,7 +323,7 @@ func TestRefresh(t *testing.T) {
 		t.Fatalf("Refresh should not have removed any active users.")
 	}
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(10 * time.Second)
 
 	removed = cache.Refresh()
 	if removed != 1 {

@@ -37,7 +37,8 @@ type Cryptor struct {
 
 func New(records *passvault.Records, cache *keycache.Cache, config *config.Config) (*Cryptor, error) {
 	if cache == nil {
-		cache = &keycache.Cache{UserKeys: make(map[keycache.DelegateIndex]keycache.ActiveUser)}
+		c := keycache.NewCache()
+		cache = &c
 	}
 
 	store, err := persist.New(config.Delegations)

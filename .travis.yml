@@ -9,6 +9,9 @@ script:
   - go list github.com/cloudflare/redoctober/... | grep -v vendor | xargs go vet
   - ./scripts/validate-html-generation
   - go list -f '{{if len .TestGoFiles}}"go test -coverprofile={{.Dir}}/.coverprofile {{.ImportPath}}"{{end}}' ./... | xargs -i sh -c {}
+  - go test -race github.com/cloudflare/redoctober/keycache
+  - go test -race github.com/cloudflare/redoctober/cryptor
+  - go test -race github.com/cloudflare/redoctober/core
   - gover . coverprofile.txt
 after_success:
   - bash <(curl -s https://codecov.io/bash) -f coverprofile.txt

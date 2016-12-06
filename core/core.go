@@ -262,7 +262,6 @@ func Init(path string, config *config.Config) error {
 
 	orders = order.NewOrderer(hipchatClient)
 	crypt, err = cryptor.New(&records, nil, config)
-
 	return err
 }
 

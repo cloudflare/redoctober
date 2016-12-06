@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/cloudflare/redoctober/ecdh"
@@ -52,6 +53,7 @@ type ActiveUser struct {
 
 // Cache represents the current list of delegated keys in memory
 type Cache struct {
+	lock     *sync.Mutex
 	UserKeys map[DelegateIndex]ActiveUser
 }
 
@@ -93,12 +95,19 @@ func (usage Usage) matches(user string, labels []string) bool {
 
 // NewCache initalizes a new cache.
 func NewCache() Cache {
-	return Cache{make(map[DelegateIndex]ActiveUser)}
+	return Cache{
+		UserKeys: make(map[DelegateIndex]ActiveUser),
+		lock:     new(sync.Mutex),
+	}
 }
 
 // NewFrom takes the output of GetSummary and returns a new keycache.
 func NewFrom(summary map[string]ActiveUser) *Cache {
-	cache := &Cache{make(map[DelegateIndex]ActiveUser)}
+	cache := &Cache{
+		UserKeys: make(map[DelegateIndex]ActiveUser),
+		lock:     new(sync.Mutex),
+	}
+
 	for di, user := range summary {
 		diSplit := strings.SplitN(di, "-", 2)
 		index := DelegateIndex{
@@ -116,7 +125,9 @@ func NewFrom(summary map[string]ActiveUser) *Cache {
 
 // setUser takes an ActiveUser and adds it to the cache.
 func (cache *Cache) setUser(in ActiveUser, name, slot string) {
+	cache.lock.Lock()
 	cache.UserKeys[DelegateIndex{Name: name, Slot: slot}] = in
+	cache.lock.Unlock()
 }
 
 // Valid returns true if matching active user is present.
@@ -153,7 +164,7 @@ func (cache *Cache) MatchUser(name, user string, labels []string) (ActiveUser, s
 // for decryption or symmetric encryption
 func (cache *Cache) useKey(name, user, slot string, labels []string) {
 	if val, slot, present := cache.MatchUser(name, user, labels); present {
-		val.Usage.Uses -= 1
+		val.Usage.Uses--
 		if val.Usage.Uses <= 0 {
 			delete(cache.UserKeys, DelegateIndex{name, slot})
 		} else {
@@ -175,7 +186,7 @@ func (cache *Cache) GetSummary() map[string]ActiveUser {
 	return summaryData
 }
 
-// FlushCache removes all delegated keys. It returns true if the cache
+// Flush removes all delegated keys. It returns true if the cache
 // wasn't empty (i.e. there were active users removed), and false if
 // the cache was empty.
 func (cache *Cache) Flush() bool {
@@ -183,9 +194,11 @@ func (cache *Cache) Flush() bool {
 		return false
 	}
 
+	cache.lock.Lock()
 	for d := range cache.UserKeys {
 		delete(cache.UserKeys, d)
 	}
+	cache.lock.Unlock()
 
 	return true
 }
