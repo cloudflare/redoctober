@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
@@ -76,13 +77,33 @@ func registerFlags() {
 	flag.DurationVar(&pollInterval, "poll-interval", time.Second, "interval for polling an outstanding order (set 0 to disable polling)")
 }
 
+func readLine(prompt string) (line string, err error) {
+	fmt.Printf(prompt)
+	rd := bufio.NewReader(os.Stdin)
+	line, err = rd.ReadString('\n')
+	if err != nil {
+		return
+	}
+	line = strings.TrimSpace(line)
+	return
+}
+
 func getUserCredentials() {
-	user = os.Getenv(userEnv)
-	pswd = os.Getenv(pswdEnv)
-	if user == "" || pswd == "" {
-		fmt.Print("Username:")
-		fmt.Scan(&user)
-		var err error
+	var err error
+	if user == "" {
+		user = os.Getenv(userEnv)
+	}
+
+	if pswd == "" {
+		pswd = os.Getenv(pswdEnv)
+	}
+
+	if user == "" {
+		user, err = readLine("Username: ")
+		processError(err)
+	}
+
+	if pswd == "" {
 		pswd, err = gopass.GetPass("Password:")
 		processError(err)
 	}
