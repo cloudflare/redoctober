@@ -39,10 +39,12 @@ type UI struct {
 	Static string `json:"static"`
 }
 
-// HipChat contains the settings for Hipchat integration.
+// HipChat contains the settings for Hipchat integration. The ID is
+// the name that should be used in the startup message.
 type HipChat struct {
 	Host   string `json:"host"`
 	Room   string `json:"room"`
+	ID     string `json:"id"`
 	APIKey string `json:"api_key"`
 }
 

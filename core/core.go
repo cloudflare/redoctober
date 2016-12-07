@@ -18,6 +18,7 @@ import (
 	"github.com/cloudflare/redoctober/keycache"
 	"github.com/cloudflare/redoctober/order"
 	"github.com/cloudflare/redoctober/passvault"
+	"github.com/cloudflare/redoctober/persist"
 )
 
 var (
@@ -244,6 +245,11 @@ func Init(path string, config *config.Config) error {
 		err = fmt.Errorf("failed to load password vault %s: %s", path, err)
 	}
 
+	crypt, err = cryptor.New(&records, nil, config)
+	if err != nil {
+		return err
+	}
+
 	var hipchatClient hipchat.HipchatClient
 	hc := config.HipChat
 	if hc.Valid() {
@@ -258,11 +264,28 @@ func Init(path string, config *config.Config) error {
 			HcHost: hc.Host,
 			RoHost: config.UI.Root,
 		}
+
+		name := hc.ID
+		if name == "" {
+			name = "Red October"
+		}
+		message := name + " has restarted."
+		color := hipchat.GreenBackground
+
+		status := crypt.Status()
+		if status.State == persist.Inactive {
+			message += " @here: persistence is currently " + status.State + "; the restore admins need to restore the saved delegations."
+			color = hipchat.RedBackground
+		}
+
+		err = hipchatClient.Notify(message, color)
+		if err != nil {
+			return err
+		}
 	}
 
 	orders = order.NewOrderer(hipchatClient)
-	crypt, err = cryptor.New(&records, nil, config)
-	return err
+	return nil
 }
 
 // Create processes a create request.
