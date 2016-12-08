@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -22,6 +23,7 @@ import (
 
 	"github.com/cloudflare/redoctober/config"
 	"github.com/cloudflare/redoctober/core"
+	"github.com/cloudflare/redoctober/report"
 	"github.com/coreos/go-systemd/activation"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -67,20 +69,29 @@ func processRequest(requestType string, w http.ResponseWriter, r *http.Request) 
 	header.Set("Content-Type", "application/json")
 	header.Set("Strict-Transport-Security", "max-age=86400; includeSubDomains; preload")
 
+	tags := map[string]string{
+		"request-type": requestType,
+		"request-from": r.RemoteAddr,
+	}
 	fn, ok := functions[requestType]
 	if !ok {
+		err := errors.New("redoctober: unknown request for " + requestType)
+		report.Check(err, tags)
 		http.Error(w, "Unknown request", http.StatusInternalServerError)
 		return
 	}
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
+		report.Check(err, tags)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	resp, err := fn(body)
 	if err != nil {
+		// The function should also report errors in more detail.
+		report.Check(err, tags)
 		log.Printf("http.main failed: %s: %s", requestType, err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -188,9 +199,13 @@ type indexHandler struct {
 
 func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 	var body io.ReadSeeker
+	var tags = map[string]string{}
+
 	if this.staticPath != "" {
+		tags["static-path"] = this.staticPath
 		f, err := os.Open(this.staticPath)
 		if err != nil {
+			report.Check(err, tags)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -219,7 +234,9 @@ func initPrometheus() {
 
 	log.Printf("metrics.init start: addr=%s", srv.Addr)
 	go func() {
-		log.Fatal(srv.ListenAndServe())
+		err := srv.ListenAndServe()
+		report.Check(err, nil)
+		log.Fatal(err.Error())
 	}()
 }
 
@@ -304,6 +321,8 @@ func main() {
 		cfg = cli
 	}
 
+	report.Init(cfg)
+
 	if vaultPath == "" || !cfg.Valid() {
 		if !cfg.Valid() {
 			fmt.Fprintf(os.Stderr, "Invalid config.\n")
@@ -314,6 +333,7 @@ func main() {
 	}
 
 	if err := core.Init(vaultPath, cfg); err != nil {
+		report.Check(err, nil)
 		log.Fatal(err)
 	}
 
@@ -323,9 +343,14 @@ func main() {
 	s, l, err := NewServer(cfg.UI.Static, cfg.Server.Addr, cfg.Server.CAPath,
 		cpaths, kpaths, cfg.Server.Systemd)
 	if err != nil {
+		report.Check(err, nil)
 		log.Fatalf("Error starting redoctober server: %s\n", err)
 	}
 
 	log.Printf("http.serve start: addr=%s", cfg.Server.Addr)
-	log.Fatal(s.Serve(l))
+	report.Recover(func() {
+		err := s.Serve(l)
+		report.Check(err, nil)
+		log.Fatal(err.Error())
+	})
 }

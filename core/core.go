@@ -19,6 +19,7 @@ import (
 	"github.com/cloudflare/redoctober/order"
 	"github.com/cloudflare/redoctober/passvault"
 	"github.com/cloudflare/redoctober/persist"
+	"github.com/cloudflare/redoctober/report"
 )
 
 var (
@@ -233,8 +234,11 @@ func validateName(name, password string) error {
 func Init(path string, config *config.Config) error {
 	var err error
 
+	tags := map[string]string{"function": "core.Init"}
+
 	defer func() {
 		if err != nil {
+			report.Check(err, tags)
 			log.Printf("core.init failed: %v", err)
 		} else {
 			log.Printf("core.init success: path=%s", path)
@@ -395,9 +399,15 @@ func Purge(jsonIn []byte) ([]byte, error) {
 func Delegate(jsonIn []byte) ([]byte, error) {
 	var s DelegateRequest
 	var err error
+	var tags = map[string]string{"function": "core.Delegate"}
 
 	defer func() {
 		if err != nil {
+			tags["delegation.name"] = s.Name
+			tags["delegation.uses"] = fmt.Sprintf("%d", s.Uses)
+			tags["delegation.time"] = s.Time
+			tags["delegation.users"] = strings.Join(s.Users, ", ")
+			tags["delegation.labels"] = strings.Join(s.Labels, ", ")
 			log.Printf("core.delegate failed: user=%s %v", s.Name, err)
 		} else {
 			log.Printf("core.delegate success: user=%s uses=%d time=%s users=%v labels=%v", s.Name, s.Uses, s.Time, s.Users, s.Labels)
@@ -562,9 +572,13 @@ func Password(jsonIn []byte) ([]byte, error) {
 func Encrypt(jsonIn []byte) ([]byte, error) {
 	var s EncryptRequest
 	var err error
+	var tags = map[string]string{"function": "core.Encrypt"}
 
 	defer func() {
 		if err != nil {
+			tags["encrypt.user"] = s.Name
+			tags["encrypt.size"] = fmt.Sprintf("%d", len(s.Data))
+			report.Check(err, tags)
 			log.Printf("core.encrypt failed: user=%s size=%d %v", s.Name, len(s.Data), err)
 		} else {
 			log.Printf("core.encrypt success: user=%s size=%d", s.Name, len(s.Data))
@@ -644,9 +658,12 @@ func ReEncrypt(jsonIn []byte) ([]byte, error) {
 func Decrypt(jsonIn []byte) ([]byte, error) {
 	var s DecryptRequest
 	var err error
+	var tags = map[string]string{"function": "core.Decrypt"}
 
 	defer func() {
 		if err != nil {
+			tags["decrypt.user"] = s.Name
+			report.Check(err, tags)
 			log.Printf("core.decrypt failed: user=%s %v", s.Name, err)
 		} else {
 			log.Printf("core.decrypt success: user=%s", s.Name)
@@ -673,6 +690,8 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		Secure:    secure,
 		Delegates: names,
 	}
+
+	tags["delegates"] = strings.Join(names, ", ")
 
 	out, err := json.Marshal(resp)
 	if err != nil {
@@ -991,9 +1010,12 @@ func Status(jsonIn []byte) (out []byte, err error) {
 // Restore attempts a restoration of the persistence store.
 func Restore(jsonIn []byte) (out []byte, err error) {
 	var req DelegateRequest
+	var tags = map[string]string{"function": "core.Restore"}
 
 	defer func() {
 		if err != nil {
+			tags["restore.user"] = req.Name
+			report.Check(err, tags)
 			log.Printf("core.restore failed: user=%s %v", req.Name, err)
 		} else {
 			log.Printf("core.restore success: user=%s", req.Name)
@@ -1026,9 +1048,12 @@ func Restore(jsonIn []byte) (out []byte, err error) {
 // request requires an admin.
 func ResetPersisted(jsonIn []byte) (out []byte, err error) {
 	var req PurgeRequest
+	var tags = map[string]string{"function": "core.ResetPersisted"}
 
 	defer func() {
 		if err != nil {
+			tags["reset-persisted.user"] = req.Name
+			report.Check(err, tags)
 			log.Printf("core.resetpersisted failed: user=%s %v", req.Name, err)
 		} else {
 			log.Printf("core.resetpersisted success: user=%s", req.Name)
