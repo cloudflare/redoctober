@@ -62,6 +62,10 @@ func (m *Metrics) equal(other *Metrics) bool {
 	return m.Host == other.Host && m.Port == other.Port
 }
 
+func (r *Reporting) equal(other *Reporting) bool {
+	return r.SentryDSN == other.SentryDSN
+}
+
 func (d *Delegations) equal(other *Delegations) bool {
 	return d.Persist == other.Persist && d.Policy == other.Policy
 }
@@ -80,6 +84,10 @@ func (c *Config) equal(other *Config) bool {
 	}
 
 	if !c.Metrics.equal(other.Metrics) {
+		return false
+	}
+
+	if !c.Reporting.equal(other.Reporting) {
 		return false
 	}
 

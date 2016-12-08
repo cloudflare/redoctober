@@ -73,6 +73,11 @@ type Metrics struct {
 	Port string `json:"port"`
 }
 
+// Reporting contains configuration for error reporting.
+type Reporting struct {
+	SentryDSN string `json:"sentry_dsn"`
+}
+
 // Delegations contains configuration for persisting delegations.
 type Delegations struct {
 	// Persist controls whether delegations are persisted or not.
@@ -100,6 +105,7 @@ type Config struct {
 	UI          *UI          `json:"ui"`
 	HipChat     *HipChat     `json:"hipchat"`
 	Metrics     *Metrics     `json:"metrics"`
+	Reporting   *Reporting   `json:"reporting"`
 	Delegations *Delegations `json:"delegations"`
 }
 
@@ -126,6 +132,7 @@ func New() *Config {
 		UI:          &UI{},
 		HipChat:     &HipChat{},
 		Metrics:     &Metrics{},
+		Reporting:   &Reporting{},
 		Delegations: &Delegations{},
 	}
 }
