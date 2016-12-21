@@ -6,6 +6,10 @@ RUN groupadd -r redoctober --gid=999 && useradd -r -g redoctober --uid=999 redoc
 RUN apt-get update && \
     apt-get install -y openssl runit
 
+# Clone Go dependencies
+RUN git clone https://github.com/getsentry/raven-go.git /go/src/github.com/getsentry/raven-go
+RUN git clone https://github.com/certifi/gocertifi.git /go/src/github.com/certifi/gocertifi
+
 COPY . /go/src/github.com/cloudflare/redoctober
 RUN go install github.com/cloudflare/redoctober
 
