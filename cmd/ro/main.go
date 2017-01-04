@@ -343,6 +343,12 @@ func runOwner() {
 	inBytes, err := ioutil.ReadFile(inPath)
 	processError(err)
 
+	// attempt to base64 decode the input file
+	base64decoded, err := base64.StdEncoding.DecodeString(string(inBytes))
+	if err == nil {
+		inBytes = base64decoded
+	}
+
 	req := core.OwnersRequest{
 		Data: inBytes,
 	}
