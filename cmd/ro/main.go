@@ -273,7 +273,7 @@ func runDecrypt() {
 		switch err.Error() {
 		case cryptor.ErrNotEnoughDelegations.Error(),
 			msp.ErrNotEnoughShares.Error(),
-			"Need more delegated keys":
+			"need more delegated keys":
 			// retry forever unless keyboard interrupt
 			sigChan := make(chan os.Signal, 1)
 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
