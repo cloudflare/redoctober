@@ -172,6 +172,7 @@ type DecryptWithDelegates struct {
 type OwnersData struct {
 	Status    string
 	Owners    []string
+	Labels    []string
 	Predicate string
 }
 
@@ -774,12 +775,17 @@ func Owners(jsonIn []byte) ([]byte, error) {
 		return jsonStatusError(err)
 	}
 
-	names, predicate, err := crypt.GetOwners(s.Data)
+	names, labels, predicate, err := crypt.GetOwners(s.Data)
 	if err != nil {
 		return jsonStatusError(err)
 	}
 
-	return json.Marshal(OwnersData{Status: "ok", Owners: names, Predicate: predicate})
+	return json.Marshal(OwnersData{
+		Status:    "ok",
+		Owners:    names,
+		Predicate: predicate,
+		Labels:    labels,
+	})
 }
 
 // Export returns a backed up vault.
@@ -834,7 +840,7 @@ func Order(jsonIn []byte) (out []byte, err error) {
 	}
 
 	// Get the owners of the ciphertext.
-	owners, _, err := crypt.GetOwners(o.EncryptedData)
+	owners, _, _, err := crypt.GetOwners(o.EncryptedData)
 	if err != nil {
 		return jsonStatusError(err)
 	}

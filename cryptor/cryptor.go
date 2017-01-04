@@ -607,7 +607,7 @@ func (c *Cryptor) decrypt(cache *keycache.Cache, in []byte, user string) (resp [
 
 // GetOwners returns the list of users that can delegate their passwords
 // to decrypt the given encrypted secret.
-func (c *Cryptor) GetOwners(in []byte) (names []string, predicate string, err error) {
+func (c *Cryptor) GetOwners(in []byte) (names, labels []string, predicate string, err error) {
 	// unwrap encrypted file
 	var encrypted EncryptedData
 	if err = json.Unmarshal(in, &encrypted); err != nil {
@@ -661,6 +661,7 @@ func (c *Cryptor) GetOwners(in []byte) (names []string, predicate string, err er
 		}
 	}
 	predicate = encrypted.Predicate
+	labels = encrypted.Labels
 
 	return
 }
