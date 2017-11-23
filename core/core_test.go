@@ -1174,6 +1174,16 @@ func TestValidateName(t *testing.T) {
 		t.Fatal("Error expected when no name is provided")
 	}
 
+	err = validateName("?", "password")
+	if err == nil {
+		t.Fatal("Error expected when non alphanumeric is used in name")
+	}
+
+	err = validateName("-name", "password")
+	if err == nil {
+		t.Fatal("Error expected when name starts with '-' or '_'")
+	}
+
 	err = validateName("username", "")
 	if err == nil {
 		t.Fatal("Error expected when no password is provided")

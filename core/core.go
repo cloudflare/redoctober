@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -219,10 +220,13 @@ func validateUser(name, password string, admin bool) error {
 	return nil
 }
 
+//Username must start with an alphanumeric character and can include "-" and "_" after the first
+var validName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9\_\-]*$`).MatchString
+
 // validateName checks that the username and password pass a validation test.
 func validateName(name, password string) error {
-	if name == "" {
-		return errors.New("User name must not be blank")
+	if !validName(name) {
+		return errors.New("must start with an alphanumeric character and can include \"-\" or \"_\" after the first character")
 	}
 	if password == "" {
 		return errors.New("Password must be at least one character")
