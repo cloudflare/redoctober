@@ -201,6 +201,32 @@ func TestBadLabel(t *testing.T) {
 	}
 }
 
+func TestMatchesLabel(t *testing.T) {
+	use := Usage{}
+
+	use.Labels = []string{"red"}
+	if !use.matchesLabel([]string{}) {
+		t.Fatal("Decryption of labeled key denied with correct permission.")
+	}
+	if !use.matchesLabel([]string{"red"}) {
+		t.Fatal("Decryption of labeled key denied with correct permission.")
+	}
+	if use.matchesLabel([]string{"blue"}) {
+		t.Fatal("Decryption of labeled key allowed without permission.")
+	}
+
+	use.Labels = []string{"red", "white"}
+	if !use.matchesLabel([]string{"red"}) {
+		t.Fatal("Decryption of labeled key denied with correct permission.")
+	}
+	if !use.matchesLabel([]string{"red", "white"}) {
+		t.Fatal("Decryption of labeled key denied with correct permission.")
+	}
+	if use.matchesLabel([]string{"blue"}) {
+		t.Fatal("Decryption of labeled key allowed without permission.")
+	}
+}
+
 func TestGoodUser(t *testing.T) {
 	// Initialize passvault and keycache.  Delegate a key with tag and user
 	// restrictions and verify that permissible decryption is allowed.

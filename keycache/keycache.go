@@ -65,14 +65,20 @@ func (usage Usage) matchesLabel(labels []string) bool {
 		return true
 	}
 
-	for _, validLabel := range usage.Labels {
-		for _, label := range labels {
-			if label == validLabel {
-				return true
+	// Given an asset, usage label must be a superset.
+	for _, label := range labels {
+		found := false
+		for _, validLabel := range usage.Labels {
+			if validLabel == label {
+				found = true
+				break
 			}
 		}
+		if !found {
+			return false
+		}
 	}
-	return false
+	return true
 }
 
 // matches returns true if this usage applies the user and label
