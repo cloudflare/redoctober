@@ -347,8 +347,9 @@ would be a good option.
 
 Red October can encrypt an SSH private key with a restriction that the key can
 be used to sign messages, but that it should not be returned as the result of a
-decrypt call. The ro client can use this feature to authenticate a user to a
-remote SSH server without ever handling the unencrypted private key directly.
+decrypt call. The ro client can use this feature to mimic an ssh-agent server
+which authenticates a user to a remote SSH server without ever handling the
+unencrypted private key directly.
 
 Generate an ssh key without passphrase:
 
@@ -361,4 +362,17 @@ Encrypt with the "ssh-sign-with" usage only:
 
 Use the remote server to authenticate to an SSH server
 
-    $ ro -server localhost:443 -in id_ed25519.encrypted -pubkey id_ed25519.pub ssh root@gibson
+    $ RO_USER=alice RO_PASS=alice \
+        ./ro -server localhost:443 -ca server.crt \
+             -in id_ed25519.encrypted -pubkey id_ed25519.pub ssh-agent
+
+    2018/02/05 05:21:13 Starting Red October Secret Shell Agent
+    export SSH_AUTH_SOCK=/tmp/ro_ssh_267631424/roagent.sock
+
+On a separate terminal, run:
+
+    $ export SSH_AUTH_SOCK=/tmp/ro_ssh_267631424/roagent.sock
+    $ ssh-add -L # list of all public keys available through ro-agent
+    $ ssh user@hostname
+
+Other commands such as scp, git, etc. will also authenticate through ro.
