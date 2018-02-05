@@ -6,12 +6,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path"
 	"strings"
@@ -53,7 +51,6 @@ var commandSet = map[string]command{
 	"delegate":        command{Run: runDelegate, Desc: "do decryption delegation"},
 	"encrypt":         command{Run: runEncrypt, Desc: "encrypt a file"},
 	"decrypt":         command{Run: runDecrypt, Desc: "decrypt a file"},
-	"ssh":             command{Run: runSSH, Desc: "a wrapper for SSH using an RO-encrypted private key"},
 	"ssh-agent":       command{Run: runSSHAgent, Desc: "act as an SSH agent"},
 	"re-encrypt":      command{Run: runReEncrypt, Desc: "re-encrypt a file"},
 	"order":           command{Run: runOrder, Desc: "place an order for delegations"},
@@ -89,6 +86,10 @@ func registerFlags() {
 }
 
 func readLine(prompt string) (line string, err error) {
+	// TODO: find a way to ask for username and password
+	// such that the prompt itself is not captured in the
+	// standard output. This way running `ro ... ssh-agent`
+	// will set the SSH_AUTH_PATH environment variable.
 	fmt.Printf(prompt)
 	rd := bufio.NewReader(os.Stdin)
 	line, err = rd.ReadString('\n')
@@ -399,84 +400,61 @@ func runResetPersisted() {
 }
 
 func runSSHAgent() {
+	log.Println("Starting Red October Secret Shell Agent")
+
+	// Prepare a socket
+	dir, err := ioutil.TempDir("", "ro_ssh_")
+	processError(err)
+
+	authSockPath := path.Join(dir, "roagent.sock")
+	os.Setenv("SSH_AUTH_SOCK", authSockPath)
+	fmt.Printf("export SSH_AUTH_SOCK=%s\n", authSockPath)
+
+	socket := net.UnixAddr{Net: "unix", Name: authSockPath}
+	ear, err := net.ListenUnix("unix", &socket)
+	processError(err)
+
+	// Process the arguments
 	inBytes, err := ioutil.ReadFile(inPath)
 	processError(err)
 
-	// base64 decode the input
 	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
 	if err != nil {
-	        log.Println("failed to base64 decode the data, proceeding with raw data")
-	        encBytes = inBytes
+		log.Println("failed to base64 decode the data, proceeding with raw data")
+		encBytes = inBytes
 	}
 
 	inBytes, err = ioutil.ReadFile(pubKeyPath)
 	processError(err)
 
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(inBytes)
-
 	if err != nil {
-	        log.Fatal("failed to parse SSH public key", err)
+		log.Fatal("failed to parse SSH public key", err)
 	}
 
+	// Make an agent
 	roagent := roagent.NewROAgent(roServer, pubKey, encBytes, user, pswd)
 
-	authSockPath := os.Getenv("SSH_AUTH_SOCK")
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func(ear net.Listener, c chan os.Signal) {
+		sig := <-c
+		log.Printf("Caught signal %s: shutting down.", sig)
+		os.RemoveAll(path.Dir(authSockPath))
+		ear.Close()
+		os.Exit(0)
+	}(ear, sigChan)
 
-	if authSockPath == "" {
-	        log.Fatal("SSH_AUTH_SOCK not set")
-	}
+	for {
+		conn, err := ear.AcceptUnix()
+		if err != nil {
+			log.Fatal("error accepting socket connection", err)
+		}
 
-	listener, err := net.ListenUnix("unix", &net.UnixAddr{Name: authSockPath, Net: "unix"})
-	if err != nil {
-	        log.Fatal("error listening on $SSH_AUTH_SOCK", err)
-	}
-	defer os.Remove(authSockPath)
-
-	conn, err := listener.AcceptUnix()
-	if err != nil {
-	        log.Fatal("error accepting socket connection", err)
-	}
-
-	err = agent.ServeAgent(roagent, conn)
-	if err != nil && err != io.EOF {
-	        log.Fatal("error serving socket protocol", err)
+		// Serve the agent
+		go agent.ServeAgent(roagent, conn)
 	}
 }
-
-func runSSH() {
-	// First pick a path for our socket
-	// TempDir will ensure that the directory is created with the correct permissions
-	dir, err := ioutil.TempDir("", "ro_ssh_")
-	if err != nil {
-	        log.Fatal("error getting temporary directory for SSH auth socket ", err)
-	}
-	defer os.RemoveAll(dir)
-
-	os.Setenv("SSH_AUTH_SOCK", path.Join(dir, "roagent.sock"))
-	go runSSHAgent()
-
-	var sshPath string
-	sshPath, err = exec.LookPath("ssh")
-	if err != nil {
-	        log.Fatal("error finding path to ssh binary ", err)
-	}
-
-	var p *os.Process
-	p, err = os.StartProcess(sshPath, flag.Args(),
-	        &os.ProcAttr{
-	                Files: []*os.File{os.Stdin, os.Stdout, os.Stderr},
-	        },
-	)
-	if err != nil {
-	        log.Fatal("error starting ssh ", err)
-	}
-
-	_, err = p.Wait()
-	if err != nil {
-	        log.Fatal("error waiting on ssh ", err)
-	}
-}
-
 
 func main() {
 	flag.Usage = func() {
