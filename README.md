@@ -352,13 +352,13 @@ remote SSH server without ever handling the unencrypted private key directly.
 
 Generate an ssh key without passphrase:
 
-    $ ssh-keygen -f id_rsa -N ""
+    $ ssh-keygen -f id_ed25519 -N ""
 
 Encrypt with the "ssh-sign-with" usage only:
 
-    $ ro -minimum 2 -owners alice,bob -usages ssh-sign-with \
-         -server ro.local -in id_rsa -out id_rsa.encrypted encrypt
+    $ ro -minUsers 2 -owners alice,bob -usages ssh-sign-with \
+         -server localhost:443 -in id_ed25519 -out id_ed25519.encrypted encrypt
 
 Use the remote server to authenticate to an SSH server
 
-    $ ro -server ro.local -in id_rsa.encrypted -pubkey id_rsa.pub ssh root@gibson
+    $ ro -server localhost:443 -in id_ed25519.encrypted -pubkey id_ed25519.pub ssh root@gibson

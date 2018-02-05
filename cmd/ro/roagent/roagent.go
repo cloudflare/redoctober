@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"log"
 
 	"github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/core"
@@ -41,7 +40,7 @@ func (signer ROSigner) Sign(rand io.Reader, msg []byte) (signature *ssh.Signatur
 		return nil, err
 	}
 	if resp.Status != "ok" {
-		log.Fatal("response status error:", resp.Status)
+		return nil, errors.New("response status error: " + resp.Status)
 	}
 
 	var respMsg core.SSHSignatureWithDelegates
@@ -49,7 +48,11 @@ func (signer ROSigner) Sign(rand io.Reader, msg []byte) (signature *ssh.Signatur
 	if err != nil {
 		return nil, err
 	}
-	return &respMsg.Signature, nil
+	sshSignature := ssh.Signature{
+		Format: respMsg.SignatureFormat,
+		Blob:   respMsg.Signature,
+	}
+	return &sshSignature, nil
 }
 
 type ROAgent struct {

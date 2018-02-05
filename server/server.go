@@ -23,9 +23,9 @@ import (
 	"github.com/coreos/go-systemd/activation"
 )
 
-// DefaultIndexHtml can be used to customize the package default index page
+// DefaultIndexHTML can be used to customize the package default index page
 // when static path is not specified
-var DefaultIndexHtml = ""
+var DefaultIndexHTML = ""
 
 var functions = map[string]func([]byte) ([]byte, error){
 	"/create":          core.Create,
@@ -37,6 +37,7 @@ var functions = map[string]func([]byte) ([]byte, error){
 	"/encrypt":         core.Encrypt,
 	"/re-encrypt":      core.ReEncrypt,
 	"/decrypt":         core.Decrypt,
+	"/ssh-sign-with":   core.SSHSignWith,
 	"/owners":          core.Owners,
 	"/modify":          core.Modify,
 	"/export":          core.Export,
@@ -50,13 +51,18 @@ var functions = map[string]func([]byte) ([]byte, error){
 }
 
 type userRequest struct {
-	rt string // The request type (which will be one of the
+	// The request type (which will be one of the
 	// keys of the functions map above
-	in []byte // Arbitrary input data (depends on the core.*
+	rt string
+
+	// Arbitrary input data (depends on the core.*
 	// function called)
-	resp chan<- []byte // Channel down which a response is sent (the
+	in []byte
+
+	// Channel down which a response is sent (the
 	// data sent will depend on the core.* function
 	// called to handle this request)
+	resp chan<- []byte
 }
 
 // processRequest handles a single request receive on the JSON API for
@@ -194,13 +200,13 @@ type indexHandler struct {
 	staticPath string
 }
 
-func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
+func (handler *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 	var body io.ReadSeeker
 	var tags = map[string]string{}
 
-	if this.staticPath != "" {
-		tags["static-path"] = this.staticPath
-		f, err := os.Open(this.staticPath)
+	if handler.staticPath != "" {
+		tags["static-path"] = handler.staticPath
+		f, err := os.Open(handler.staticPath)
 		if err != nil {
 			report.Check(err, tags)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -209,7 +215,7 @@ func (this *indexHandler) handle(w http.ResponseWriter, r *http.Request) {
 		defer f.Close()
 		body = f
 	} else {
-		body = bytes.NewReader([]byte(DefaultIndexHtml))
+		body = bytes.NewReader([]byte(DefaultIndexHTML))
 	}
 
 	header := w.Header()
