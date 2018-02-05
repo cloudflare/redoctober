@@ -254,7 +254,7 @@ func (c *RemoteServer) Decrypt(req core.DecryptRequest) (*core.ResponseData, err
 
 }
 
-// SSHSignWith issues an SSH-sign-with request to the remote server
+// SSHSignWith issues a SSH-sign-with request to the remote server
 func (c *RemoteServer) SSHSignWith(req core.SSHSignWithRequest) (*core.ResponseData, error) {
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
@@ -267,6 +267,7 @@ func (c *RemoteServer) SSHSignWith(req core.SSHSignWithRequest) (*core.ResponseD
 	}
 
 	return unmarshalResponseData(respBytes)
+
 }
 
 // DecryptIntoData issues an decrypt request to the remote server and extract
