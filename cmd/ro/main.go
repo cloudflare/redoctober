@@ -112,18 +112,18 @@ func getUserCredentials() {
 
 	if user == "" {
 		user, err = readLine("Username: ")
-		processError(err)
+		processError("error", err)
 	}
 
 	if pswd == "" {
 		pswd, err = gopass.GetPass("Password:")
-		processError(err)
+		processError("error", err)
 	}
 }
 
-func processError(err error) {
+func processError(msg string, err error) {
 	if err != nil {
-		log.Fatal("error:", err)
+		log.Fatalln(msg, ":", err)
 	}
 }
 
@@ -141,7 +141,7 @@ func runCreate() {
 		Password: pswd,
 	}
 	resp, err := roServer.Create(req)
-	processError(err)
+	processError("error", err)
 	fmt.Println(resp.Status)
 }
 
@@ -153,7 +153,7 @@ func runCreateUser() {
 		HipchatName: hcName,
 	}
 	resp, err := roServer.CreateUser(req)
-	processError(err)
+	processError("error", err)
 	fmt.Println(resp.Status)
 }
 
@@ -167,7 +167,7 @@ func runDelegate() {
 		Labels:   processCSL(labels),
 	}
 	resp, err := roServer.Delegate(req)
-	processError(err)
+	processError("error", err)
 	fmt.Println(resp.Status)
 }
 
@@ -180,7 +180,7 @@ func runRestore() {
 	}
 
 	resp, err := roServer.Restore(req)
-	processError(err)
+	processError("error", err)
 
 	if resp.Status != "ok" {
 		fmt.Fprintf(os.Stderr, "failed: %s\n", resp.Status)
@@ -189,7 +189,7 @@ func runRestore() {
 
 	var st core.StatusData
 	err = json.Unmarshal(resp.Response, &st)
-	processError(err)
+	processError("error", err)
 
 	fmt.Println("Restore delegation complete; persistence is now", st.Status)
 }
@@ -201,13 +201,13 @@ func runSummary() {
 		Password: pswd,
 	}
 	resp, err := roServer.Summary(req)
-	processError(err)
+	processError("error", err)
 	fmt.Println(resp)
 }
 
 func runEncrypt() {
 	inBytes, err := ioutil.ReadFile(inPath)
-	processError(err)
+	processError("error", err)
 	req := core.EncryptRequest{
 		Name:        user,
 		Password:    pswd,
@@ -221,9 +221,9 @@ func runEncrypt() {
 	}
 
 	resp, err := roServer.Encrypt(req)
-	processError(err)
+	processError("error", err)
 	if resp.Status != "ok" {
-		log.Fatal("response status error:", resp.Status)
+		log.Fatalln("response status error", resp.Status)
 		return
 	}
 	fmt.Println("Response Status:", resp.Status)
@@ -233,7 +233,7 @@ func runEncrypt() {
 
 func runReEncrypt() {
 	inBytes, err := ioutil.ReadFile(inPath)
-	processError(err)
+	processError("error", err)
 
 	// base64 decode the input
 	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
@@ -254,9 +254,9 @@ func runReEncrypt() {
 	}
 
 	resp, err := roServer.ReEncrypt(req)
-	processError(err)
+	processError("error", err)
 	if resp.Status != "ok" {
-		log.Fatal("response status error:", resp.Status)
+		log.Fatalln("response status error", resp.Status)
 		return
 	}
 	fmt.Println("Response Status:", resp.Status)
@@ -266,7 +266,7 @@ func runReEncrypt() {
 
 func runDecrypt() {
 	inBytes, err := ioutil.ReadFile(inPath)
-	processError(err)
+	processError("error", err)
 
 	// base64 decode the input
 	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
@@ -300,25 +300,25 @@ func runDecrypt() {
 
 				select {
 				case <-sigChan:
-					log.Fatal("process is interrupted")
+					log.Fatalln("process is interrupted")
 					return
 
 				case <-time.After(30 * time.Second):
 				}
 			}
 		default:
-			processError(err)
+			processError("error", err)
 		}
 	}
 
 	if resp == nil {
-		log.Fatal("response status error:", resp.Status)
+		log.Fatalln("response status error", resp.Status)
 	}
 
 	fmt.Println("Response Status:", resp.Status)
 	var msg core.DecryptWithDelegates
 	err = json.Unmarshal(resp.Response, &msg)
-	processError(err)
+	processError("error", err)
 	fmt.Println("Secure:", msg.Secure)
 	fmt.Println("Delegates:", msg.Delegates)
 	ioutil.WriteFile(outPath, msg.Data, 0644)
@@ -334,19 +334,19 @@ func runOrder() {
 		Users:    processCSL(users),
 	}
 	resp, err := roServer.Order(req)
-	processError(err)
+	processError("error", err)
 
 	var o order.Order
 	err = json.Unmarshal(resp.Response, &o)
-	processError(err)
+	processError("error", err)
 
 	if pollInterval > 0 {
 		for o.Delegated < 2 {
 			time.Sleep(pollInterval)
 			resp, err = roServer.OrderInfo(core.OrderInfoRequest{Name: user, Password: pswd, OrderNum: o.Num})
-			processError(err)
+			processError("error", err)
 			err = json.Unmarshal(resp.Response, &o)
-			processError(err)
+			processError("error", err)
 		}
 	}
 	fmt.Println(resp.Status)
@@ -354,7 +354,7 @@ func runOrder() {
 
 func runOwner() {
 	inBytes, err := ioutil.ReadFile(inPath)
-	processError(err)
+	processError("error", err)
 
 	// attempt to base64 decode the input file
 	base64decoded, err := base64.StdEncoding.DecodeString(string(inBytes))
@@ -367,7 +367,7 @@ func runOwner() {
 	}
 
 	resp, err := roServer.Owners(req)
-	processError(err)
+	processError("error", err)
 
 	fmt.Println(resp.Status)
 	fmt.Println(resp)
@@ -380,7 +380,7 @@ func runStatus() {
 	}
 
 	resp, err := roServer.Status(req)
-	processError(err)
+	processError("error", err)
 
 	fmt.Println(resp.Status)
 	fmt.Println(resp)
@@ -393,7 +393,7 @@ func runResetPersisted() {
 	}
 
 	resp, err := roServer.ResetPersisted(req)
-	processError(err)
+	processError("error", err)
 
 	fmt.Println(resp.Status)
 	fmt.Println(resp)
@@ -404,7 +404,7 @@ func runSSHAgent() {
 
 	// Prepare a socket
 	dir, err := ioutil.TempDir("", "ro_ssh_")
-	processError(err)
+	processError("error", err)
 
 	authSockPath := path.Join(dir, "roagent.sock")
 	os.Setenv("SSH_AUTH_SOCK", authSockPath)
@@ -412,11 +412,11 @@ func runSSHAgent() {
 
 	socket := net.UnixAddr{Net: "unix", Name: authSockPath}
 	ear, err := net.ListenUnix("unix", &socket)
-	processError(err)
+	processError("error", err)
 
 	// Process the arguments
 	inBytes, err := ioutil.ReadFile(inPath)
-	processError(err)
+	processError("error", err)
 
 	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
 	if err != nil {
@@ -425,15 +425,15 @@ func runSSHAgent() {
 	}
 
 	inBytes, err = ioutil.ReadFile(pubKeyPath)
-	processError(err)
+	processError("error", err)
 
 	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(inBytes)
-	if err != nil {
-		log.Fatal("failed to parse SSH public key", err)
-	}
+	processError("failed to parse SSH public key", err)
 
 	// Make an agent
-	roagent := roagent.NewROAgent(roServer, pubKey, encBytes, user, pswd)
+//	sshagent := agent.NewKeyring()
+	roagent, err := roagent.NewROAgent(roServer, pubKey, encBytes, user, pswd)
+	processError("failed to start ROAgent", err)
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
@@ -447,9 +447,7 @@ func runSSHAgent() {
 
 	for {
 		conn, err := ear.AcceptUnix()
-		if err != nil {
-			log.Fatal("error accepting socket connection", err)
-		}
+		processError("error accepting socket connection", err)
 
 		// Serve the agent
 		go agent.ServeAgent(roagent, conn)
@@ -486,7 +484,7 @@ func main() {
 	} else {
 		var err error
 		roServer, err = client.NewRemoteServer(server, caPath)
-		processError(err)
+		processError("error", err)
 
 		getUserCredentials()
 		cmd.Run()
