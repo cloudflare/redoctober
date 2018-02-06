@@ -24,7 +24,6 @@ import (
 	"github.com/cloudflare/redoctober/msp"
 	"github.com/cloudflare/redoctober/order"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/crypto/ssh/agent"
 )
 
 var action, user, pswd, userEnv, pswdEnv, server, caPath, pubKeyPath string
@@ -52,6 +51,7 @@ var commandSet = map[string]command{
 	"encrypt":         command{Run: runEncrypt, Desc: "encrypt a file"},
 	"decrypt":         command{Run: runDecrypt, Desc: "decrypt a file"},
 	"ssh-agent":       command{Run: runSSHAgent, Desc: "act as an SSH agent"},
+	"ssh-add":         command{Run: runSSHAdd, Desc: "act as ssh-add"},
 	"re-encrypt":      command{Run: runReEncrypt, Desc: "re-encrypt a file"},
 	"order":           command{Run: runOrder, Desc: "place an order for delegations"},
 	"owners":          command{Run: runOwner, Desc: "show owners list"},
@@ -404,7 +404,7 @@ func runSSHAgent() {
 
 	// Prepare a socket
 	dir, err := ioutil.TempDir("", "ro_ssh_")
-	processError("error", err)
+	processError("error making a temporary directory", err)
 
 	authSockPath := path.Join(dir, "roagent.sock")
 	os.Setenv("SSH_AUTH_SOCK", authSockPath)
@@ -412,29 +412,17 @@ func runSSHAgent() {
 
 	socket := net.UnixAddr{Net: "unix", Name: authSockPath}
 	ear, err := net.ListenUnix("unix", &socket)
-	processError("error", err)
-
-	// Process the arguments
-	inBytes, err := ioutil.ReadFile(inPath)
-	processError("error", err)
-
-	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
-	if err != nil {
-		log.Println("failed to base64 decode the data, proceeding with raw data")
-		encBytes = inBytes
-	}
-
-	inBytes, err = ioutil.ReadFile(pubKeyPath)
-	processError("error", err)
-
-	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(inBytes)
-	processError("failed to parse SSH public key", err)
+	processError("error making a unix socket", err)
 
 	// Make an agent
-//	sshagent := agent.NewKeyring()
-	roagent, err := roagent.NewROAgent(roServer, pubKey, encBytes, user, pswd)
-	processError("failed to start ROAgent", err)
+	roAgent := roagent.NewROAgent(roServer, user, pswd)
 
+	// Process the arguments
+	if inPath != "" && pubKeyPath != "" {
+		go runSSHAdd()
+	}
+
+	// Prepare for signal interception
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	go func(ear net.Listener, c chan os.Signal) {
@@ -445,13 +433,47 @@ func runSSHAgent() {
 		os.Exit(0)
 	}(ear, sigChan)
 
+	// Serve the agent
 	for {
 		conn, err := ear.AcceptUnix()
 		processError("error accepting socket connection", err)
-
-		// Serve the agent
-		go agent.ServeAgent(roagent, conn)
+		go roagent.ServeAgent(roAgent, conn)
 	}
+}
+
+func runSSHAdd() {
+	// Process the arguments
+	inBytes, err := ioutil.ReadFile(inPath)
+	processError("error reading encrypted data", err)
+
+	encBytes, err := base64.StdEncoding.DecodeString(string(inBytes))
+	if err != nil {
+		log.Println("error base64-decoding the data, proceeding with raw data")
+		encBytes = inBytes
+	}
+
+	inBytes, err = ioutil.ReadFile(pubKeyPath)
+	processError("error reading public key", err)
+
+	pubKey, _, _, _, err := ssh.ParseAuthorizedKey(inBytes)
+	processError("error parsing public key", err)
+
+	// Prepare a socket
+	authSockPath := os.Getenv("SSH_AUTH_SOCK")
+
+	socket := net.UnixAddr{Net: "unix", Name: authSockPath}
+	mouth, err := net.DialUnix("unix", nil, &socket)
+	processError("error connecting to unix socket", err)
+
+	// Contact the agent
+	newROAgent := roagent.NewClient(mouth)
+	rosigner := roagent.NewROSigner(pubKey, encBytes)
+	err = newROAgent.Add(roagent.AddedKey{
+		PrivateKey: rosigner,
+	})
+	processError("failed to add new signer to the ROAgent", err)
+
+	fmt.Println("New signer was added to the ROAgent")
 }
 
 func main() {
