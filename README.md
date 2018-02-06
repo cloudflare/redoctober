@@ -357,14 +357,13 @@ Generate an ssh key without passphrase:
 
 Encrypt with the "ssh-sign-with" usage only:
 
-    $ ro -minUsers 2 -owners alice,bob -usages ssh-sign-with \
-         -server localhost:443 -in id_ed25519 -out id_ed25519.encrypted encrypt
+    $ ro -server localhost:443 -ca server.crt \
+         -minUsers 2 -owners alice,bob -usages ssh-sign-with \
+         -in id_ed25519 -out id_ed25519.encrypted encrypt
 
-Use the remote server to authenticate to an SSH server
+Initiate a SSH agent with connection to the remote RO server:
 
-    $ RO_USER=alice RO_PASS=alice \
-        ./ro -server localhost:443 -ca server.crt \
-             -in id_ed25519.encrypted -pubkey id_ed25519.pub ssh-agent
+    $ ro -server localhost:443 -ca server.crt ssh-agent
 
     2018/02/05 05:21:13 Starting Red October Secret Shell Agent
     export SSH_AUTH_SOCK=/tmp/ro_ssh_267631424/roagent.sock
@@ -372,7 +371,12 @@ Use the remote server to authenticate to an SSH server
 On a separate terminal, run:
 
     $ export SSH_AUTH_SOCK=/tmp/ro_ssh_267631424/roagent.sock
-    $ ssh-add -L # list of all public keys available through ro-agent
-    $ ssh user@hostname
+    $ ro -in ssh_key.encrypted -pubkey ssh_key.pub ssh-add
+    $ ssh-add -L # list of all public keys available through ro-ssh-agent
 
-Other commands such as scp, git, etc. will also authenticate through ro.
+Now, all commands that utilize ssh-agents, such as scp, git, etc., will 
+authenticate through the red october server:
+
+    $ ssh user@hostname
+    $ git -T git@github.com
+    $ ...
