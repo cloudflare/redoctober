@@ -343,7 +343,7 @@ conversion. For dealing with files directly, using the
 would be a good option.
 
 
-## SSH key encryption
+## SSH Signing Oracle
 
 Red October can encrypt an SSH private key with a restriction that the key can
 be used to sign messages, but that it should not be returned as the result of a
@@ -351,9 +351,11 @@ decrypt call. The ro client can use this feature to mimic an ssh-agent server
 which authenticates a user to a remote SSH server without ever handling the
 unencrypted private key directly.
 
-Generate an ssh key without passphrase:
+Generate an ssh key **without passphrase**:
 
     $ ssh-keygen -f id_ed25519 -N ""
+
+### Consign the Key to the RO Server
 
 Encrypt with the "ssh-sign-with" usage only:
 
@@ -361,12 +363,16 @@ Encrypt with the "ssh-sign-with" usage only:
          -minUsers 2 -owners alice,bob -usages ssh-sign-with \
          -in id_ed25519 -out id_ed25519.encrypted encrypt
 
+### Start the RO SSH Agent
+
 Initiate a SSH agent with connection to the remote RO server:
 
     $ ro -server localhost:443 -ca server.crt ssh-agent
 
     2018/02/05 05:21:13 Starting Red October Secret Shell Agent
     export SSH_AUTH_SOCK=/tmp/ro_ssh_267631424/roagent.sock
+
+### Connect to SSH via RO SSH Agent
 
 On a separate terminal, run:
 
@@ -380,3 +386,13 @@ authenticate through the red october server:
     $ ssh user@hostname
     $ git -T git@github.com
     $ ...
+
+### SSH Agent Forwarding
+
+Moreover, since ro-ssh-agent is compatible with the ssh-agent protocol,
+you can forward the ro-ssh-agent:
+
+    localhost $ ssh -A user@middle # calls local ro-ssh-agent to ask RO server for a signature
+     middle   $ ssh -A user@far    # calls local ssh-agent for a signature, which forwards the
+                                   # request packet to the ro-ssh-agent
+      far     $ echo Profit!
