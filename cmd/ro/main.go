@@ -86,11 +86,7 @@ func registerFlags() {
 }
 
 func readLine(prompt string) (line string, err error) {
-	// TODO: find a way to ask for username and password
-	// such that the prompt itself is not captured in the
-	// standard output. This way running `ro ... ssh-agent`
-	// will set the SSH_AUTH_PATH environment variable.
-	fmt.Printf(prompt)
+	fmt.Fprintf(os.Stderr, prompt)
 	rd := bufio.NewReader(os.Stdin)
 	line, err = rd.ReadString('\n')
 	if err != nil {
@@ -116,7 +112,7 @@ func getUserCredentials() {
 	}
 
 	if pswd == "" {
-		pswd, err = gopass.GetPass("Password:")
+		pswd, err = gopass.GetPass("Password: ")
 		processError("error", err)
 	}
 }

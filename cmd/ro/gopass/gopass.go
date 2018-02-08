@@ -44,7 +44,7 @@ func GetPass(prompt string) (passwd string, err error) {
 	brk := make(chan bool)
 
 	// Display the prompt.
-	fmt.Print(prompt)
+	fmt.Fprintf(os.Stderr, prompt)
 
 	// File descriptors for stdin, stdout, and stderr.
 	fd := []uintptr{os.Stdin.Fd(), os.Stdout.Fd(), os.Stderr.Fd()}
@@ -76,7 +76,7 @@ func GetPass(prompt string) (passwd string, err error) {
 	}
 
 	// Carraige return after the user input.
-	fmt.Println("")
+	fmt.Fprintln(os.Stderr, "")
 
 	return passwd, err
 }
