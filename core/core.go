@@ -63,7 +63,7 @@ type DelegateRequest struct {
 }
 
 type CreateUserRequest struct {
-	Name	string
+	Name        string
 	Password    string
 	UserType    string
 	HipchatName string
@@ -113,7 +113,7 @@ type SSHSignWithRequest struct {
 type SSHSignatureWithDelegates struct {
 	SignatureFormat string
 	Signature       []byte
-	Secure	        bool
+	Secure          bool
 	Delegates       []string
 }
 
@@ -135,13 +135,13 @@ type ExportRequest struct {
 }
 
 type OrderRequest struct {
-	Name	  string
+	Name          string
 	Password      string
 	Duration      string
-	Uses	  int
-	Users	 []string
+	Uses          int
+	Users         []string
 	EncryptedData []byte
-	Labels	[]string
+	Labels        []string
 }
 
 type OrderInfoRequest struct {
@@ -723,7 +723,6 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		}
 	}
 
-
 	resp := &DecryptWithDelegates{
 		Data:      data,
 		Secure:    secure,
@@ -818,7 +817,6 @@ func SSHSignWith(jsonIn []byte) ([]byte, error) {
 	}
 	return jsonResponse(out)
 }
-
 
 // Modify processes a modify request.
 func Modify(jsonIn []byte) ([]byte, error) {
