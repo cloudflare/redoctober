@@ -30,7 +30,7 @@
 			"importpath": "github.com/coreos/go-systemd/activation",
 			"repository": "https://github.com/coreos/go-systemd",
 			"vcs": "git",
-			"revision": "fa8411dcbcbad22b8542b0433914ef68b123f989",
+			"revision": "39ca1b05acc7ad1220e09f133283b8859a8b71ab",
 			"branch": "master",
 			"path": "/activation",
 			"notests": true
