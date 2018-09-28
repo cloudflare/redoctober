@@ -152,7 +152,7 @@ func NewServer(staticPath, addr, caPath string, certPaths, keyPaths []string, us
 
 	var lstnr net.Listener
 	if useSystemdSocket {
-		listenFDs, err := activation.Listeners(true)
+		listenFDs, err := activation.Listeners()
 		if err != nil {
 			log.Fatal(err)
 		}
