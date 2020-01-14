@@ -1,0 +1,29 @@
+# github.com/beorn7/perks v0.0.0-20160804104726-4c0e84591b9a
+github.com/beorn7/perks/quantile
+# github.com/certifi/gocertifi v0.0.0-20160926115448-a61bf5eafa3a
+github.com/certifi/gocertifi
+# github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7
+github.com/coreos/go-systemd/activation
+# github.com/getsentry/raven-go v0.0.0-20161115135411-3f7439d3e74d
+github.com/getsentry/raven-go
+# github.com/golang/protobuf v0.0.0-20160727172617-c3cefd437628
+github.com/golang/protobuf/proto
+# github.com/matttproud/golang_protobuf_extensions v1.0.1
+github.com/matttproud/golang_protobuf_extensions/pbutil
+# github.com/prometheus/client_golang v0.0.0-20160802072246-52437c81da6b
+github.com/prometheus/client_golang/prometheus
+# github.com/prometheus/client_model v0.0.0-20150212101744-fa8ad6fec335
+github.com/prometheus/client_model/go
+# github.com/prometheus/common v0.0.0-20160801171955-ebdfc6da4652
+github.com/prometheus/common/expfmt
+github.com/prometheus/common/internal/bitbucket.org/ww/goautoneg
+github.com/prometheus/common/model
+# github.com/prometheus/procfs v0.0.0-20160411190841-abf152e5f3e9
+github.com/prometheus/procfs
+# golang.org/x/crypto v0.0.0-20160805151209-e0d166c33c32
+golang.org/x/crypto/curve25519
+golang.org/x/crypto/ed25519
+golang.org/x/crypto/ed25519/internal/edwards25519
+golang.org/x/crypto/pbkdf2
+golang.org/x/crypto/scrypt
+golang.org/x/crypto/ssh
