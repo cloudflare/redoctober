@@ -63,7 +63,7 @@ type DelegateRequest struct {
 }
 
 type CreateUserRequest struct {
-	Name	string
+	Name        string
 	Password    string
 	UserType    string
 	HipchatName string
@@ -113,7 +113,7 @@ type SSHSignWithRequest struct {
 type SSHSignatureWithDelegates struct {
 	SignatureFormat string
 	Signature       []byte
-	Secure	        bool
+	Secure          bool
 	Delegates       []string
 }
 
@@ -135,13 +135,13 @@ type ExportRequest struct {
 }
 
 type OrderRequest struct {
-	Name	  string
+	Name          string
 	Password      string
 	Duration      string
-	Uses	  int
-	Users	 []string
+	Uses          int
+	Users         []string
 	EncryptedData []byte
-	Labels	[]string
+	Labels        []string
 }
 
 type OrderInfoRequest struct {
@@ -178,8 +178,15 @@ type ResponseData struct {
 type SummaryData struct {
 	Status string
 	State  string
-	Live   map[string]keycache.ActiveUser
+	Live   map[string]ActiveUser
 	All    map[string]passvault.Summary
+}
+
+type ActiveUser struct {
+	keycache.Usage
+	AltNames map[string]string
+	Admin    bool
+	Type     string
 }
 
 type DecryptWithDelegates struct {
@@ -209,7 +216,7 @@ func jsonStatusError(err error) ([]byte, error) {
 }
 func jsonSummary() ([]byte, error) {
 	state := crypt.Status()
-	return json.Marshal(SummaryData{Status: "ok", State: state.State, Live: crypt.LiveSummary(), All: records.GetSummary()})
+	return json.Marshal(SummaryData{Status: "ok", State: state.State, Live: liveSummary(), All: records.GetSummary()})
 }
 func jsonResponse(resp []byte) ([]byte, error) {
 	return json.Marshal(ResponseData{Status: "ok", Response: resp})
@@ -251,6 +258,24 @@ func validateName(name, password string) error {
 	}
 
 	return nil
+}
+
+// liveSummary creates a sanitized version of cryptor.LiveSummary() without any key material
+func liveSummary() map[string]ActiveUser {
+	currLiveSummary := crypt.LiveSummary()
+	summaryData := make(map[string]ActiveUser)
+
+	for summaryInfo, activeUser := range currLiveSummary {
+		sanitizedActiveUser := ActiveUser{
+			Usage:    activeUser.Usage,
+			AltNames: activeUser.AltNames,
+			Admin:    activeUser.Admin,
+			Type:     activeUser.Type,
+		}
+		summaryData[summaryInfo] = sanitizedActiveUser
+	}
+
+	return summaryData
 }
 
 // Init reads the records from disk from a given path
@@ -723,7 +748,6 @@ func Decrypt(jsonIn []byte) ([]byte, error) {
 		}
 	}
 
-
 	resp := &DecryptWithDelegates{
 		Data:      data,
 		Secure:    secure,
@@ -818,7 +842,6 @@ func SSHSignWith(jsonIn []byte) ([]byte, error) {
 	}
 	return jsonResponse(out)
 }
-
 
 // Modify processes a modify request.
 func Modify(jsonIn []byte) ([]byte, error) {
