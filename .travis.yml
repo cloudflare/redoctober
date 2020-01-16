@@ -1,6 +1,6 @@
 sudo: false
 language: go
-go: 1.6
+go: 1.12
 script:
   - go get github.com/modocache/gover
   - go get github.com/prometheus/client_golang/...
