@@ -61,21 +61,21 @@ func New(records *passvault.Records, cache *keycache.Cache, config *config.Confi
 // both, then he can decrypt it alone).  If a predicate is present, it must be
 // satisfied to decrypt.
 type AccessStructure struct {
-	Minimum    int
-	Names      []string
+	Minimum int
+	Names   []string
 
 	LeftNames  []string
 	RightNames []string
 
-	Predicate  string
+	Predicate string
 }
 
 // Implements msp.UserDatabase
 type UserDatabase struct {
-	names    *[]string
+	names *[]string
 
-	records  *passvault.Records
-	cache    *keycache.Cache
+	records *passvault.Records
+	cache   *keycache.Cache
 
 	user     string
 	labels   []string
@@ -126,9 +126,9 @@ type SingleWrappedKey struct {
 // EncryptedData is the format for encrypted data containing all the
 // keys necessary to decrypt it when delegated.
 type EncryptedData struct {
-	Version   int
-	VaultId   int                         `json:",omitempty"`
-	Labels    []string                    `json:",omitempty"`
+	Version int
+	VaultId int      `json:",omitempty"`
+	Labels  []string `json:",omitempty"`
 	// Usages list the endpoints which may use this data
 	// If empty, only decryption in permitted
 	Usages    []string                    `json:",omitempty"`
@@ -149,8 +149,8 @@ type pair struct {
 type mwkSlice []MultiWrappedKey
 type swkSlice []pair
 
-func (s mwkSlice) Len() int           { return len(s) }
-func (s mwkSlice) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s mwkSlice) Len() int      { return len(s) }
+func (s mwkSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s mwkSlice) Less(i, j int) bool { // Alphabetic order
 	var shorter = i
 	if len(s[i].Name) > len(s[j].Name) {

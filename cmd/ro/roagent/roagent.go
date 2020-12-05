@@ -9,8 +9,8 @@ import (
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
-	"log"
 	"io"
+	"log"
 
 	roclient "github.com/cloudflare/redoctober/client"
 	"github.com/cloudflare/redoctober/core"
@@ -18,8 +18,8 @@ import (
 )
 
 type ROAgent struct {
-	locked   bool
-	keyring  []*ROSigner
+	locked  bool
+	keyring []*ROSigner
 
 	server   *roclient.RemoteServer
 	username string
@@ -102,7 +102,7 @@ func (roagent *ROAgent) Remove(key ssh.PublicKey) error {
 	for i, rosigner := range roagent.keyring {
 		if bytes.Equal(rosigner.PublicKey().Marshal(), wanted) {
 			// Order is not preserved
-			roagent.keyring[i] = roagent.keyring[0] 
+			roagent.keyring[i] = roagent.keyring[0]
 			roagent.keyring = roagent.keyring[1:]
 			log.Println("ro-ssh-agent: signer removed")
 			return nil
