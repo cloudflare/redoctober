@@ -5,7 +5,6 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      GOFLAGS: "-mod=vendor"
       GODEBUG: x509ignoreCN=0
     steps:
       - uses: actions/checkout@v2

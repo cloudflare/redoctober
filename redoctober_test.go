@@ -84,7 +84,6 @@ func init() {
 }
 
 func setup(t *testing.T) (cmd *exec.Cmd) {
-	os.Setenv("GODEBUG", "x509ignoreCN=0")
 	const maxAttempts = 5
 
 	// Look for the redoctober binary in current directory and then in $GOPATH/bin

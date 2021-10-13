@@ -10,21 +10,9 @@ encryption and decryption server.
 [![Go Test](https://github.com/cloudflare/redoctober/actions/workflows/go.yml/badge.svg)](https://github.com/cloudflare/redoctober/actions/workflows/go.yml)
 [![Coverage Status](http://codecov.io/github/cloudflare/redoctober/coverage.svg?branch=master)](http://codecov.io/github/cloudflare/redoctober?branch=master)
 
-This project requires [Go 1.16](http://golang.org/doc/install#download)
-or later to compile. Verify your go version by running `go version`:
+Note: `GODEBUG=x509ignoreCN=0` must be set during runtime (#204)
 
-    $ go version
-    go version go1.4
-
-As with any Go program you do need to set the
-[GOPATH environment variable](http://golang.org/doc/code.html#GOPATH)
-accordingly. With Go set up you can download and compile sources:
-
-    $ go get github.com/cloudflare/redoctober
-
-And run the tests:
-
-    $ go test github.com/cloudflare/redoctober...
+This project requires [Go 1.16](http://golang.org/doc/install#download) or later to compile.
 
 ## Running
 

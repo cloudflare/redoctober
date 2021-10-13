@@ -109,7 +109,6 @@ func registerCli() {
 //go:generate go run generate.go
 
 func main() {
-	os.Setenv("GODEBUG", "x509ignoreCN=0") // need to keep using go1.16
 	registerCli()
 	var err error
 	if confFile != "" {
