@@ -15,7 +15,7 @@ import (
 	"github.com/cloudflare/redoctober/core"
 	"github.com/cloudflare/redoctober/report"
 	"github.com/cloudflare/redoctober/server"
-	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 // initPrometheus starts a goroutine with a Prometheus listener that
@@ -24,7 +24,7 @@ import (
 func initPrometheus() {
 	srv := &http.Server{
 		Addr:    net.JoinHostPort(cfg.Metrics.Host, cfg.Metrics.Port),
-		Handler: prometheus.Handler(),
+		Handler: promhttp.Handler(),
 	}
 
 	log.Printf("metrics.init start: addr=%s", srv.Addr)
@@ -57,7 +57,7 @@ const (
 	defaultMetricsPort = "8081"
 )
 
-func init() {
+func registerCli() {
 	// cli contains the configuration set by the command line
 	// options, and cfg is the actual Red October config.
 	cli = config.New()
@@ -109,6 +109,7 @@ func init() {
 //go:generate go run generate.go
 
 func main() {
+	registerCli()
 	var err error
 	if confFile != "" {
 		cfg, err = config.Load(confFile)

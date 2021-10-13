@@ -1,0 +1,18 @@
+name: Go Test
+on:
+  push:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      GODEBUG: x509ignoreCN=0
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: "1.16"
+      - run: go mod vendor
+      - run: go build
+      - run: go test -race  -coverprofile=coverage.out ./...
+      - name: Upload coverage to Codecov
+        run: bash <(curl -s https://codecov.io/bash)
