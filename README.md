@@ -7,9 +7,10 @@ encryption and decryption server.
 
 ## Building
 
-[![Build Status](https://travis-ci.org/cloudflare/redoctober.png?branch=master)](https://travis-ci.org/cloudflare/redoctober)[![Coverage Status](http://codecov.io/github/cloudflare/redoctober/coverage.svg?branch=master)](http://codecov.io/github/cloudflare/redoctober?branch=master)
+[![Go Test](https://github.com/cloudflare/redoctober/actions/workflows/go.yml/badge.svg)](https://github.com/cloudflare/redoctober/actions/workflows/go.yml)
+[![Coverage Status](http://codecov.io/github/cloudflare/redoctober/coverage.svg?branch=master)](http://codecov.io/github/cloudflare/redoctober?branch=master)
 
-This project requires [Go 1.4](http://golang.org/doc/install#download)
+This project requires [Go 1.16](http://golang.org/doc/install#download)
 or later to compile. Verify your go version by running `go version`:
 
     $ go version
