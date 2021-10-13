@@ -4,14 +4,13 @@ go 1.16
 
 require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
-	github.com/getsentry/raven-go v0.2.0
 	github.com/prometheus/client_golang v1.11.0
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 )
 
 require (
-	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/getsentry/sentry-go v0.11.0
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/prometheus/common v0.31.1 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
