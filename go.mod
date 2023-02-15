@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/coreos/go-systemd v0.0.0-20191104093116-d3cd4ed1dbcf
-	github.com/prometheus/client_golang v1.11.0
+	github.com/prometheus/client_golang v1.11.1
 	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 )
 
