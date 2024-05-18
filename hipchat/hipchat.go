@@ -57,6 +57,7 @@ func (h *HipchatClient) Notify(msg, color string) error {
 		log.Printf("Could not post to hipchat for the reason %s", err.Error())
 		return err
 	}
+	defer resp.Body.Close()
 
 	_, err = ioutil.ReadAll(resp.Body)
 	if err != nil {
