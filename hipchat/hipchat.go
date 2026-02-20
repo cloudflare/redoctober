@@ -48,7 +48,10 @@ func (h *HipchatClient) Notify(msg, color string) error {
 	roomId := url.QueryEscape(strconv.Itoa(h.RoomId))
 	hipchatUrl := fmt.Sprintf("https://%s/v2/room/%s/message?auth_token=%s", h.HcHost, roomId, h.ApiKey)
 	req, err := http.NewRequest("POST", hipchatUrl, bytes.NewReader(body))
-
+	if err != nil {
+		log.Printf("Cannot generate new request for hipchat for the reason %s", err.Error())
+		return err
+	}
 	req.Header.Add("Content-Type", "application/json")
 
 	Client := http.Client{}
